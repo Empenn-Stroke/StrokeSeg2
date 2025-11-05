@@ -1,5 +1,9 @@
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
+
 qt_add_executable(${GUI}
     main.cpp
+    mainWindow.h
+    mainWindow.cpp
 )
 
 target_compile_features(${GUI} PUBLIC cxx_std_20)
@@ -9,4 +13,6 @@ target_include_directories(${GUI} PRIVATE
 
 target_link_libraries(${GUI} PUBLIC
     Qt6::Core
+    Qt6::Gui
+    Qt6::Widgets
 )
