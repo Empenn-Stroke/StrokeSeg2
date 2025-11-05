@@ -12,7 +12,7 @@ include(FetchContent)
 set(CORE "core")
 set(GUI "gui")
 
-add_compile_definitions(ANIMA_ROOT_PATH="nopath")
+add_compile_definitions(ANIMA_ROOT_PATH=\"nopath\")
 
 # DEPENDENCIES #####################################################################################
 
