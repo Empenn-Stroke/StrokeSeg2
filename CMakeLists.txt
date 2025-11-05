@@ -1,12 +1,18 @@
 cmake_minimum_required(VERSION 3.10...3.31) # support for CXX20
-set(CORE "core")
-set(GUI "gui")
+
 project(strokeseg2-app
   VERSION 0.0.1
   LANGUAGES CXX
 )
 
 include(FetchContent)
+
+# VARS #############################################################################################
+
+set(CORE "core")
+set(GUI "gui")
+
+add_compile_definitions(ANIMA_ROOT_PATH="nopath")
 
 # DEPENDENCIES #####################################################################################
 
