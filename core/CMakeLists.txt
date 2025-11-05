@@ -1,0 +1,18 @@
+add_library(${CORE}
+  # this dummy file is only here as placeholder and can be removed
+  dummy.cpp
+)
+
+target_compile_features(${CORE} PUBLIC cxx_std_20)
+target_include_directories(${CORE} PRIVATE
+    ${CMAKE_SOURCE_DIR}/${CORE}/src/
+)
+
+target_link_libraries(${CORE} PUBLIC
+    spdlog
+    eigen
+)
+
+if(WIN32)
+    target_link_libraries(${CORE} PUBLIC ${LIB_WINDOWSML})
+endif(WIN32)
