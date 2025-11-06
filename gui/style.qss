@@ -30,7 +30,25 @@ QWidget#colonneGauche QComboBox::down-arrow:on {
 }
 
 QWidget#colonneGauche QCheckBox {
-    margin:5px 10px 5px 0;
+    margin:5px 30px 5px 0;
+}
+
+QWidget#colonneGauche QCheckBox::indicator {
+    /*
+    background-color:#f5f7fa;
+    border:none;
+    border-radius:5px; */
+    width:100px;
+    height:25px;
+}
+
+QWidget#colonneGauche QCheckBox::indicator:unchecked {
+    image: url("../../../gui/ressources/checkbox_off.png");
+}
+
+QWidget#colonneGauche QCheckBox::indicator:checked {
+    /* background-color:#5ea6f2; */
+    image: url("../../../gui/ressources/checkbox_on.png");
 }
 
 QWidget#colonneGauche QLabel {

@@ -53,7 +53,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     leftLayout->addRow("Suffix :", m_suffix);
     leftLayout->addRow("Model :", m_model);
     leftLayout->addRow("Open viewer :", m_toggleView);
-    leftLayout->addRow("Output MNI space", m_toggleOutput);
+    leftLayout->addRow("Output MNI space :", m_toggleOutput);
     leftLayout->addRow("Mode :", m_mode);
 
 
