@@ -1,0 +1,87 @@
+QWidget#colonneGauche {
+    background-color: #FFFFFF;
+}
+
+QWidget#colonneGauche QLineEdit,
+QWidget#colonneGauche QComboBox {
+    margin:5px 10px 5px 0;
+    background-color:#f5f7fa;
+    color:#0a0c0f;
+    padding:5px 10px;
+    border-radius:5px;
+    border: none;
+}
+
+QWidget#colonneGauche QComboBox::down-arrow {
+    image: url("../../../gui/ressources/arrow_down.png");
+    width:6px;
+    height:6px;
+}
+
+QWidget#colonneGauche QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    margin-right:15px;
+    border: none;
+}
+
+QWidget#colonneGauche QComboBox::down-arrow:on {
+    image: url("../../../gui/ressources/arrow_up.png");
+}
+
+QWidget#colonneGauche QCheckBox {
+    margin:5px 10px 5px 0;
+}
+
+QWidget#colonneGauche QLabel {
+    margin:5px 0px 5px 10px;
+    color:#0a0c0f;
+}
+
+QWidget#mainArea {
+    background-color: #f5f7fa;
+}
+
+QPushButton {
+    background-color: #5ea6f2;
+    padding:15px 20px;
+    color:#ffffff;
+    font-size:18px;
+    border-radius:10px;
+    /* background: qlineargradient(
+        spread:pad,
+        x1:0, y1:0, x2:1, y2:1,
+        stop:0 rgba(246,79,89,1),
+        stop:0 rgba(196,113,237,1),
+        stop:0.01 rgba(18,166,242,1)
+    ); */
+}
+
+QPushButton:hover {
+    background-color:#94dcff;
+    /*background: qlineargradient(
+        spread:pad,
+        x1:0, y1:0, x2:1, y2:1,
+        stop:0 rgba(246,79,89,1),
+        stop:0.5 rgba(196,113,237,1),
+        stop:0.92 rgba(18,166,242,1)
+    ); */
+}
+
+QToolButton#chooseFileButton {
+    background-color: #deebf9;
+    padding:15px 20px;
+    color:#5ea6f2;
+    font-size:22px;
+    font-weight:800;
+    border-radius:25px;
+    width:450px;
+    height:250px;
+    border: 4px dashed #5ea6f2;
+    text-align:center;
+    qproperty-iconSize : 80px 80px;
+}
+
+QToolButton#chooseFileButton:hover {
+    background-color: #c7dff8;
+}
