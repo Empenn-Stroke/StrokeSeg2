@@ -23,6 +23,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     setCentralWidget(m_mainWidget);
     QHBoxLayout *mainLayout = new QHBoxLayout(m_mainWidget);
 
+
     // Colonne à gauche
 
     QWidget *leftContainer = new QWidget(m_mainWidget);
