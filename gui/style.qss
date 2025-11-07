@@ -6,7 +6,7 @@ QWidget#leftContainer {
 
 QWidget#colonneGauche QLineEdit,
 QWidget#colonneGauche QComboBox {
-    margin:5px 10px 5px 0;
+    margin:4px 10px 4px 0;
     background-color:#f5f7fa;
     color:#0a0c0f;
     padding:5px 10px;
@@ -14,6 +14,12 @@ QWidget#colonneGauche QComboBox {
     border: none;
     font-size:14px;
 }
+
+QWidget#colonneGauche QLineEdit {
+    width:180px;
+}
+QWidget#colonneGauche QComboBox { width:161px}
+
 
 QWidget#colonneGauche QComboBox::down-arrow {
     image: url("../../../gui/ressources/arrow_down.png");
@@ -33,19 +39,25 @@ QComboBox QAbstractItemView {
     color:#0a0c0f;
     border: none;
     selection-background-color: #deebf9;
+    outline:0;
+}
+
+QComboBox QAbstractItemView::item:focus {
+    outline: none;
+    border: none;
 }
 
 QComboBox QAbstractItemView::item {
     padding:2px;
     border:none;
     background: #f5f7fa;
-    outline:1px solid red;
+    outline:0;
 }
 
 QComboBox QAbstractItemView::item:hover {
     background-color: #deebf9;
     border:none;
-    outline:1px solid red;
+    outline:0;
 }
 
 
@@ -55,7 +67,7 @@ QWidget#colonneGauche QComboBox::down-arrow:on {
 }
 
 QWidget#colonneGauche QCheckBox {
-    margin:5px 0 5px 30px;
+    margin:4px 0 4px 30px;
     right:0;
 }
 
@@ -74,7 +86,7 @@ QWidget#colonneGauche QCheckBox::indicator:checked {
 }
 
 QWidget#colonneGauche QLabel {
-    margin:5px 0px 5px 10px;
+    margin:4px 0px 4px 10px;
     color:#0a0c0f;
     font-size:14px;
 }

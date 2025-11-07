@@ -37,8 +37,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     QFormLayout *formLayout = new QFormLayout(leftPanel);
 
+
     m_suffix = new QLineEdit(leftPanel);
-    m_suffix->setPlaceholderText("Tape ton texte ici");
+    m_suffix->setPlaceholderText("Enter the suffix name");
 
     m_model = new QComboBox(leftPanel);
     m_model->addItem("Option 1");
@@ -53,13 +54,18 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     m_mode->addItem("Option 2");
     m_mode->addItem("Option 3");
 
-    formLayout->setFormAlignment(Qt::AlignRight);
-
     formLayout->addRow("Suffix :", m_suffix);
     formLayout->addRow("Model :", m_model);
     formLayout->addRow("Open viewer :", m_toggleView);
     formLayout->addRow("Output MNI space :", m_toggleOutput);
     formLayout->addRow("Mode :", m_mode);
+
+    formLayout->setAlignment(m_suffix, Qt::AlignRight | Qt::AlignVCenter);
+    formLayout->setAlignment(m_model, Qt::AlignRight | Qt::AlignVCenter);
+    formLayout->setAlignment(m_toggleView, Qt::AlignRight | Qt::AlignVCenter);
+    formLayout->setAlignment(m_toggleOutput, Qt::AlignRight | Qt::AlignVCenter);
+    formLayout->setAlignment(m_mode, Qt::AlignRight | Qt::AlignVCenter);
+
 
     leftLayout->addStretch(1);
     leftLayout->addWidget(leftPanel,0);
