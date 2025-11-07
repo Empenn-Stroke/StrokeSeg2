@@ -13,6 +13,8 @@ int main(int argc, char *argv[]) {
     }
 
     MainWindow w;
+    w.setWindowFlags(Qt::FramelessWindowHint);
+    w.setAttribute(Qt::WA_TranslucentBackground);
     w.show();
 
     return app.exec();

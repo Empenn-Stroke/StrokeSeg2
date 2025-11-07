@@ -2,36 +2,39 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QFileDialog>
+#include <QFormLayout>
 #include <QHBoxLayout>
 #include <QIcon>
 #include <QLineEdit>
+#include <QMenuBar>
 #include <QPushButton>
+#include <QToolButton>
 #include <QVBoxLayout>
 #include <QWidget>
-#include <QFormLayout>
-#include <QMenuBar>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
+
     setWindowTitle("StrokeSeg2");
     QIcon icon("../../../gui/ressources/StrokeSeg2.ico");
     setWindowIcon(icon);
-    resize(1000, 600);
+    resize(1280, 720);
 
     m_mainWidget = new QWidget(this);
     setCentralWidget(m_mainWidget);
-
     QHBoxLayout *mainLayout = new QHBoxLayout(m_mainWidget);
 
-    //QMenuBar *menuBar = new QMenuBar(this);
-    //setMenuBar(menuBar);
-    //QMenu *editMenu = menuBar->addMenu("Options");
-    //QMenu *helpMenu = menuBar->addMenu("Help");
+    // Colonne à gauche
 
-    // COLONNE A GAUCHE
+    QWidget *leftContainer = new QWidget(m_mainWidget);
+    leftContainer->setObjectName("leftContainer");
 
-    QWidget *leftPanel = new QWidget(m_mainWidget);
-    QFormLayout *leftLayout = new QFormLayout(leftPanel);
+    QVBoxLayout *leftLayout = new QVBoxLayout(leftContainer);
+    leftLayout->setObjectName("leftLayout");
+
+    QWidget *leftPanel = new QWidget(leftContainer);
     leftPanel->setObjectName("colonneGauche");
+
+    QFormLayout *formLayout = new QFormLayout(leftPanel);
 
     m_suffix = new QLineEdit(leftPanel);
     m_suffix->setPlaceholderText("Tape ton texte ici");
@@ -44,33 +47,39 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     m_toggleView = new QCheckBox("", leftPanel);
     m_toggleOutput = new QCheckBox("", leftPanel);
 
-    
     m_mode = new QComboBox(leftPanel);
     m_mode->addItem("Option 1");
     m_mode->addItem("Option 2");
     m_mode->addItem("Option 3");
 
-    leftLayout->addRow("Suffix :", m_suffix);
-    leftLayout->addRow("Model :", m_model);
-    leftLayout->addRow("Open viewer :", m_toggleView);
-    leftLayout->addRow("Output MNI space :", m_toggleOutput);
-    leftLayout->addRow("Mode :", m_mode);
+    formLayout->setFormAlignment(Qt::AlignRight);
+
+    formLayout->addRow("Suffix :", m_suffix);
+    formLayout->addRow("Model :", m_model);
+    formLayout->addRow("Open viewer :", m_toggleView);
+    formLayout->addRow("Output MNI space :", m_toggleOutput);
+    formLayout->addRow("Mode :", m_mode);
+
+    leftLayout->addStretch(1);
+    leftLayout->addWidget(leftPanel,0);
+    leftLayout->addStretch(10);
 
 
-    // PARTIE PRINCIPALE A DROITE
+    // Partie principale à droite
 
     QWidget *mainArea = new QWidget(m_mainWidget);
-    QVBoxLayout *mainAreaLayout = new QVBoxLayout(mainArea);
     mainArea->setObjectName("mainArea");
+
+    QVBoxLayout *mainAreaLayout = new QVBoxLayout(mainArea);
 
     m_fileButton = new QToolButton(mainArea);
     m_fileButton->setObjectName("chooseFileButton");
-    m_fileButton->setText("Choisir un fichier");
+    m_fileButton->setText("Choose file");
     QIcon files_icon("../../../gui/ressources/files.png");
     m_fileButton->setIcon(files_icon);
     m_fileButton->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
 
-    m_runButton = new QPushButton("Run", mainArea);
+    m_runButton = new QPushButton("RUN", mainArea);
 
     mainAreaLayout->addStretch();
     mainAreaLayout->addWidget(m_fileButton, 0, Qt::AlignHCenter);
@@ -78,22 +87,28 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     mainAreaLayout->addWidget(m_runButton, 0, Qt::AlignHCenter);
     mainAreaLayout->addStretch();
 
-    connect(m_fileButton, &QPushButton::clicked, this, &MainWindow::chooseFile);
 
-    mainLayout->addWidget(leftPanel);
+    // Construction finale de la window
+
+    mainLayout->addWidget(leftContainer);
     mainLayout->addWidget(mainArea);
-    mainLayout->setStretch(0, 4);
+
+    mainLayout->setStretch(0, 3);
     mainLayout->setStretch(1, 7);
 
     mainLayout->setSpacing(0);
     mainLayout->setContentsMargins(0, 0, 0, 0);
 
-    leftLayout->setSpacing(0);
-    leftLayout->setContentsMargins(0, 0, 0, 0);
+    leftLayout->setSpacing(10);
+    leftLayout->setContentsMargins(10, 10, 10, 10);
 
-    mainAreaLayout->setSpacing(0);
+    formLayout->setSpacing(8);
+    formLayout->setContentsMargins(0, 0, 0, 0);
+
+    mainAreaLayout->setSpacing(20);
     mainAreaLayout->setContentsMargins(0, 0, 0, 0);
 
+    connect(m_fileButton, &QToolButton::clicked, this, &MainWindow::chooseFile);
 }
 
 MainWindow::~MainWindow() {}
@@ -101,6 +116,6 @@ MainWindow::~MainWindow() {}
 void MainWindow::chooseFile() {
     QString filename = QFileDialog::getOpenFileName(this, "Choose file");
     if (!filename.isEmpty()) {
-        m_suffix->setText(filename); 
+        m_fileButton->setText(filename);
     }
 }
