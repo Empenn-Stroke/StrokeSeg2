@@ -1,8 +1,71 @@
 
+QWidget#m_mainWidget{
+    border-radius:10px;
+    background-color:#FFFFFF;
+}
+
+QWidget#titleBar {
+    color:#0a0c0f;
+    background-color: #5ea6f2;
+    border-top-left-radius:10px;
+    border-top-right-radius:10px;
+    border:none;
+}
+
+QWidget#titleBar QPushButton {
+    color:#ffffff;
+    margin:0;
+    text-align:center;
+    background-color: #5ea6f2;
+    border-radius:0;
+    font-size:18px;
+}
+
+QWidget#titleBar QPushButton#closeBtn {
+    border-top-right-radius:10px;
+}
+
+QWidget#titleBar QPushButton#closeBtn:hover  {
+    background-color:#ff8474;
+}
+
+QWidget#titleBar QPushButton:hover {
+    background-color:#94dcff;
+}
+
+QWidget#titleBar QLabel {
+    color:#ffffff;
+    font-size:11px;
+    font-weight:bold;
+    margin:0;
+    border:none;
+}
+
 QWidget#colonneGauche,
 QWidget#leftContainer {
+    border-bottom-left-radius:10px;
     background-color: #FFFFFF;
 }
+
+
+
+QMenuBar {
+    background-color: #FFFFFF;
+    color:#0a0c0f;
+}
+
+QMenuBar#menuBar::item {
+    background-color:#ffffff;
+    border-radius:5px;
+    padding:8px 18px;
+    margin:5px 5px 0 5px;
+}
+
+QMenuBar#menuBar::item:selected {
+    background-color:#f5f7fa;
+}
+
+
 
 QWidget#colonneGauche QLineEdit,
 QWidget#colonneGauche QComboBox {
@@ -93,9 +156,10 @@ QWidget#colonneGauche QLabel {
 
 QWidget#mainArea {
     background-color: #f5f7fa;
+    border-bottom-right-radius:10px;
 }
 
-QPushButton {
+QPushButton#runBtn {
     background-color: #5ea6f2;
     padding:15px 30px;
     color:#ffffff;
@@ -110,7 +174,7 @@ QPushButton {
     ); */
 }
 
-QPushButton:hover {
+QPushButton#runBtn:hover {
     background-color:#94dcff;
     /*background: qlineargradient(
         spread:pad,

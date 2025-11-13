@@ -15,8 +15,11 @@ public:
     MainWindow(QWidget *parent=0);
     ~MainWindow();
 
+    bool m_dragging = false;
+    QPoint m_dragPosition;
+
 private:
-    QWidget* m_mainWidget;
+    QWidget *m_mainWidget;
 
     QLineEdit *m_suffix;
     QComboBox *m_model;
@@ -27,8 +30,12 @@ private:
     QToolButton *m_fileButton;
     QPushButton *m_runButton;
 
+
   private slots:
     void chooseFile();
+    void mousePressEvent(QMouseEvent *event) override;
+    void mouseMoveEvent(QMouseEvent *event) override;
+    void mouseReleaseEvent(QMouseEvent *event) override;
 };
 
 

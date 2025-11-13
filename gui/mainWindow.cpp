@@ -11,6 +11,8 @@
 #include <QToolButton>
 #include <QVBoxLayout>
 #include <QWidget>
+#include <QLabel>
+#include <QMouseEvent>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
@@ -18,10 +20,42 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     QIcon icon("../../../gui/ressources/StrokeSeg2.ico");
     setWindowIcon(icon);
     resize(1280, 720);
+    setWindowFlags(Qt::FramelessWindowHint);
+    setAttribute(Qt::WA_TranslucentBackground);
 
     m_mainWidget = new QWidget(this);
     setCentralWidget(m_mainWidget);
-    QHBoxLayout *mainLayout = new QHBoxLayout(m_mainWidget);
+    QVBoxLayout *windowLayout = new QVBoxLayout(m_mainWidget);
+    QHBoxLayout *mainLayout = new QHBoxLayout();
+
+    // Title bar
+
+    QWidget *titleBar = new QWidget(m_mainWidget);
+    titleBar->setObjectName("titleBar");
+    QHBoxLayout *titleLayout = new QHBoxLayout(titleBar);
+    titleBar->setFixedHeight(25);
+
+    QLabel *title = new QLabel("StrokeSeg2", titleBar);
+    QPushButton *reduceBtn = new QPushButton("\u2212", titleBar);
+    QPushButton *closeBtn = new QPushButton("\u00D7", titleBar);
+    closeBtn->setObjectName("closeBtn");
+    reduceBtn->setFixedHeight(25);
+    closeBtn->setFixedHeight(25);
+    reduceBtn->setFixedWidth(30);
+    closeBtn->setFixedWidth(30);
+
+    titleLayout->addStretch();
+    titleLayout->addWidget(title);
+    titleLayout->addStretch();
+    titleLayout->addWidget(reduceBtn);
+    titleLayout->addWidget(closeBtn);
+
+
+    // Menu bar 
+    QMenuBar *menuBar = new QMenuBar(this);
+    menuBar->setObjectName("menuBar");
+    QMenu *optionsMenu = menuBar->addMenu("Options");
+    QMenu *helpMenu = menuBar->addMenu("Help");
 
 
     // Colonne à gauche
@@ -87,6 +121,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     m_fileButton->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
 
     m_runButton = new QPushButton("RUN", mainArea);
+    m_runButton->setObjectName("runBtn");
 
     mainAreaLayout->addStretch();
     mainAreaLayout->addWidget(m_fileButton, 0, Qt::AlignHCenter);
@@ -97,6 +132,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     // Construction finale de la window
 
+    windowLayout->addWidget(titleBar);
+    windowLayout->addWidget(menuBar);
+    windowLayout->addLayout(mainLayout);
+    windowLayout->setContentsMargins(0, 0, 0, 0);
+    windowLayout->setSpacing(0);
+
     mainLayout->addWidget(leftContainer);
     mainLayout->addWidget(mainArea);
 
@@ -105,6 +146,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     mainLayout->setSpacing(0);
     mainLayout->setContentsMargins(0, 0, 0, 0);
+
+    titleLayout->setSpacing(0);
+    titleLayout->setContentsMargins(60, 0, 0, 2);
 
     leftLayout->setSpacing(10);
     leftLayout->setContentsMargins(10, 10, 10, 10);
@@ -116,6 +160,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     mainAreaLayout->setContentsMargins(0, 0, 0, 0);
 
     connect(m_fileButton, &QToolButton::clicked, this, &MainWindow::chooseFile);
+    connect(closeBtn, &QPushButton::clicked, this, &QWidget::close);
+    connect(reduceBtn, &QPushButton::clicked, this, &QWidget::showMinimized);
 }
 
 MainWindow::~MainWindow() {}
@@ -124,5 +170,24 @@ void MainWindow::chooseFile() {
     QString filename = QFileDialog::getOpenFileName(this, "Choose file");
     if (!filename.isEmpty()) {
         m_fileButton->setText(filename);
+    }
+}
+
+void MainWindow::mousePressEvent(QMouseEvent *event) {
+    if (event->button() == Qt::LeftButton) {
+        m_dragging = true;
+        m_dragPosition = event->globalPosition().toPoint() - frameGeometry().topLeft();
+    }
+}
+
+void MainWindow::mouseMoveEvent(QMouseEvent *event) {
+    if (m_dragging && (event->buttons() & Qt::LeftButton)) {
+        move(event->globalPosition().toPoint() - m_dragPosition);
+    }
+}
+
+void MainWindow::mouseReleaseEvent(QMouseEvent *event) {
+    if (event->button() == Qt::LeftButton) {
+        this->m_dragging = false;
     }
 }
