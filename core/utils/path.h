@@ -1,4 +1,4 @@
-#include <cstdlib>      // std::getenv
+#include <cstdlib>
 #include <QStandardPaths>
 #include <QFileInfo>
 #include <QDir>
