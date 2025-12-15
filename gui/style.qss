@@ -1,8 +1,14 @@
 
+
+    /* MAIN */
+
 QWidget#m_mainWidget{
-    border-radius:10px;
+    border-radius:8px;
     background-color:#FFFFFF;
 }
+
+
+    /* TITLE BAR */
 
 QWidget#titleBar {
     color:#0a0c0f;
@@ -41,13 +47,8 @@ QWidget#titleBar QLabel {
     border:none;
 }
 
-QWidget#colonneGauche,
-QWidget#leftContainer {
-    border-bottom-left-radius:10px;
-    background-color: #FFFFFF;
-}
 
-
+    /* MENU BAR */
 
 QMenuBar {
     background-color: #FFFFFF;
@@ -62,15 +63,22 @@ QMenuBar#menuBar::item {
 }
 
 QMenuBar#menuBar::item:selected {
-    background-color:#f5f7fa;
+    background-color:#eff4fa;
 }
 
 
+    /* COLONNE DE PARAMETRES */
+    
+QWidget#colonneGauche,
+QWidget#leftContainer {
+    border-bottom-left-radius:10px;
+    background-color: #FFFFFF;
+}
 
 QWidget#colonneGauche QLineEdit,
 QWidget#colonneGauche QComboBox {
-    margin:4px 10px 4px 0;
-    background-color:#f5f7fa;
+    margin:0px 10px 0px 0;
+    background-color:#eff4fa;
     color:#0a0c0f;
     padding:5px 10px;
     border-radius:5px;
@@ -78,11 +86,35 @@ QWidget#colonneGauche QComboBox {
     font-size:14px;
 }
 
-QWidget#colonneGauche QLineEdit {
+QWidget#thresholdContainer {
     width:180px;
 }
-QWidget#colonneGauche QComboBox { width:161px}
 
+QWidget QSlider {
+    margin:0px 10px 0px 0;
+    padding:5px 10px;
+}
+
+QWidget#colonneGauche QLineEdit {
+    margin:0px 10px 0px 0;
+    width:180px;
+}
+
+QSlider::groove:horizontal {
+    height: 10px;
+    background-color:#eff4fa;
+    margin: 2px 0;
+    border-radius:5px;
+}
+
+QSlider::handle:horizontal {
+    background-color:#5ea6f2;
+    width: 10px;
+    margin: -2px 0; /* handle is placed by default on the contents rect of the groove. Expand outside the groove */
+    border-radius: 3px;
+}
+
+QWidget#colonneGauche QComboBox { width:161px}
 
 QWidget#colonneGauche QComboBox::down-arrow {
     image: url("../../../gui/ressources/arrow_down.png");
@@ -98,7 +130,7 @@ QWidget#colonneGauche QComboBox::drop-down {
 }
 
 QComboBox QAbstractItemView {
-    background: #f5f7fa;
+    background: #eff4fa;
     color:#0a0c0f;
     border: none;
     selection-background-color: #deebf9;
@@ -113,7 +145,7 @@ QComboBox QAbstractItemView::item:focus {
 QComboBox QAbstractItemView::item {
     padding:2px;
     border:none;
-    background: #f5f7fa;
+    background: #eff4fa;
     outline:0;
 }
 
@@ -122,8 +154,6 @@ QComboBox QAbstractItemView::item:hover {
     border:none;
     outline:0;
 }
-
-
 
 QWidget#colonneGauche QComboBox::down-arrow:on {
     image: url("../../../gui/ressources/arrow_up.png");
@@ -154,8 +184,11 @@ QWidget#colonneGauche QLabel {
     font-size:14px;
 }
 
+
+    /* AIRE PRINCIPALE */
+
 QWidget#mainArea {
-    background-color: #f5f7fa;
+    background-color: #eff4fa;
     border-bottom-right-radius:10px;
 }
 

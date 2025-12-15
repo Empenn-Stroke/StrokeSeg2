@@ -7,6 +7,7 @@
 #include <QCheckbox>
 #include <QPushButton>
 #include <QToolButton>
+#include <QSlider>
 
 class MainWindow : public QMainWindow {
 	Q_OBJECT
@@ -20,12 +21,14 @@ public:
 
 private:
     QWidget *m_mainWidget;
+    QWidget *m_titleBar;
 
     QLineEdit *m_suffix;
     QComboBox *m_model;
     QCheckBox *m_toggleView;
     QCheckBox *m_toggleOutput;
     QComboBox *m_mode;
+    QSlider *m_threshold;
 
     QToolButton *m_fileButton;
     QPushButton *m_runButton;
@@ -33,9 +36,7 @@ private:
 
   private slots:
     void chooseFile();
-    void mousePressEvent(QMouseEvent *event) override;
-    void mouseMoveEvent(QMouseEvent *event) override;
-    void mouseReleaseEvent(QMouseEvent *event) override;
+    bool eventFilter(QObject *obj, QEvent *event) override;
 };
 
 

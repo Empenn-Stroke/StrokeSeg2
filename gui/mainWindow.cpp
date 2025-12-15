@@ -30,14 +30,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     // Title bar
 
-    QWidget *titleBar = new QWidget(m_mainWidget);
-    titleBar->setObjectName("titleBar");
-    QHBoxLayout *titleLayout = new QHBoxLayout(titleBar);
-    titleBar->setFixedHeight(25);
+    m_titleBar = new QWidget(m_mainWidget);
+    m_titleBar->setObjectName("titleBar");
+    QHBoxLayout *titleLayout = new QHBoxLayout(m_titleBar);
+    m_titleBar->setFixedHeight(25);
+    m_titleBar->installEventFilter(this);
 
-    QLabel *title = new QLabel("StrokeSeg2", titleBar);
-    QPushButton *reduceBtn = new QPushButton("\u2212", titleBar);
-    QPushButton *closeBtn = new QPushButton("\u00D7", titleBar);
+    QLabel *title = new QLabel("StrokeSeg2", m_titleBar);
+    QPushButton *reduceBtn = new QPushButton("\u2212", m_titleBar);
+    QPushButton *closeBtn = new QPushButton("\u00D7", m_titleBar);
     closeBtn->setObjectName("closeBtn");
     reduceBtn->setFixedHeight(25);
     closeBtn->setFixedHeight(25);
@@ -70,35 +71,47 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     leftPanel->setObjectName("colonneGauche");
 
     QFormLayout *formLayout = new QFormLayout(leftPanel);
-
+     
 
     m_suffix = new QLineEdit(leftPanel);
     m_suffix->setPlaceholderText("Enter the suffix name");
 
     m_model = new QComboBox(leftPanel);
-    m_model->addItem("Option 1");
-    m_model->addItem("Option 2");
-    m_model->addItem("Option 3");
+    m_model->addItem("Monomodal (T1)");
+    m_model->addItem("Bimodal (T1 + flair)");
 
     m_toggleView = new QCheckBox("", leftPanel);
     m_toggleOutput = new QCheckBox("", leftPanel);
 
     m_mode = new QComboBox(leftPanel);
-    m_mode->addItem("Option 1");
-    m_mode->addItem("Option 2");
-    m_mode->addItem("Option 3");
+    m_mode->addItem("Prediction");
+    m_mode->addItem("Brain extraction");
+    m_mode->addItem("Prediction + Brain extraction");
+
+    m_threshold = new QSlider(Qt::Horizontal, this);
+    m_threshold->setMinimum(0);
+    m_threshold->setMaximum(100);
+    m_threshold->setValue(50);
+    QWidget *thresholdContainer = new QWidget(leftPanel);
+    thresholdContainer->setObjectName("thresholdContainer");
+    QHBoxLayout *thresholdLayout = new QHBoxLayout(thresholdContainer);
+    thresholdLayout->addWidget(m_threshold);
+    thresholdLayout->setContentsMargins(0, 0, 0, 0);
+
 
     formLayout->addRow("Suffix :", m_suffix);
     formLayout->addRow("Model :", m_model);
     formLayout->addRow("Open viewer :", m_toggleView);
     formLayout->addRow("Output MNI space :", m_toggleOutput);
-    formLayout->addRow("Mode :", m_mode);
+    formLayout->addRow("Execution mode :", m_mode);
+    formLayout->addRow("Threshold :", thresholdContainer);
 
     formLayout->setAlignment(m_suffix, Qt::AlignRight | Qt::AlignVCenter);
     formLayout->setAlignment(m_model, Qt::AlignRight | Qt::AlignVCenter);
     formLayout->setAlignment(m_toggleView, Qt::AlignRight | Qt::AlignVCenter);
     formLayout->setAlignment(m_toggleOutput, Qt::AlignRight | Qt::AlignVCenter);
     formLayout->setAlignment(m_mode, Qt::AlignRight | Qt::AlignVCenter);
+    formLayout->setAlignment(thresholdContainer, Qt::AlignRight | Qt::AlignVCenter);
 
 
     leftLayout->addStretch(1);
@@ -132,7 +145,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     // Construction finale de la window
 
-    windowLayout->addWidget(titleBar);
+    windowLayout->addWidget(m_titleBar);
     windowLayout->addWidget(menuBar);
     windowLayout->addLayout(mainLayout);
     windowLayout->setContentsMargins(0, 0, 0, 0);
@@ -162,6 +175,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     connect(m_fileButton, &QToolButton::clicked, this, &MainWindow::chooseFile);
     connect(closeBtn, &QPushButton::clicked, this, &QWidget::close);
     connect(reduceBtn, &QPushButton::clicked, this, &QWidget::showMinimized);
+
+    connect(m_threshold, &QSlider::valueChanged, this, [](int v) {
+        float threshold = v / 100.0f;
+        qDebug() << "Threshold =" << threshold;
+    });
 }
 
 MainWindow::~MainWindow() {}
@@ -173,21 +191,29 @@ void MainWindow::chooseFile() {
     }
 }
 
-void MainWindow::mousePressEvent(QMouseEvent *event) {
-    if (event->button() == Qt::LeftButton) {
-        m_dragging = true;
-        m_dragPosition = event->globalPosition().toPoint() - frameGeometry().topLeft();
-    }
-}
+bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
+    if (obj == m_titleBar) {
 
-void MainWindow::mouseMoveEvent(QMouseEvent *event) {
-    if (m_dragging && (event->buttons() & Qt::LeftButton)) {
-        move(event->globalPosition().toPoint() - m_dragPosition);
-    }
-}
+        QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
 
-void MainWindow::mouseReleaseEvent(QMouseEvent *event) {
-    if (event->button() == Qt::LeftButton) {
-        this->m_dragging = false;
+        if (event->type() == QEvent::MouseButtonPress && mouseEvent->button() == Qt::LeftButton) {
+
+            m_dragging = true;
+            m_dragPosition = mouseEvent->globalPosition().toPoint() - frameGeometry().topLeft();
+            return true;
+        }
+
+        if (event->type() == QEvent::MouseMove && m_dragging) {
+
+            move(mouseEvent->globalPosition().toPoint() - m_dragPosition);
+            return true;
+        }
+
+        if (event->type() == QEvent::MouseButtonRelease) {
+            m_dragging = false;
+            return true;
+        }
     }
+
+    return QMainWindow::eventFilter(obj, event);
 }
