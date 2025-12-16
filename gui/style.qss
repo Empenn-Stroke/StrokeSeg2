@@ -52,14 +52,17 @@ QWidget#titleBar QLabel {
 
 QMenuBar {
     background-color: #FFFFFF;
+    background-color:#eff4fa;
+    /* border: 1px solid #eff4fa; */
     color:#0a0c0f;
 }
 
 QMenuBar#menuBar::item {
-    background-color:#ffffff;
-    border-radius:5px;
+    /* background-color:#ffffff; */
+    background-color:#eff4fa;
+    /* border-radius:5px; */
     padding:8px 18px;
-    margin:5px 5px 0 5px;
+    /* margin:5px 5px 0 5px; */
 }
 
 QMenuBar#menuBar::item:selected {
@@ -69,14 +72,19 @@ QMenuBar#menuBar::item:selected {
 
     /* COLONNE DE PARAMETRES */
     
-QWidget#colonneGauche,
-QWidget#leftContainer {
+QWidget#formParameters{
     border-bottom-left-radius:10px;
     background-color: #FFFFFF;
 }
 
-QWidget#colonneGauche QLineEdit,
-QWidget#colonneGauche QComboBox {
+QWidget#leftColumn {
+    border-bottom-left-radius:10px;
+    background-color: #FFFFFF;
+    
+}
+
+QWidget#formParameters QLineEdit,
+QWidget#formParameters QComboBox {
     margin:0px 10px 0px 0;
     background-color:#eff4fa;
     color:#0a0c0f;
@@ -87,16 +95,23 @@ QWidget#colonneGauche QComboBox {
 }
 
 QWidget#thresholdContainer {
-    width:180px;
+    margin:0px 10px 0px 0;
+    /* width:180px; */
 }
 
 QWidget QSlider {
-    margin:0px 10px 0px 0;
+    /* margin:0px 10px 0px 0; */
+    border-color:blue;
     padding:5px 10px;
 }
 
-QWidget#colonneGauche QLineEdit {
-    margin:0px 10px 0px 0;
+QWidget#formParameters QLineEdit#thresholdLine{
+    width:35px;
+    margin:0;
+    text-align:left;
+}
+
+QWidget#formParameters QLineEdit#suffix {
     width:180px;
 }
 
@@ -114,15 +129,15 @@ QSlider::handle:horizontal {
     border-radius: 3px;
 }
 
-QWidget#colonneGauche QComboBox { width:161px}
+QWidget#formParameters QComboBox { width:161px}
 
-QWidget#colonneGauche QComboBox::down-arrow {
+QWidget#formParameters QComboBox::down-arrow {
     image: url("../../../gui/ressources/arrow_down.png");
     width:6px;
     height:6px;
 }
 
-QWidget#colonneGauche QComboBox::drop-down {
+QWidget#formParameters QComboBox::drop-down {
     subcontrol-origin: padding;
     subcontrol-position: top right;
     margin-right:15px;
@@ -155,33 +170,47 @@ QComboBox QAbstractItemView::item:hover {
     outline:0;
 }
 
-QWidget#colonneGauche QComboBox::down-arrow:on {
+QWidget#formParameters QComboBox::down-arrow:on {
     image: url("../../../gui/ressources/arrow_up.png");
 }
 
-QWidget#colonneGauche QCheckBox {
+QWidget#formParameters QCheckBox {
     margin:4px 0 4px 30px;
     right:0;
 }
 
-QWidget#colonneGauche QCheckBox::indicator {
+QWidget#formParameters QCheckBox::indicator {
     width:90px;
     height:30px;
 }
 
-QWidget#colonneGauche QCheckBox::indicator:unchecked {
+QWidget#formParameters QCheckBox::indicator:unchecked {
     image: url("../../../gui/ressources/checkbox_off.png");
 }
 
-QWidget#colonneGauche QCheckBox::indicator:checked {
+QWidget#formParameters QCheckBox::indicator:checked {
     /* background-color:#5ea6f2; */
     image: url("../../../gui/ressources/checkbox_on.png");
 }
 
-QWidget#colonneGauche QLabel {
+QWidget#formParameters QLabel {
     margin:4px 0px 4px 10px;
     color:#0a0c0f;
     font-size:14px;
+}
+
+/* Save buttons */
+
+QWidget#bottomBtns QPushButton{
+    background-color: #eff4fa;
+    padding:7px 15px;
+    color:#0a0c0f;
+    font-size:12px;
+    border-radius:10px;
+}
+
+QWidget#bottomBtns QPushButton:hover{
+    background-color:#deebf9;
 }
 
 

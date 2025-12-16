@@ -28,10 +28,14 @@ private:
     QCheckBox *m_toggleView;
     QCheckBox *m_toggleOutput;
     QComboBox *m_mode;
-    QSlider *m_threshold;
+    QSlider *m_thresholdSlider;
+    QLineEdit *m_threshold;
 
     QToolButton *m_fileButton;
     QPushButton *m_runButton;
+
+    QPushButton *m_savePMap;
+    QPushButton *m_savePreprocessing;
 
 
   private slots:

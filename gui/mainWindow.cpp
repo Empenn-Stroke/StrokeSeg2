@@ -28,7 +28,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     QVBoxLayout *windowLayout = new QVBoxLayout(m_mainWidget);
     QHBoxLayout *mainLayout = new QHBoxLayout();
 
-    // Title bar
+    
+    //  ####################
+    //  ## BARRE DE TITRE ##
+    //  ####################
 
     m_titleBar = new QWidget(m_mainWidget);
     m_titleBar->setObjectName("titleBar");
@@ -51,54 +54,81 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     titleLayout->addWidget(reduceBtn);
     titleLayout->addWidget(closeBtn);
 
+    //  ##############
+    //  ## MENU BAR ##
+    //  ##############
 
-    // Menu bar 
     QMenuBar *menuBar = new QMenuBar(this);
     menuBar->setObjectName("menuBar");
-    QMenu *optionsMenu = menuBar->addMenu("Options");
+    QMenu *optionsMenu = menuBar->addMenu("Model");
+    optionsMenu->addAction("Import model");
+    optionsMenu->addAction("Export model");
+
     QMenu *helpMenu = menuBar->addMenu("Help");
+    helpMenu->addAction("Guide");
+    helpMenu->addAction("About");
 
+    
+    //  #################
+    //  ## LEFT COLUMN ##
+    //  #################
 
-    // Colonne à gauche
+    QWidget *leftColumn = new QWidget(m_mainWidget);
+    leftColumn->setObjectName("leftColumn");
 
-    QWidget *leftContainer = new QWidget(m_mainWidget);
-    leftContainer->setObjectName("leftContainer");
-
-    QVBoxLayout *leftLayout = new QVBoxLayout(leftContainer);
+    QVBoxLayout *leftLayout = new QVBoxLayout(leftColumn);
     leftLayout->setObjectName("leftLayout");
 
-    QWidget *leftPanel = new QWidget(leftContainer);
-    leftPanel->setObjectName("colonneGauche");
 
-    QFormLayout *formLayout = new QFormLayout(leftPanel);
+    //  FORM
+
+    QWidget *formParameters = new QWidget(leftColumn);
+    formParameters->setObjectName("formParameters");
+
+    QFormLayout *formLayout = new QFormLayout(formParameters);
      
 
-    m_suffix = new QLineEdit(leftPanel);
+    m_suffix = new QLineEdit(formParameters);
+    m_suffix->setObjectName("suffix");
     m_suffix->setPlaceholderText("Enter the suffix name");
 
-    m_model = new QComboBox(leftPanel);
+    m_model = new QComboBox(formParameters);
     m_model->addItem("Monomodal (T1)");
     m_model->addItem("Bimodal (T1 + flair)");
 
-    m_toggleView = new QCheckBox("", leftPanel);
-    m_toggleOutput = new QCheckBox("", leftPanel);
+    m_toggleView = new QCheckBox("", formParameters);
+    m_toggleOutput = new QCheckBox("", formParameters);
 
-    m_mode = new QComboBox(leftPanel);
+    m_mode = new QComboBox(formParameters);
     m_mode->addItem("Prediction");
     m_mode->addItem("Brain extraction");
     m_mode->addItem("Prediction + Brain extraction");
 
-    m_threshold = new QSlider(Qt::Horizontal, this);
-    m_threshold->setMinimum(0);
-    m_threshold->setMaximum(100);
-    m_threshold->setValue(50);
-    QWidget *thresholdContainer = new QWidget(leftPanel);
+    // Threshold slider
+    m_thresholdSlider = new QSlider(Qt::Horizontal, this);
+    m_thresholdSlider->setMinimum(0);
+    m_thresholdSlider->setMaximum(100);
+    m_thresholdSlider->setValue(50);
+    m_thresholdSlider->setFixedWidth(146);
+
+    m_threshold = new QLineEdit(formParameters);
+    m_threshold->setText("0.50");
+    m_threshold->setObjectName("thresholdLine");
+
+    auto *validator = new QDoubleValidator(0.0, 1.0, 2, this);
+    validator->setNotation(QDoubleValidator::StandardNotation);
+    validator->setLocale(QLocale::C);
+    m_threshold->setValidator(validator);
+
+    QWidget *thresholdContainer = new QWidget(formParameters);
     thresholdContainer->setObjectName("thresholdContainer");
+
     QHBoxLayout *thresholdLayout = new QHBoxLayout(thresholdContainer);
     thresholdLayout->addWidget(m_threshold);
+    thresholdLayout->addWidget(m_thresholdSlider);
     thresholdLayout->setContentsMargins(0, 0, 0, 0);
 
-
+    // Form building
     formLayout->addRow("Suffix :", m_suffix);
     formLayout->addRow("Model :", m_model);
     formLayout->addRow("Open viewer :", m_toggleView);
@@ -114,12 +144,32 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     formLayout->setAlignment(thresholdContainer, Qt::AlignRight | Qt::AlignVCenter);
 
 
+    // Saving buttons
+
+    QWidget *bottomBtns = new QWidget(leftColumn);
+    bottomBtns->setObjectName("bottomBtns");
+    QHBoxLayout *bottomBtnLayout = new QHBoxLayout(bottomBtns);
+
+    m_savePMap = new QPushButton("Save probability map", bottomBtns);
+    m_savePreprocessing = new QPushButton("Save pre-processing", bottomBtns);
+
+    bottomBtnLayout->addWidget(m_savePMap);
+    bottomBtnLayout->addWidget(m_savePreprocessing);
+
+
+    // Column building
+
     leftLayout->addStretch(1);
-    leftLayout->addWidget(leftPanel,0);
-    leftLayout->addStretch(10);
+    leftLayout->addWidget(formParameters, 0);
+    leftLayout->addStretch(15);
+    leftLayout->addWidget(bottomBtns, 0);
+    leftLayout->addStretch(1);
 
+    
 
-    // Partie principale à droite
+    //  ###############
+    //  ## MAIN AREA ##
+    //  ###############
 
     QWidget *mainArea = new QWidget(m_mainWidget);
     mainArea->setObjectName("mainArea");
@@ -142,8 +192,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     mainAreaLayout->addWidget(m_runButton, 0, Qt::AlignHCenter);
     mainAreaLayout->addStretch();
 
-
-    // Construction finale de la window
+    
+    //  #################
+    //  ## FINAL BUILD ##
+    //  #################
 
     windowLayout->addWidget(m_titleBar);
     windowLayout->addWidget(menuBar);
@@ -151,7 +203,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     windowLayout->setContentsMargins(0, 0, 0, 0);
     windowLayout->setSpacing(0);
 
-    mainLayout->addWidget(leftContainer);
+    mainLayout->addWidget(leftColumn);
     mainLayout->addWidget(mainArea);
 
     mainLayout->setStretch(0, 3);
@@ -172,13 +224,31 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     mainAreaLayout->setSpacing(20);
     mainAreaLayout->setContentsMargins(0, 0, 0, 0);
 
+
+    //  ################
+    //  ## CONNECTION ##
+    //  ################
+
     connect(m_fileButton, &QToolButton::clicked, this, &MainWindow::chooseFile);
     connect(closeBtn, &QPushButton::clicked, this, &QWidget::close);
     connect(reduceBtn, &QPushButton::clicked, this, &QWidget::showMinimized);
 
-    connect(m_threshold, &QSlider::valueChanged, this, [](int v) {
-        float threshold = v / 100.0f;
-        qDebug() << "Threshold =" << threshold;
+    connect(m_thresholdSlider, &QSlider::valueChanged, this, [this](int v) {
+        m_threshold->setText(QString::number(v * 0.01f, 'f', 2));
+    });
+
+    connect(m_threshold, &QLineEdit::textChanged, this, [this](const QString &text) {
+        bool ok;
+        float value = text.toFloat(&ok);
+
+        if (!ok)
+            return;
+
+        value = std::clamp(value, 0.0f, 1.0f);
+
+        m_thresholdSlider->blockSignals(true);
+        m_thresholdSlider->setValue(static_cast<int>(value * 100));
+        m_thresholdSlider->blockSignals(false);
     });
 }
 
