@@ -5,6 +5,7 @@ qt_add_executable(${GUI}
 target_compile_features(${GUI} PUBLIC cxx_std_20)
 target_include_directories(${GUI} PRIVATE
     ${CMAKE_SOURCE_DIR}/${GUI}/
+    ${CMAKE_SOURCE_DIR}/${COMMON}/
 )
 
 target_link_libraries(${GUI} PUBLIC

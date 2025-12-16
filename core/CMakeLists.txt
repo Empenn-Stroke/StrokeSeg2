@@ -6,6 +6,7 @@ add_library(${CORE}
 target_compile_features(${CORE} PUBLIC cxx_std_20)
 target_include_directories(${CORE} PRIVATE
     ${CMAKE_SOURCE_DIR}/${CORE}/
+    ${CMAKE_SOURCE_DIR}/${COMMON}/
 )
 
 target_link_libraries(${CORE} PUBLIC

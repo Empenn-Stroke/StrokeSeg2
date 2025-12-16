@@ -11,8 +11,10 @@ include(FetchContent)
 
 set(CORE "core")
 set(GUI "gui")
+set(COMMON "common")
+set(CACHE{ANIMA_ROOT_PATH} TYPE PATH HELP "path to root of anima installation" VALUE ./anima)
 
-add_compile_definitions(ANIMA_ROOT_PATH="\"nopath\"")
+add_compile_definitions(ANIMA_ROOT_PATH=${ANIMA_ROOT_PATH})
 
 # DEPENDENCIES #####################################################################################
 
