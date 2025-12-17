@@ -15,6 +15,6 @@ target_link_libraries(${CORE} PUBLIC
     Qt6::Core
 )
 
-if(WIN32)
-    target_link_libraries(${CORE} PUBLIC ${LIB_WINDOWSML})
-endif(WIN32)
+#if(WIN32)
+#    target_link_libraries(${CORE} PUBLIC ${LIB_WINDOWSML})
+#endif(WIN32)

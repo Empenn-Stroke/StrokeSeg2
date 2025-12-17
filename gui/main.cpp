@@ -1,5 +1,10 @@
+#pragma once
 #include <iostream>
+#include <QDebug>
+#include "../core/utils/path.h"
 
 int main(int argc, char const *argv[]) {
-    std::cout << ANIMA_ROOT_PATH << std::endl;
+
+    qDebug() << anima_root_path;
+    std::cout << __cplusplus << std::endl;
 }

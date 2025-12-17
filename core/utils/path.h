@@ -1,8 +1,12 @@
+#pragma once
+
 #include <cstdlib>
 #include <QStandardPaths>
 #include <QFileInfo>
 #include <QDir>
 #include <QString>
+#include <QtGlobal>
+#include <QCoreApplication>
 #include "str.h"
 
 
@@ -14,8 +18,9 @@ static inline QString programData =
 static inline const QString base_dir =
     QDir(QFileInfo(__FILE__).absolutePath() + "/..").canonicalPath();
 static inline const QString config_file = QDir(roaming).filePath(app_name + "/config.ini");
-static inline const QString anima_dir =
-    QFileInfo(QDir(base_dir).filePath("../anima")).canonicalFilePath();
+static inline const QString anima_root_path =
+    QCoreApplication::applicationDirPath() + QT_STRINGIFY(ANIMA_ROOT_PATH);
+
 static inline const QString model_dir = QDir(programData).filePath(app_name + "/Models");
 static inline const QString atlas_dir = QDir(programData).filePath(app_name + "/Atlas");
 static inline const QString logo_inria = QDir(base_dir).filePath("assets/INRIA.png");

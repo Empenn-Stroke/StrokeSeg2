@@ -2,6 +2,7 @@
 #include <QObject>
 #include <QProcess>
 #include <QStringList>
+#include <QtCore/QtGlobal>
 
 #ifndef CORE_UTILS_ANIMANWRAPPER_H
 #define CORE_UTILS_ANIMANWRAPPER_H
