@@ -2,12 +2,29 @@
 #ifndef MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QWidget>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
 #include <QApplication>
-#include <QLineEdit>
-#include <QCheckbox>
+
 #include <QPushButton>
+#include <QLabel>
+#include <QMouseEvent>
+
+#include <QMenuBar>
+
+#include <QLineEdit>
+#include <QCheckBox>
 #include <QToolButton>
 #include <QSlider>
+#include <QComboBox>
+#include <QDoubleValidator>
+#include <QFileDialog>
+#include <QFormLayout>
+#include <QIcon>
+#include <algorithm>
+
+#include "guideWindow.h"
 
 class MainWindow : public QMainWindow {
 	Q_OBJECT
@@ -15,6 +32,9 @@ class MainWindow : public QMainWindow {
 public:
     MainWindow(QWidget *parent=0);
     ~MainWindow();
+
+protected:
+    bool eventFilter(QObject *obj, QEvent *event) override;
 
     bool m_dragging = false;
     QPoint m_dragPosition;
@@ -37,10 +57,12 @@ private:
     QPushButton *m_savePMap;
     QPushButton *m_savePreprocessing;
 
+    GuideWindow *guide = nullptr;
+
 
   private slots:
     void chooseFile();
-    bool eventFilter(QObject *obj, QEvent *event) override;
+    void openGuide();
 };
 
 

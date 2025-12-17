@@ -1,14 +1,20 @@
+/* 
+=========================================================
+                      MAIN
+=========================================================
+*/
 
-
-    /* MAIN */
-
-QWidget#m_mainWidget{
-    border-radius:8px;
+#m_mainWidget, #guideWindow{
+    border-radius:10px;
     background-color:#FFFFFF;
 }
 
 
-    /* TITLE BAR */
+/* 
+=========================================================
+                      TITLE BAR
+=========================================================
+*/
 
 QWidget#titleBar {
     color:#0a0c0f;
@@ -47,40 +53,71 @@ QWidget#titleBar QLabel {
     border:none;
 }
 
-
-    /* MENU BAR */
-
+/* 
+=========================================================
+                      MENU BAR
+=========================================================
+*/
 QMenuBar {
-    background-color: #FFFFFF;
     background-color:#eff4fa;
-    /* border: 1px solid #eff4fa; */
     color:#0a0c0f;
 }
 
 QMenuBar#menuBar::item {
-    /* background-color:#ffffff; */
     background-color:#eff4fa;
-    /* border-radius:5px; */
     padding:8px 18px;
-    /* margin:5px 5px 0 5px; */
 }
 
 QMenuBar#menuBar::item:selected {
-    background-color:#eff4fa;
+    background-color:#deebf9;
 }
 
+QMenu {
+    background: #eff4fa;
+    color:#0a0c0f;
+    border: none;
+    selection-background-color: #deebf9;
+    outline:0;
+    border-radius:5px;
+}
 
-    /* COLONNE DE PARAMETRES */
-    
-QWidget#formParameters{
-    border-bottom-left-radius:10px;
-    background-color: #FFFFFF;
+QMenu::item {
+    padding:2px;
+    border:none;
+    background: #eff4fa;
+    outline:0;
+    padding:8px 18px;
+    border-top-right-radius:5px;
+    /* border-bottom-right-radius:5px; */
+    border-bottom-left-radius:5px;
+}
+
+QMenu::item:selected  {
+    background-color: #deebf9;
+    border:none;
+    outline:0;
+}
+
+/* 
+=========================================================
+                  LEFT COLUMN
+=========================================================
+*/
+
+QWidget#leftColumnBg {
+    background-color: #eff4fa;
 }
 
 QWidget#leftColumn {
-    border-bottom-left-radius:10px;
+    background-color: #ffffff;
+    border-top-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+}
+
+/* Form */
+QWidget#formParameters{
+    border-bottom-left-radius:15px;
     background-color: #FFFFFF;
-    
 }
 
 QWidget#formParameters QLineEdit,
@@ -129,7 +166,7 @@ QSlider::handle:horizontal {
     border-radius: 3px;
 }
 
-QWidget#formParameters QComboBox { width:161px}
+QWidget#formParameters QComboBox { width:161px;}
 
 QWidget#formParameters QComboBox::down-arrow {
     image: url("../../../gui/ressources/arrow_down.png");
@@ -142,14 +179,18 @@ QWidget#formParameters QComboBox::drop-down {
     subcontrol-position: top right;
     margin-right:15px;
     border: none;
+    border-radius:5px;
+    background: #eff4fa;
 }
 
 QComboBox QAbstractItemView {
+    /* background: #ffffff; */
     background: #eff4fa;
     color:#0a0c0f;
     border: none;
     selection-background-color: #deebf9;
     outline:0;
+    border-radius:5px;
 }
 
 QComboBox QAbstractItemView::item:focus {
@@ -158,10 +199,13 @@ QComboBox QAbstractItemView::item:focus {
 }
 
 QComboBox QAbstractItemView::item {
-    padding:2px;
+    padding:5px;
     border:none;
     background: #eff4fa;
     outline:0;
+    border-top-right-radius:5px;
+    border-bottom-right-radius:5px;
+    border-bottom-left-radius:5px;
 }
 
 QComboBox QAbstractItemView::item:hover {
@@ -199,7 +243,7 @@ QWidget#formParameters QLabel {
     font-size:14px;
 }
 
-/* Save buttons */
+/* Bottom buttons */
 
 QWidget#bottomBtns QPushButton{
     background-color: #eff4fa;
@@ -214,8 +258,11 @@ QWidget#bottomBtns QPushButton:hover{
 }
 
 
-    /* AIRE PRINCIPALE */
-
+/* 
+=========================================================
+                     MAIN AREA
+=========================================================
+*/
 QWidget#mainArea {
     background-color: #eff4fa;
     border-bottom-right-radius:10px;
@@ -262,4 +309,10 @@ QToolButton#chooseFileButton {
 
 QToolButton#chooseFileButton:hover {
     background-color: #c7dff8;
+}
+
+#guideContent {
+    background-color:#ffffff;
+    border-bottom-right-radius:10px;
+    border-bottom-left-radius:10px;
 }

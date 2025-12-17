@@ -4,6 +4,8 @@ qt_add_executable(${PROJECT_NAME}
     main.cpp
     mainWindow.h
     mainWindow.cpp
+    guideWindow.h
+    guideWindow.cpp
 )
 
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)

@@ -1,52 +1,52 @@
 #include "mainWindow.h"
-#include <QCheckBox>
-#include <QComboBox>
-#include <QFileDialog>
-#include <QFormLayout>
-#include <QHBoxLayout>
-#include <QIcon>
-#include <QLineEdit>
-#include <QMenuBar>
-#include <QPushButton>
-#include <QToolButton>
-#include <QVBoxLayout>
-#include <QWidget>
-#include <QLabel>
-#include <QMouseEvent>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     setWindowTitle("StrokeSeg2");
-    QIcon icon("../../../gui/ressources/StrokeSeg2.ico");
-    setWindowIcon(icon);
+    setWindowIcon(QIcon("../../../gui/ressources/StrokeSeg2.ico"));
     resize(1280, 720);
+
     setWindowFlags(Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);
 
-    m_mainWidget = new QWidget(this);
-    setCentralWidget(m_mainWidget);
-    QVBoxLayout *windowLayout = new QVBoxLayout(m_mainWidget);
-    QHBoxLayout *mainLayout = new QHBoxLayout();
+    // =========================================================
+    //                  GLOBAL STRUCTURE
+    // =========================================================
 
-    
-    //  ####################
-    //  ## BARRE DE TITRE ##
-    //  ####################
+    m_mainWidget = new QWidget(this);
+    m_mainWidget->setObjectName("m_mainWidget");
+    m_mainWidget->setAttribute(Qt::WA_StyledBackground, true);
+    setCentralWidget(m_mainWidget);
+
+    QVBoxLayout *windowLayout = new QVBoxLayout(m_mainWidget);
+    windowLayout->setContentsMargins(0, 0, 0, 0);
+    windowLayout->setSpacing(0);
+
+    QHBoxLayout *mainLayout = new QHBoxLayout();
+    mainLayout->setContentsMargins(0, 0, 0, 0);
+    mainLayout->setSpacing(0);
+
+    // =========================================================
+    //                      TITLE BAR
+    // =========================================================
 
     m_titleBar = new QWidget(m_mainWidget);
     m_titleBar->setObjectName("titleBar");
-    QHBoxLayout *titleLayout = new QHBoxLayout(m_titleBar);
     m_titleBar->setFixedHeight(25);
     m_titleBar->installEventFilter(this);
+    m_titleBar->setAttribute(Qt::WA_StyledBackground, true);
+
+    QHBoxLayout *titleLayout = new QHBoxLayout(m_titleBar);
+    titleLayout->setContentsMargins(60, 0, 0, 2);
+    titleLayout->setSpacing(0);
 
     QLabel *title = new QLabel("StrokeSeg2", m_titleBar);
     QPushButton *reduceBtn = new QPushButton("\u2212", m_titleBar);
     QPushButton *closeBtn = new QPushButton("\u00D7", m_titleBar);
     closeBtn->setObjectName("closeBtn");
-    reduceBtn->setFixedHeight(25);
-    closeBtn->setFixedHeight(25);
-    reduceBtn->setFixedWidth(30);
-    closeBtn->setFixedWidth(30);
+
+    reduceBtn->setFixedSize(30, 25);
+    closeBtn->setFixedSize(30, 25);
 
     titleLayout->addStretch();
     titleLayout->addWidget(title);
@@ -54,81 +54,93 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     titleLayout->addWidget(reduceBtn);
     titleLayout->addWidget(closeBtn);
 
-    //  ##############
-    //  ## MENU BAR ##
-    //  ##############
+    // =========================================================
+    //                      MENU BAR
+    // =========================================================
 
-    QMenuBar *menuBar = new QMenuBar(this);
+    QMenuBar *menuBar = new QMenuBar(m_mainWidget);
     menuBar->setObjectName("menuBar");
+
     QMenu *optionsMenu = menuBar->addMenu("Model");
     optionsMenu->addAction("Import model");
     optionsMenu->addAction("Export model");
 
     QMenu *helpMenu = menuBar->addMenu("Help");
-    helpMenu->addAction("Guide");
-    helpMenu->addAction("About");
+    QAction *actionGuide = new QAction("Guide", this);
+    helpMenu->addAction(actionGuide);
+    QAction *actionAbout = new QAction("About", this);
+    helpMenu->addAction(actionAbout);
 
-    
-    //  #################
-    //  ## LEFT COLUMN ##
-    //  #################
+    // =========================================================
+    //                     LEFT COLUMN
+    // =========================================================
 
-    QWidget *leftColumn = new QWidget(m_mainWidget);
+    QWidget *leftColumnBg = new QWidget(m_mainWidget);
+    leftColumnBg->setObjectName("leftColumnBg");
+    leftColumnBg->setAttribute(Qt::WA_StyledBackground, true);
+
+    QWidget *leftColumn = new QWidget(leftColumnBg);
     leftColumn->setObjectName("leftColumn");
+    leftColumn->setAttribute(Qt::WA_StyledBackground, true);
+
+    QVBoxLayout *leftBgLayout = new QVBoxLayout(leftColumnBg);
+    leftBgLayout->setContentsMargins(0, 0, 0, 0);
+    leftBgLayout->addWidget(leftColumn);
 
     QVBoxLayout *leftLayout = new QVBoxLayout(leftColumn);
-    leftLayout->setObjectName("leftLayout");
+    leftLayout->setContentsMargins(10, 10, 10, 10);
+    leftLayout->setSpacing(10);
 
-
-    //  FORM
+    // ---------------- FORM ----------------
 
     QWidget *formParameters = new QWidget(leftColumn);
     formParameters->setObjectName("formParameters");
+    formParameters->setAttribute(Qt::WA_StyledBackground, true);
 
     QFormLayout *formLayout = new QFormLayout(formParameters);
-     
+    formLayout->setContentsMargins(0, 0, 0, 0);
+    formLayout->setSpacing(8);
 
+    // Suffix
     m_suffix = new QLineEdit(formParameters);
     m_suffix->setObjectName("suffix");
     m_suffix->setPlaceholderText("Enter the suffix name");
 
+    // Model
     m_model = new QComboBox(formParameters);
-    m_model->addItem("Monomodal (T1)");
-    m_model->addItem("Bimodal (T1 + flair)");
+    m_model->addItems({"Monomodal (T1)", "Bimodal (T1 + flair)"});
 
+    // Toggle Open Viewer
     m_toggleView = new QCheckBox("", formParameters);
     m_toggleOutput = new QCheckBox("", formParameters);
 
+    // Prediction mode
     m_mode = new QComboBox(formParameters);
-    m_mode->addItem("Prediction");
-    m_mode->addItem("Brain extraction");
-    m_mode->addItem("Prediction + Brain extraction");
+    m_mode->addItems({"Prediction", "Brain extraction", "Prediction + Brain extraction"});
 
-    // Threshold slider
-    m_thresholdSlider = new QSlider(Qt::Horizontal, this);
-    m_thresholdSlider->setMinimum(0);
-    m_thresholdSlider->setMaximum(100);
+    // Threshold
+    m_thresholdSlider = new QSlider(Qt::Horizontal, formParameters);
+    m_thresholdSlider->setRange(0, 100);
     m_thresholdSlider->setValue(50);
     m_thresholdSlider->setFixedWidth(146);
 
-    m_threshold = new QLineEdit(formParameters);
-    m_threshold->setText("0.50");
+    m_threshold = new QLineEdit("0.50", formParameters);
     m_threshold->setObjectName("thresholdLine");
 
     auto *validator = new QDoubleValidator(0.0, 1.0, 2, this);
-    validator->setNotation(QDoubleValidator::StandardNotation);
     validator->setLocale(QLocale::C);
     m_threshold->setValidator(validator);
 
     QWidget *thresholdContainer = new QWidget(formParameters);
     thresholdContainer->setObjectName("thresholdContainer");
+    thresholdContainer->setAttribute(Qt::WA_StyledBackground, true);
 
     QHBoxLayout *thresholdLayout = new QHBoxLayout(thresholdContainer);
+    thresholdLayout->setContentsMargins(0, 0, 0, 0);
     thresholdLayout->addWidget(m_threshold);
     thresholdLayout->addWidget(m_thresholdSlider);
-    thresholdLayout->setContentsMargins(0, 0, 0, 0);
 
-    // Form building
+    // Assembly
     formLayout->addRow("Suffix :", m_suffix);
     formLayout->addRow("Model :", m_model);
     formLayout->addRow("Open viewer :", m_toggleView);
@@ -136,51 +148,41 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     formLayout->addRow("Execution mode :", m_mode);
     formLayout->addRow("Threshold :", thresholdContainer);
 
-    formLayout->setAlignment(m_suffix, Qt::AlignRight | Qt::AlignVCenter);
-    formLayout->setAlignment(m_model, Qt::AlignRight | Qt::AlignVCenter);
-    formLayout->setAlignment(m_toggleView, Qt::AlignRight | Qt::AlignVCenter);
-    formLayout->setAlignment(m_toggleOutput, Qt::AlignRight | Qt::AlignVCenter);
-    formLayout->setAlignment(m_mode, Qt::AlignRight | Qt::AlignVCenter);
-    formLayout->setAlignment(thresholdContainer, Qt::AlignRight | Qt::AlignVCenter);
 
-
-    // Saving buttons
+    // ---------------- BOTTOM BUTTONS ----------------
 
     QWidget *bottomBtns = new QWidget(leftColumn);
     bottomBtns->setObjectName("bottomBtns");
-    QHBoxLayout *bottomBtnLayout = new QHBoxLayout(bottomBtns);
+    bottomBtns->setAttribute(Qt::WA_StyledBackground, true);
 
-    m_savePMap = new QPushButton("Save probability map", bottomBtns);
-    m_savePreprocessing = new QPushButton("Save pre-processing", bottomBtns);
+    QHBoxLayout *bottomLayout = new QHBoxLayout(bottomBtns);
+    m_savePMap = new QPushButton("Save probability map");
+    m_savePreprocessing = new QPushButton("Save pre-processing");
 
-    bottomBtnLayout->addWidget(m_savePMap);
-    bottomBtnLayout->addWidget(m_savePreprocessing);
-
-
-    // Column building
+    bottomLayout->addWidget(m_savePMap);
+    bottomLayout->addWidget(m_savePreprocessing);
 
     leftLayout->addStretch(1);
-    leftLayout->addWidget(formParameters, 0);
-    leftLayout->addStretch(15);
-    leftLayout->addWidget(bottomBtns, 0);
-    leftLayout->addStretch(1);
+    leftLayout->addWidget(formParameters);
+    leftLayout->addStretch(25);
+    leftLayout->addWidget(bottomBtns);
 
-    
-
-    //  ###############
-    //  ## MAIN AREA ##
-    //  ###############
+    // =========================================================
+    //                    MAIN AREA
+    // =========================================================
 
     QWidget *mainArea = new QWidget(m_mainWidget);
     mainArea->setObjectName("mainArea");
+    mainArea->setAttribute(Qt::WA_StyledBackground, true);
 
     QVBoxLayout *mainAreaLayout = new QVBoxLayout(mainArea);
+    mainAreaLayout->setContentsMargins(0, 0, 0, 0);
+    mainAreaLayout->setSpacing(20);
 
     m_fileButton = new QToolButton(mainArea);
     m_fileButton->setObjectName("chooseFileButton");
     m_fileButton->setText("Choose file");
-    QIcon files_icon("../../../gui/ressources/files.png");
-    m_fileButton->setIcon(files_icon);
+    m_fileButton->setIcon(QIcon("../../../gui/ressources/files.png"));
     m_fileButton->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
 
     m_runButton = new QPushButton("RUN", mainArea);
@@ -192,98 +194,82 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     mainAreaLayout->addWidget(m_runButton, 0, Qt::AlignHCenter);
     mainAreaLayout->addStretch();
 
-    
-    //  #################
-    //  ## FINAL BUILD ##
-    //  #################
+    // =========================================================
+    //                    FINAL ASSEMBLY
+    // =========================================================
+
+    mainLayout->addWidget(leftColumnBg);
+    mainLayout->addWidget(mainArea);
+    mainLayout->setStretch(0, 3);
+    mainLayout->setStretch(1, 7);
 
     windowLayout->addWidget(m_titleBar);
     windowLayout->addWidget(menuBar);
     windowLayout->addLayout(mainLayout);
-    windowLayout->setContentsMargins(0, 0, 0, 0);
-    windowLayout->setSpacing(0);
 
-    mainLayout->addWidget(leftColumn);
-    mainLayout->addWidget(mainArea);
-
-    mainLayout->setStretch(0, 3);
-    mainLayout->setStretch(1, 7);
-
-    mainLayout->setSpacing(0);
-    mainLayout->setContentsMargins(0, 0, 0, 0);
-
-    titleLayout->setSpacing(0);
-    titleLayout->setContentsMargins(60, 0, 0, 2);
-
-    leftLayout->setSpacing(10);
-    leftLayout->setContentsMargins(10, 10, 10, 10);
-
-    formLayout->setSpacing(8);
-    formLayout->setContentsMargins(0, 0, 0, 0);
-
-    mainAreaLayout->setSpacing(20);
-    mainAreaLayout->setContentsMargins(0, 0, 0, 0);
-
-
-    //  ################
-    //  ## CONNECTION ##
-    //  ################
+    // =========================================================
+    //                     CONNECT
+    // =========================================================
 
     connect(m_fileButton, &QToolButton::clicked, this, &MainWindow::chooseFile);
     connect(closeBtn, &QPushButton::clicked, this, &QWidget::close);
     connect(reduceBtn, &QPushButton::clicked, this, &QWidget::showMinimized);
 
-    connect(m_thresholdSlider, &QSlider::valueChanged, this, [this](int v) {
-        m_threshold->setText(QString::number(v * 0.01f, 'f', 2));
-    });
+    connect(m_thresholdSlider, &QSlider::valueChanged, this,
+            [this](int v) { m_threshold->setText(QString::number(v * 0.01f, 'f', 2)); });
 
     connect(m_threshold, &QLineEdit::textChanged, this, [this](const QString &text) {
         bool ok;
         float value = text.toFloat(&ok);
-
         if (!ok)
             return;
 
         value = std::clamp(value, 0.0f, 1.0f);
-
         m_thresholdSlider->blockSignals(true);
-        m_thresholdSlider->setValue(static_cast<int>(value * 100));
+        m_thresholdSlider->setValue(int(value * 100));
         m_thresholdSlider->blockSignals(false);
     });
+
+    connect(actionGuide, &QAction::triggered, this, &MainWindow::openGuide);
 }
 
-MainWindow::~MainWindow() {}
-
-void MainWindow::chooseFile() {
-    QString filename = QFileDialog::getOpenFileName(this, "Choose file");
-    if (!filename.isEmpty()) {
-        m_fileButton->setText(filename);
-    }
-}
+// =========================================================
+//                        METHODS
+// =========================================================
 
 bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
     if (obj == m_titleBar) {
-
-        QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
-
-        if (event->type() == QEvent::MouseButtonPress && mouseEvent->button() == Qt::LeftButton) {
-
+        auto *e = static_cast<QMouseEvent *>(event);
+        if (event->type() == QEvent::MouseButtonPress && e->button() == Qt::LeftButton) {
             m_dragging = true;
-            m_dragPosition = mouseEvent->globalPosition().toPoint() - frameGeometry().topLeft();
+            m_dragPosition = e->globalPosition().toPoint() - frameGeometry().topLeft();
             return true;
         }
-
         if (event->type() == QEvent::MouseMove && m_dragging) {
-
-            move(mouseEvent->globalPosition().toPoint() - m_dragPosition);
+            move(e->globalPosition().toPoint() - m_dragPosition);
             return true;
         }
-
         if (event->type() == QEvent::MouseButtonRelease) {
             m_dragging = false;
             return true;
         }
     }
-
     return QMainWindow::eventFilter(obj, event);
 }
+
+void MainWindow::chooseFile() {
+    QString filename = QFileDialog::getOpenFileName(this, "Choose file");
+    if (!filename.isEmpty())
+        m_fileButton->setText(filename);
+}
+
+void MainWindow::openGuide() {
+    if (!guide)
+        guide = new GuideWindow();
+
+    guide->show();
+    guide->raise();
+    guide->activateWindow();
+}
+
+MainWindow::~MainWindow() {}
