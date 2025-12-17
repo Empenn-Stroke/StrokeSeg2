@@ -12,9 +12,13 @@ include(FetchContent)
 set(CORE "core")
 set(GUI "gui")
 set(COMMON "common")
-set(CACHE{ANIMA_ROOT_PATH} TYPE PATH HELP "path to root of anima installation" VALUE ./anima)
 
-add_compile_definitions(ANIMA_ROOT_PATH=${ANIMA_ROOT_PATH})
+set(ANIMA_ROOT_PATH ./anima
+    CACHE PATH "path to root of anima installation"
+)
+#set(CACHE{ANIMA_ROOT_PATH} TYPE PATH HELP "path to root of anima installation" VALUE ./anima)
+
+add_compile_definitions(ANIMA_ROOT_PATH=${CMAKE_INSTALL_PREFIX}/${ANIMA_ROOT_PATH})
 
 # DEPENDENCIES #####################################################################################
 
