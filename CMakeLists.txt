@@ -38,6 +38,16 @@ FetchContent_MakeAvailable(spdlog)
 find_package(Qt6 REQUIRED COMPONENTS Core)
 qt_standard_project_setup() # sets some variables to setup qt
 
+# TESTING
+FetchContent_Declare(
+    googletest
+    URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
+)
+if(WIN32)
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+endif()
+FetchContent_MakeAvailable(googletest)
+
 # PLATFORM-SPECIFIC
 if(WIN32)
     # WINDOWS SDK
@@ -49,3 +59,4 @@ endif(WIN32)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/${CORE})
 add_subdirectory(${CMAKE_SOURCE_DIR}/${GUI})
+add_subdirectory(${CMAKE_SOURCE_DIR}/test)
