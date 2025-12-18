@@ -24,7 +24,10 @@
 #include <QIcon>
 #include <algorithm>
 
+#include <QSettings>
+
 #include "guideWindow.h"
+#include "warningWindow.h"
 
 class MainWindow : public QMainWindow {
 	Q_OBJECT
@@ -58,11 +61,14 @@ private:
     QPushButton *m_savePreprocessing;
 
     GuideWindow *guide = nullptr;
+    WarningWindow *warning = nullptr;
+    bool showWarning = true;
 
 
   private slots:
     void chooseFile();
     void openGuide();
+    void resetWarningWindow();
 };
 
 

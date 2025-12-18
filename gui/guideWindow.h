@@ -8,6 +8,9 @@
 #include <QLabel>
 #include <QMouseEvent>
 
+#include <QTextEdit>
+#include <QFile>
+
 class GuideWindow : public QWidget {
     Q_OBJECT
   
@@ -21,6 +24,5 @@ class GuideWindow : public QWidget {
         QPoint m_dragPosition;
 
     private:
-        QWidget *m_mainWidget;
         QWidget *m_titleBar;
 };

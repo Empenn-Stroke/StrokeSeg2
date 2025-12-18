@@ -6,6 +6,8 @@ qt_add_executable(${PROJECT_NAME}
     mainWindow.cpp
     guideWindow.h
     guideWindow.cpp
+    warningWindow.h
+    warningWindow.cpp
 )
 
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)

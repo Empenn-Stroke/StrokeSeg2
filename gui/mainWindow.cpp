@@ -9,6 +9,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     setWindowFlags(Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);
 
+    QSettings settings;
+    showWarning = settings.value("showWarning", true).toBool();
+
     // =========================================================
     //                  GLOBAL STRUCTURE
     // =========================================================
@@ -70,6 +73,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     helpMenu->addAction(actionGuide);
     QAction *actionAbout = new QAction("About", this);
     helpMenu->addAction(actionAbout);
+    QAction *actionResetWW = new QAction("Show warning again", this);
+    helpMenu->addAction(actionResetWW);
 
     // =========================================================
     //                     LEFT COLUMN
@@ -116,7 +121,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     // Prediction mode
     m_mode = new QComboBox(formParameters);
-    m_mode->addItems({"Prediction", "Brain extraction", "Prediction + Brain extraction"});
+    m_mode->addItems({"Prediction", "Brain Extraction Only"});
 
     // Threshold
     m_thresholdSlider = new QSlider(Qt::Horizontal, formParameters);
@@ -231,6 +236,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     });
 
     connect(actionGuide, &QAction::triggered, this, &MainWindow::openGuide);
+    connect(actionResetWW, &QAction::triggered, this, &MainWindow::resetWarningWindow);
+    
+    // Warning window
+    if (showWarning) {
+        warning = new WarningWindow();
+        warning->exec();
+    }
+
 }
 
 // =========================================================
@@ -270,6 +283,12 @@ void MainWindow::openGuide() {
     guide->show();
     guide->raise();
     guide->activateWindow();
+}
+
+void MainWindow::resetWarningWindow() {
+    QSettings settings;
+    settings.setValue("showWarning", true);
+    showWarning = true;
 }
 
 MainWindow::~MainWindow() {}

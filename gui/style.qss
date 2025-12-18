@@ -1,10 +1,29 @@
 /* 
 =========================================================
+                    COLOR LIST
+=========================================================
+
+White : #ffffff
+White-blue (second white) : #eff4fa
+White-blue hovered : #deebf9
+
+Blue : #5ea6f2
+Blue hovered : #94dcff
+
+Red hovered : #ff8474
+
+Black (text) : #0a0c0f;
+
+*/
+
+
+/* 
+=========================================================
                       MAIN
 =========================================================
 */
 
-#m_mainWidget, #guideWindow{
+#m_mainWidget, #guideWindow,#warningWindow{
     border-radius:10px;
     background-color:#FFFFFF;
 }
@@ -106,6 +125,7 @@ QMenu::item:selected  {
 
 QWidget#leftColumnBg {
     background-color: #eff4fa;
+    border-bottom-left-radius: 10px;
 }
 
 QWidget#leftColumn {
@@ -263,7 +283,7 @@ QWidget#bottomBtns QPushButton:hover{
                      MAIN AREA
 =========================================================
 */
-QWidget#mainArea {
+QMainWindow QWidget#mainArea {
     background-color: #eff4fa;
     border-bottom-right-radius:10px;
 }
@@ -311,8 +331,84 @@ QToolButton#chooseFileButton:hover {
     background-color: #c7dff8;
 }
 
-#guideContent {
+
+/* 
+=========================================================
+                        GUIDE
+=========================================================
+*/
+
+QWidget#guideWindow QWidget#mainArea {
     background-color:#ffffff;
     border-bottom-right-radius:10px;
     border-bottom-left-radius:10px;
+}
+
+#guideContent {
+    color:#0a0c0f;
+    padding:10px;
+    background-color:transparent;
+    border-radius:10px;
+    outline:0;
+}
+
+QScrollBar:vertical {
+    background: #ffffff;
+    width: 4px;
+}
+
+QScrollBar::handle:vertical {
+    background: #deebf9;
+    padding: 0px 2px;
+    border-radius: 2px;
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {
+    background: none;
+}
+
+/* 
+=========================================================
+                     POP UP
+=========================================================
+*/
+
+QWidget#warningWindow QWidget#mainArea {
+    background-color:#ffffff;
+    border-bottom-right-radius:10px;
+    border-bottom-left-radius:10px;
+}
+
+#warningContent {
+    color:#0a0c0f;
+    padding:10px;
+    background-color:transparent;
+    border-radius:10px;
+    outline:0;
+    font-size:13px;
+    font-weight:bold;
+    text-align:center;
+}
+
+QWidget#warningWindow QPushButton{
+    background-color: #5ea6f2;
+    padding:7px 15px;
+    color:#ffffff;
+    font-size:12px;
+    border-radius:10px;
+    margin:15px;
+}
+
+QWidget#warningWindow QPushButton:hover{
+    background-color:#94dcff;
+}
+
+#dontShowLabel{
+    color:#0a0c0f;
 }
