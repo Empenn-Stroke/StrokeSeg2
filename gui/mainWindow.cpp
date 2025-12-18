@@ -1,6 +1,7 @@
 #include "mainWindow.h"
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
+    
 
     setWindowTitle("StrokeSeg2");
     setWindowIcon(QIcon("../../../gui/ressources/StrokeSeg2.ico"));
@@ -8,9 +9,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     setWindowFlags(Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);
-
+    
+    // Warning window
     QSettings settings;
-    showWarning = settings.value("showWarning", true).toBool();
+    showWarning = settings.value("showWarning", true).toBool(); 
+    if (showWarning) {
+        warning = new WarningWindow();
+        warning->exec();
+    }
 
     // =========================================================
     //                  GLOBAL STRUCTURE
@@ -96,7 +102,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     QVBoxLayout *leftLayout = new QVBoxLayout(leftColumn);
     leftLayout->setContentsMargins(10, 10, 10, 10);
-    leftLayout->setSpacing(10);
+
 
     // ---------------- FORM ----------------
 
@@ -245,11 +251,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
         actionResetWW->setChecked(showWarning);
     });
     
-    // Warning window
-    if (showWarning) {
-        warning = new WarningWindow();
-        warning->exec();
-    }
 
 }
 

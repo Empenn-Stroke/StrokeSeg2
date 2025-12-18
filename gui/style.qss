@@ -100,11 +100,12 @@ QMenu {
     border-radius:5px;
 }
 
-QMenu::indicator { 
-    width:20px;
-    margin:0;    
-    padding:0;
-    font-size:10px;
+QMenu::indicator {
+    padding:0px;
+    margin:0;
+    /* border:none; */
+    /* width:20px; */
+    /* background-color:red; */
 }
 
 QMenu::item {
@@ -112,7 +113,7 @@ QMenu::item {
     border:none;
     background: #eff4fa;
     outline:0;
-    /* padding:8px 18px; */
+    padding:4px 9px;
     border-top-right-radius:5px;
     border-bottom-left-radius:5px;
 }
@@ -245,8 +246,9 @@ QWidget#formParameters QComboBox::down-arrow:on {
 }
 
 QWidget#formParameters QCheckBox {
-    margin:4px 0 4px 30px;
+    /* margin:4px 0 4px 120px; */
     right:0;
+    margin:4px 0 4px 0px;
 }
 
 QWidget#formParameters QCheckBox::indicator {
