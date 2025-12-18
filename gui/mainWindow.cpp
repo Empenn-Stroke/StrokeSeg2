@@ -73,7 +73,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     helpMenu->addAction(actionGuide);
     QAction *actionAbout = new QAction("About", this);
     helpMenu->addAction(actionAbout);
-    QAction *actionResetWW = new QAction("Show warning again", this);
+    QAction *actionResetWW = new QAction("Show warning", this);
+    actionResetWW->setCheckable(true);
+    actionResetWW->setChecked(showWarning);
     helpMenu->addAction(actionResetWW);
 
     // =========================================================
@@ -236,7 +238,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     });
 
     connect(actionGuide, &QAction::triggered, this, &MainWindow::openGuide);
-    connect(actionResetWW, &QAction::triggered, this, &MainWindow::resetWarningWindow);
+    connect(actionResetWW, &QAction::triggered, this, [this, actionResetWW]() {
+        showWarning = !showWarning;
+        QSettings settings;
+        settings.setValue("showWarning", showWarning);
+        actionResetWW->setChecked(showWarning);
+    });
     
     // Warning window
     if (showWarning) {
@@ -283,12 +290,6 @@ void MainWindow::openGuide() {
     guide->show();
     guide->raise();
     guide->activateWindow();
-}
-
-void MainWindow::resetWarningWindow() {
-    QSettings settings;
-    settings.setValue("showWarning", true);
-    showWarning = true;
 }
 
 MainWindow::~MainWindow() {}

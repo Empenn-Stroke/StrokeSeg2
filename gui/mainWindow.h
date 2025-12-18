@@ -68,7 +68,6 @@ private:
   private slots:
     void chooseFile();
     void openGuide();
-    void resetWarningWindow();
 };
 
 

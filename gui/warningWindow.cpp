@@ -74,6 +74,7 @@ WarningWindow::WarningWindow(QDialog *parent) : QDialog(parent) {
     QLabel *dontShowLabel = new QLabel("Do not show this again :", dontShowWidget);
     dontShowLabel->setObjectName("dontShowLabel");
     m_dontShowAgain = new QCheckBox(dontShowWidget);
+    m_dontShowAgain->setObjectName("dontShowAgain");
 
     dontShowLayout->addStretch();
     dontShowLayout->addWidget(dontShowLabel);
