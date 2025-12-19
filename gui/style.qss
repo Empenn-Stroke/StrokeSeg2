@@ -101,19 +101,22 @@ QMenu {
 }
 
 QMenu::indicator {
-    padding:0px;
-    margin:0;
+    width: 13px;
+    height: 12px;
+    margin-left: 0px;
     /* border:none; */
     /* width:20px; */
     /* background-color:red; */
 }
 
-QMenu::item {
+QMenu::item,
+QMenu::item:checked,
+QMenu::item:unchecked {
     margin:0;
     border:none;
     background: #eff4fa;
     outline:0;
-    padding:4px 9px;
+    padding:4px 10px;
     border-top-right-radius:5px;
     border-bottom-left-radius:5px;
 }
