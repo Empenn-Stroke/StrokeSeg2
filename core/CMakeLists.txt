@@ -3,21 +3,29 @@ add_library(${CORE}
   dummy.cpp
  "utils/animawrapper.cpp" "utils/animawrapper.h" "utils/path.h" "utils/str.h" "preprocessing/preprocessor.h" "preprocessing/preprocessor.cpp")
 
+
+if(MSVC)
+    target_include_directories(${CORE} PRIVATE ${zlib_BINARY_DIR})
+endif()
+
 target_compile_features(${CORE} PUBLIC cxx_std_20)
 target_include_directories(${CORE} PRIVATE
+    ${zlib_BINARY_DIR}
+    ${zlib_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/${CORE}/
     ${CMAKE_SOURCE_DIR}/${COMMON}/
-    ${ZLIB_INCLUDE_DIRS}
 )
 
 target_link_libraries(${CORE} PUBLIC
-    spdlog
-#    eigen
-    Qt6::Core
-    nifti
+    zlibstatic
     niftiio
     znz
+    spdlog
+    Qt6::Core
 )
+
+
+add_dependencies(${CORE} zlib)
 
 #if(WIN32)
 #    target_link_libraries(${CORE} PUBLIC ${LIB_WINDOWSML})

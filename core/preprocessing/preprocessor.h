@@ -1,7 +1,16 @@
 #pragma once
 
+extern "C" {
+#include <nifti1_io.h>
+}
+#include <zlib.h>
+
 #include "resampling.h"
 #include "brainextraction.h"
+#include <iostream>
+#include <vector>
+#include <array>
+#include <stdexcept>
 
 namespace preprocessing {
     class Preprocessor {
