@@ -42,6 +42,34 @@ FetchContent_MakeAvailable(spdlog)
 find_package(Qt6 REQUIRED COMPONENTS Core)
 qt_standard_project_setup() # sets some variables to setup qt
 
+# ZLIB
+FetchContent_Declare(
+  zlib
+  GIT_REPOSITORY https://github.com/madler/zlib.git
+  GIT_TAG v1.2.13
+)
+FetchContent_MakeAvailable(zlib)
+
+set(ZLIB_INCLUDE_DIR ${zlib_SOURCE_DIR} CACHE PATH "")
+set(ZLIB_LIBRARY zlibstatic CACHE STRING "")
+set(ZLIB_FOUND TRUE CACHE BOOL "")
+
+# ---- NIFTI : valeurs NON VIDES ----
+set(NIFTI_INSTALL_EXPORT_NAME "NIFTI_SKIP_EXPORT" CACHE STRING "")
+set(NIFTI_INSTALL_LIBRARY_DIR "nifti_skip" CACHE PATH "")
+set(NIFTI_INSTALL_INCLUDE_DIR "nifti_skip" CACHE PATH "")
+set(NIFTI_INSTALL_RUNTIME_DIR "nifti_skip" CACHE PATH "")
+set(NIFTI_INSTALL_ARCHIVE_DIR "nifti_skip" CACHE PATH "")
+set(NIFTI_BUILD_SHARED_LIBS OFF CACHE BOOL "")
+
+FetchContent_Declare(
+  nifti
+  GIT_REPOSITORY https://github.com/NIFTI-Imaging/nifti_clib.git
+  GIT_TAG master
+)
+FetchContent_MakeAvailable(nifti)
+
+
 # TESTING
 FetchContent_Declare(
     googletest
