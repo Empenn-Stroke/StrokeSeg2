@@ -1,17 +1,26 @@
 add_library(${CORE}
-  # this dummy file is only here as placeholder and can be removed
-  dummy.cpp
- "utils/animawrapper.cpp" "utils/animawrapper.h" "utils/path.h" "utils/str.h")
+ "utils/animawrapper.h" 
+ "utils/animawrapper.cpp" 
+ "utils/path.h" 
+ "utils/str.h"
+ "preprocessing/resampling.h"
+ "preprocessing/resampling.cpp"
+ "preprocessing/brainextraction.h"
+ "preprocessing/brainextraction.cpp"
+ "managers/configmanager.h" 
+ "managers/configmanager.cpp"
+ "managers/appconfig.h"
+ "managers/appconfig.h")
 
 target_compile_features(${CORE} PUBLIC cxx_std_20)
-target_include_directories(${CORE} PRIVATE
+target_include_directories(${CORE} PUBLIC
     ${CMAKE_SOURCE_DIR}/${CORE}/
     ${CMAKE_SOURCE_DIR}/${COMMON}/
 )
 
 target_link_libraries(${CORE} PUBLIC
     spdlog
-    eigen
+    #eigen
     Qt6::Core
 )
 
