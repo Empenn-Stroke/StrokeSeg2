@@ -39,6 +39,11 @@ namespace preprocessing {
         Volume4D loadVolume(const QString &path);
         void zScoreNormalize(Volume4D &vol, const Volume4D *seg = nullptr);
 
+        std::vector<bool> computeNonZeroMask(const Volume4D &vol);
+
+        Volume4D cropToNonZero(const Volume4D &data, Volume4D *seg, int nonzero_label,
+                               std::array<std::array<int, 2>, 3> *bbox_out);
+
 
     };
 } // namespace preprocessing

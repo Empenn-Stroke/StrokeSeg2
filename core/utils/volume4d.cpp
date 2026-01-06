@@ -8,44 +8,62 @@ inline const float &Volume4D::at(int c, int x, int y, int z) const {
     return data[((c * X + x) * Y + y) * Z + z];
 }
 
+
+
+size_t Volume4D::count(const Volume4D *mask) const {
+    if (!mask) {
+        return data.size();
+    }
+    size_t cnt = 0;
+    for (size_t i = 0; i < data.size(); ++i) {
+        if (mask->data[i] >= 0) {
+            ++cnt;
+        }
+    }
+    return cnt;
+}
+
+double Volume4D::sum(const Volume4D *mask = nullptr) const {
+    double s = 0.0;
+    for (size_t i = 0; i < count(); ++i) {
+        if (mask && mask->data[i] < 0) {
+            continue;
+        }
+        s += data[i];
+    }
+    return s;
+}
+
 double Volume4D::mean(const Volume4D *mask) const {
-    double sum = 0.0;
-    size_t count = 0;
+    double s = 0.0;
+    size_t cnt = 0;
+    for (size_t i = 0; i < count(); ++i) {
+        if (mask && mask->data[i] < 0) {
+            continue;
+        }
+        s += data[i];
+        cnt++
+    }
+    return s / cnt;
 
-    for (int c = 0; c < C; ++c)
-        for (int x = 0; x < X; ++x)
-            for (int y = 0; y < Y; ++y)
-                for (int z = 0; z < Z; ++z) {
-
-                    if (mask && mask->at(0, x, y, z) < 0)
-                        continue;
-
-                    sum += at(c, x, y, z);
-                    ++count;
-                }
-
-    return (count > 0) ? sum / count : 0.0;
 }
 
 double Volume4D::variance(const Volume4D *mask) const {
-    double mean_val = mean(mask);
+    double sum = 0.0;
     double sq_sum = 0.0;
     size_t count = 0;
 
-    for (int c = 0; c < C; ++c)
-        for (int x = 0; x < X; ++x)
-            for (int y = 0; y < Y; ++y)
-                for (int z = 0; z < Z; ++z) {
-
-                    if (mask && mask->at(0, x, y, z) < 0)
-                        continue;
-
-                    double v = at(c, x, y, z) - mean_val;
-                    sq_sum += v * v;
-                    ++count;
-                }
-
-    return (count > 0) ? sq_sum / count : 0.0;
+    for (size_t i = 0; i < count(); ++i) {
+        if (mask && mask->data[i] < 0) {
+            continue;
+        }
+        double v = data[i];
+        sum += v;
+        sq_sum += v * v;
+        count++;
+    }
+    double mean = (count > 0) ? sum / count : 0.0;
+    return (count > 0) ? sq_sum / count - mean * mean : 0.0;
 }
 
 double Volume4D::stddev(const Volume4D *mask) const {
