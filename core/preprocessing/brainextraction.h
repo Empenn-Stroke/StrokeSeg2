@@ -35,7 +35,7 @@ class BrainExtraction {
 
     private: 
       AnimaWrapper* m_wrapper;
-      MainWindow m_gui; 
+      MainWindow* m_gui; 
       QString m_atlasImage;
       QString m_iccImage;
       QStringList m_pyramidOption;

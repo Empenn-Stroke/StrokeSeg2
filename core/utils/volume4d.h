@@ -9,4 +9,10 @@ struct Volume4D {
 
     // Access element at (c, x, y, z)
     inline float &at(int c, int x, int y, int z);
+
+    inline const float &at(int c, int x, int y, int z) const;
+
+    double mean(const Volume4D *mask = nullptr) const;
+    double variance(const Volume4D *mask = nullptr) const;
+    double stddev(const Volume4D *mask = nullptr) const;
 };
