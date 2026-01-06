@@ -1,9 +1,5 @@
 #include "preprocessor.h"
 
-preprocessing::Preprocessor::Preprocessor() {}
-
-preprocessing::Preprocessor::~Preprocessor() {}
-
 Volume4D preprocessing::Preprocessor::preprocess(const Volume4D &vol,
                                                  const std::array<float, 3> &target_spacing) {
     return Volume4D();
@@ -57,5 +53,41 @@ Volume4D preprocessing::Preprocessor::loadVolume(const QString &path) {
 
     nifti_image_free(nim);
     return vol;
+}
+
+void preprocessing::Preprocessor::zScoreNormalize(Volume4D &data, const Volume4D *seg) {
+    const int C = data.C;
+    const int X = data.X;
+    const int Y = data.Y;
+    const int Z = data.Z;
+
+    double sum = 0.0;
+    double sq_sum = 0.0;
+    size_t count = 0;
+
+    // === Pass 1: mean ===
+    
+
+    if (count == 0)
+        return;
+
+    const double mean = sum / count;
+    const double var = sq_sum / count - mean * mean;
+    const double std = std::sqrt(std::max(var, 1e-8));
+
+    // === Pass 2: normalize ===
+    for (int c = 0; c < C; ++c) {
+        for (int x = 0; x < X; ++x) {
+            for (int y = 0; y < Y; ++y) {
+                for (int z = 0; z < Z; ++z) {
+
+                    if (seg && seg->at(0, x, y, z) < 0)
+                        continue;
+
+                    data.at(c, x, y, z) = static_cast<float>((data.at(c, x, y, z) - mean) / std);
+                }
+            }
+        }
+    }
 }
 

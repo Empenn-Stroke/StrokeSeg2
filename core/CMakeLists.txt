@@ -4,14 +4,8 @@ add_library(${CORE}
  "utils/animawrapper.cpp" "utils/animawrapper.h" "utils/path.h" "utils/str.h" "preprocessing/preprocessor.h" "preprocessing/preprocessor.cpp")
 
 
-if(MSVC)
-    target_include_directories(${CORE} PRIVATE ${zlib_BINARY_DIR})
-endif()
-
 target_compile_features(${CORE} PUBLIC cxx_std_20)
 target_include_directories(${CORE} PRIVATE
-    ${zlib_BINARY_DIR}
-    ${zlib_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/${CORE}/
     ${CMAKE_SOURCE_DIR}/${COMMON}/
 )

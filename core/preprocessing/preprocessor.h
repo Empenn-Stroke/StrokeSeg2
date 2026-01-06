@@ -16,9 +16,9 @@ namespace preprocessing {
     class Preprocessor {
       public:
 
-        Preprocessor();
+        Preprocessor(Resampling res, BrainExtraction *br) : resampler(res), brainExtraction(br) {};
 
-        ~Preprocessor();
+        ~Preprocessor() {};
 
         /**
          * @brief Performs preprocessing steps on the input volume, including brain extraction and
@@ -37,6 +37,8 @@ namespace preprocessing {
         BrainExtraction *brainExtraction;
 
         Volume4D loadVolume(const QString &path);
+        void zScoreNormalize(Volume4D &vol, const Volume4D *seg = nullptr);
+
 
     };
 } // namespace preprocessing
