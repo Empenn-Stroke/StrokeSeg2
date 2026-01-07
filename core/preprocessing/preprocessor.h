@@ -7,12 +7,19 @@ extern "C" {
 
 #include "resampling.h"
 #include "brainextraction.h"
+#include "preprocVolume.h"
+
+#include <utils/animawrapper.h>
+
 #include <iostream>
 #include <vector>
 #include <array>
 #include <stdexcept>
+#include <cassert>
+#include <QStringList>
 
 namespace preprocessing {
+
     class Preprocessor {
       public:
 
@@ -35,6 +42,7 @@ namespace preprocessing {
       private:
         Resampling resampler;
         BrainExtraction *brainExtraction;
+        AnimaWrapper wrapper;
 
         Volume4D loadVolume(const QString &path);
         void zScoreNormalize(Volume4D &vol, const Volume4D *seg = nullptr);
@@ -44,6 +52,15 @@ namespace preprocessing {
         Volume4D cropToNonZero(const Volume4D &data, Volume4D *seg, int nonzero_label,
                                std::array<std::array<int, 2>, 3> *bbox_out);
 
+        std::pair<Volume4D, std::vector<std::array<int, 2>>> padVolume(const Volume4D &data,
+                                                                       int min_size);
+
+        QString reorientToRAS(const std::string &input_path, const std::string &prefix);
+
+        QString biasCorrect(const std::string &input_path, const std::string &prefix);
+
+        PreprocessedVolume preprocessModality(Preprocessor &pp, const std::string &modality_path,
+                                              bool is_MNI, const std::array<int, 3> *bbox_ptr);
 
     };
 } // namespace preprocessing

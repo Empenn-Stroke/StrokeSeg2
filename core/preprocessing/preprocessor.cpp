@@ -1,5 +1,4 @@
-#include "preprocessor.h"
-#include <cassert>
+﻿#include "preprocessor.h"
 
 Volume4D preprocessing::Preprocessor::preprocess(const Volume4D &vol,
                                                  const std::array<float, 3> &target_spacing) {
@@ -74,7 +73,7 @@ void preprocessing::Preprocessor::zScoreNormalize(Volume4D &data, const Volume4D
     const double var = data.variance();
     const double std = std::sqrt(std::max(var, 1e-8));
 
-    // Normalize
+    // --- Normalize ---
     for (int c = 0; c < C; ++c) {
         for (int x = 0; x < X; ++x) {
             for (int y = 0; y < Y; ++y) {
@@ -124,13 +123,13 @@ Volume4D preprocessing::Preprocessor::cropToNonZero(const Volume4D &data,
     int nonzero_label,
     std::array<std::array<int, 2>, 3>* bbox_out) 
 {
-    // compute non-zero mask
+    // --- compute non-zero mask ---
     auto mask = computeNonZeroMask(data);
     const int X = data.X;
     const int Y = data.Y;
     const int Z = data.Z;
 
-    // compute bounding box if not provided
+    // --- compute bounding box if not provided --- 
     std::array<std::array<int, 2>, 3> bbox;
     if (bbox_out) {
         bbox = *bbox_out;
@@ -163,7 +162,7 @@ Volume4D preprocessing::Preprocessor::cropToNonZero(const Volume4D &data,
     if (bbox_out)
         *bbox_out = bbox;
 
-    // create new cropped volume
+    // --- create new cropped volume ---
     Volume4D cropped;
     cropped.C = data.C;
     cropped.X = bbox[0][1] - bbox[0][0] + 1;
@@ -172,7 +171,7 @@ Volume4D preprocessing::Preprocessor::cropToNonZero(const Volume4D &data,
     cropped.spacing = data.spacing;
     cropped.data.resize(cropped.C * cropped.X * cropped.Y * cropped.Z);
 
-    // copy data
+    // --- copy data ---
     for (int c = 0; c < data.C; ++c) {
         for (int x = 0; x < cropped.X; ++x) {
             for (int y = 0; y < cropped.Y; ++y) {
@@ -184,7 +183,7 @@ Volume4D preprocessing::Preprocessor::cropToNonZero(const Volume4D &data,
         }
     }
 
-    // crop seg if provided
+    // --- crop seg if provided ---
     if (seg) {
         for (int c = 0; c < seg->C; ++c) {
             for (int x = 0; x < cropped.X; ++x) {
@@ -202,5 +201,76 @@ Volume4D preprocessing::Preprocessor::cropToNonZero(const Volume4D &data,
     }
 
     return cropped;
+}
+
+std::pair<Volume4D, std::vector<std::array<int, 2>>>
+preprocessing::Preprocessor::padVolume(const Volume4D &data, int min_size) {
+    const int C = data.C;
+    const int X = data.X;
+    const int Y = data.Y;
+    const int Z = data.Z;
+
+    // --- Compute padding for each spatial dimension ---
+    std::vector<std::array<int, 2>> padding(3); // {pad_before, pad_after} for X, Y, Z
+    int dims[3] = {X, Y, Z};
+    for (int i = 0; i < 3; ++i) {
+        int total_pad = std::max(0, min_size - dims[i]);
+        int pad_before = total_pad / 2;
+        int pad_after = total_pad - pad_before;
+        padding[i] = {pad_before, pad_after};
+    }
+
+    // --- Create padded volume ---
+    Volume4D padded;
+    padded.C = C;
+    padded.X = X + padding[0][0] + padding[0][1];
+    padded.Y = Y + padding[1][0] + padding[1][1];
+    padded.Z = Z + padding[2][0] + padding[2][1];
+    padded.spacing = data.spacing;
+    padded.data.resize(padded.C * padded.X * padded.Y * padded.Z, 0.0f); // zero pad
+
+    // --- Copy original data into padded volume ---
+    for (int c = 0; c < C; ++c) {
+        for (int x = 0; x < X; ++x) {
+            for (int y = 0; y < Y; ++y) {
+                for (int z = 0; z < Z; ++z) {
+                    int px = x + padding[0][0];
+                    int py = y + padding[1][0];
+                    int pz = z + padding[2][0];
+                    padded.at(c, px, py, pz) = data.at(c, x, y, z);
+                }
+            }
+        }
+    }
+
+    return {padded, padding};
+}
+
+
+QString preprocessing::Preprocessor::biasCorrect(const std::string &input_path,
+                                                     const std::string &prefix) {
+    // --- Build output file path ---
+    std::string output_path = prefix + "_N4.nii.gz";
+
+    // --- Build args list for AnimaWrapper ---
+    QStringList args;
+    args << "animaN4BiasCorrection"
+         << "-i" << QString::fromStdString(input_path) << "-o"
+         << QString::fromStdString(output_path);
+
+    // --- Launch AnimaWrapper ---
+    int ret = wrapper.run(args);
+
+    // --- Check Output ---
+    if (ret != 0) {
+        std::string err_msg = wrapper.lastStderr().toStdString();
+        if (err_msg.empty()) {
+            err_msg = "Unknown error in AnimaWrapper during N4 bias correction";
+        }
+        throw std::runtime_error("Bias correction failed: " + err_msg);
+    }
+
+    // --- Return corrected file path ---
+    return QString::fromStdString(output_path);
 }
 
