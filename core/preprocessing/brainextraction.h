@@ -50,6 +50,10 @@ class BrainExtraction : public QObject {
 
     private: 
       AnimaWrapper* m_wrapper;
+<<<<<<< HEAD
+=======
+      MainWindow* m_gui; 
+>>>>>>> 12-preprocessor
       QString m_atlasImage;
       QString m_iccImage;
       QStringList m_pyramidOption;

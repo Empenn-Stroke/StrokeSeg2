@@ -16,7 +16,6 @@ set(COMMON "common")
 set(ANIMA_ROOT_PATH ./anima
     CACHE PATH "path to root of anima installation"
 )
-#set(CACHE{ANIMA_ROOT_PATH} TYPE PATH HELP "path to root of anima installation" VALUE ./anima)
 
 add_compile_definitions(ANIMA_ROOT_PATH=${CMAKE_INSTALL_PREFIX}/${ANIMA_ROOT_PATH})
 
@@ -41,6 +40,38 @@ FetchContent_MakeAvailable(spdlog)
 # QT
 find_package(Qt6 REQUIRED COMPONENTS Core)
 qt_standard_project_setup() # sets some variables to setup qt
+
+# ZLIB
+FetchContent_Declare(
+  zlib
+  GIT_REPOSITORY https://github.com/madler/zlib.git
+  GIT_TAG v1.2.13
+)
+FetchContent_MakeAvailable(zlib)
+
+set(ZLIB_INCLUDE_DIR ${zlib_SOURCE_DIR})
+set(ZLIB_LIBRARY zlib)
+set(ZLIB_FOUND TRUE)
+
+include_directories(${zlib_SOURCE_DIR})
+include_directories(${zlib_BINARY_DIR})
+
+
+# ---- NIFTI : valeurs NON VIDES ----
+set(NIFTI_INSTALL_EXPORT_NAME "NIFTI_SKIP_EXPORT" CACHE STRING "")
+set(NIFTI_INSTALL_LIBRARY_DIR "nifti_skip" CACHE PATH "")
+set(NIFTI_INSTALL_INCLUDE_DIR "nifti_skip" CACHE PATH "")
+set(NIFTI_INSTALL_RUNTIME_DIR "nifti_skip" CACHE PATH "")
+set(NIFTI_INSTALL_ARCHIVE_DIR "nifti_skip" CACHE PATH "")
+set(NIFTI_BUILD_SHARED_LIBS OFF CACHE BOOL "")
+
+FetchContent_Declare(
+  nifti
+  GIT_REPOSITORY https://github.com/NIFTI-Imaging/nifti_clib.git
+  GIT_TAG master
+)
+FetchContent_MakeAvailable(nifti)
+
 
 # TESTING
 FetchContent_Declare(
