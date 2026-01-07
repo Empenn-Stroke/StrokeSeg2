@@ -1,7 +1,7 @@
 add_library(${CORE}
   # this dummy file is only here as placeholder and can be removed
   dummy.cpp
- "utils/animawrapper.cpp" "utils/animawrapper.h" "utils/path.h" "utils/str.h")
+ "utils/animawrapper.cpp" "utils/animawrapper.h" "utils/path.h" "utils/str.h" "inference/inference.h")
 
 target_compile_features(${CORE} PUBLIC cxx_std_20)
 target_include_directories(${CORE} PRIVATE
@@ -15,6 +15,6 @@ target_link_libraries(${CORE} PUBLIC
     Qt6::Core
 )
 
-#if(WIN32)
-#    target_link_libraries(${CORE} PUBLIC ${LIB_WINDOWSML})
-#endif(WIN32)
+if(WIN32)
+    target_link_libraries(${CORE} PUBLIC ${LIB_WINDOWSML})
+endif(WIN32)
