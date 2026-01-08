@@ -1,5 +1,15 @@
 #include "configmanager.h"
 
+ConfigManager &ConfigManager::instance() {
+    static ConfigManager instance;
+    return instance;
+}
+
+ConfigManager::ConfigManager() : settings(config_file, QSettings::IniFormat) {
+    QDir().mkpath(QFileInfo(config_file).absolutePath());
+}
+
+
 
 void ConfigManager::set(const QString &key, const QVariant &value) {
     settings.setValue(key, value);
@@ -13,11 +23,11 @@ QVariant ConfigManager::get(const QString &key, const QVariant &defaultValue) co
     return settings.value(key, defaultValue);
 }
 
-void onChanged(const QString &key, std::function<void(QVariant)> cb) {
+void ConfigManager::onChanged(const QString &key, std::function<void(QVariant)> cb) {
     callbacks[key].push_back(cb);
 }
 
-void save() {
+void ConfigManager::save() {
     settings.sync();
 }
 

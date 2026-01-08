@@ -5,7 +5,7 @@
 
 BrainExtraction::BrainExtraction(AnimaWrapper *wrapper, const QString &atlasImage, QObject *parent)
     : QObject(parent), m_wrapper(wrapper), m_atlasImage(atlasImage),
-      m_iccImage(QDir(ATLAS_DIR).filePath("BrainMask.nrrd")),
+      m_iccImage(QDir(atlas_dir).filePath("BrainMask.nrrd")),
       m_pyramidOption({"-p", "4", "-l", "1"}) {}
 
 void BrainExtraction::requestCancel() {
