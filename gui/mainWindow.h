@@ -76,6 +76,7 @@ private:
     void importModel();
     double sliderValueToReal(int sliderValue);
     int realToSliderValue(double realValue);
+    QString formatThreshold(double v);
 };
 
 

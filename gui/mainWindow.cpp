@@ -244,25 +244,17 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     connect(m_thresholdSlider, &QSlider::valueChanged, this, [this](int v) {
         double realVal = sliderValueToReal(v);
-
-        QString text;
-        if (realVal >= 1.0 - 1e-5)
-            text = "1-10\u207B\u2075";
-        else if (realVal <= 1e-5)
-            text = "10\u207B\u2075";
-        else
-            text = QString::number(realVal, 'g', 6);
-        m_threshold->setText(text);
+        m_threshold->setText(formatThreshold(realVal));
     });
 
     connect(m_threshold, &QLineEdit::textChanged, this, [this](const QString &text) {
         bool ok;
         double val = 0.0;
 
-        if (text == "1-10\u207B\u2075")
-            val = 1.0 - 1e-5;
-        else if (text == "10\u207B\u2075")
-            val = 1e-5;
+        if (text == "1-10\u207B\u2075") val = 1.0 - 1e-5;
+        else if (text == "10\u207B\u2075") val = 1e-5;
+        else if (text == "1-10\u207B\u2074") val = 1.0 - 1e-4;
+        else if (text == "10\u207B\u2074") val = 1e-4;
         else {
             bool ok;
             val = text.toDouble(&ok);
@@ -271,9 +263,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
         }
 
         int sliderVal = realToSliderValue(val);
-        m_thresholdSlider->blockSignals(true);
-        m_thresholdSlider->setValue(sliderVal);
-        m_thresholdSlider->blockSignals(false);
+
+        if (sliderVal == m_thresholdSlider->value()) {
+            m_thresholdSlider->blockSignals(true);
+            m_thresholdSlider->setValue(sliderVal);
+            m_thresholdSlider->blockSignals(false);
+        }
     });
 
     connect(actionGuide, &QAction::triggered, this, &MainWindow::openGuide);
@@ -340,24 +335,47 @@ void MainWindow::openGuide() {
 
 MainWindow::~MainWindow() {}
 
-double MainWindow::sliderValueToReal(int sliderValue) {
-    double t = sliderValue / 100.0;
+double MainWindow::sliderValueToReal(int v) {
+    if (v <= 0) return 1e-5;
+    if (v <= 8) return 1e-4;
+    if (v < 16) return 1e-3;
+    if (v == 16) return 0.01;
 
-    if (t <= 0)
-        return 1e-5;
-    else if (t >= 1)
-        return 1.0 - 1e-5;
-    else {
-        return std::round(t * 100.0) / 100.0;
-    }
+    if (v >= 100) return 1.0 - 1e-5;
+    if (v >= 92) return 1.0 - 1e-4;
+    if (v > 84) return 1.0 - 1e-3;
+    if (v == 84)  return 0.99;
+
+    double t = (v - 10) / 80.0;
+    return 0.01 + t * (0.99 - 0.01);
 }
 
-int MainWindow::realToSliderValue(double realValue) {
-    if (realValue <= 1e-5)
-        return 0;
-    else if (realValue >= 1.0 - 1e-5)
-        return 100;
-    else {
-        return int(realValue * 100);
-    }
+int MainWindow::realToSliderValue(double v) {
+    if (v <= 1e-5) return 0;
+    if (v <= 1e-4) return 8;
+    if (v <= 1e-3) return 16;
+
+    if (v >= 1.0 - 1e-5) return 100;
+    if (v >= 1.0 - 1e-4) return 92;
+    if (v >= 1.0 - 1e-3) return 84;
+
+    double t = (v - 0.01) / (0.99 - 0.01);
+    return 32 + int(std::round(t * 68));
+}
+
+QString MainWindow::formatThreshold(double v) {
+    if (v <= 1e-5)
+        return "10\u207B\u2075";
+    if (v <= 1e-4)
+        return "10\u207B\u2074";
+    if (v <= 1e-3)
+        return "0.001";
+    if (v >= 1.0 - 1e-5)
+        return "1-10\u207B\u2075";
+    if (v >= 1.0 - 1e-4)
+        return "1-10\u207B\u2074";
+    if (v >= 1.0 - 1e-3)
+        return "0.999";
+
+    return QString::number(v, 'f', 2);
 }
