@@ -2,6 +2,7 @@
 #ifndef MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QGraphicsDropShadowEffect>
 #include <QWidget>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -45,11 +46,15 @@ protected:
 private:
     QWidget *m_mainWidget;
     QWidget *m_titleBar;
+    QFormLayout *m_formLayout;
 
     QLineEdit *m_suffix;
     QComboBox *m_model;
     QCheckBox *m_toggleView;
     QCheckBox *m_toggleOutput;
+    QCheckBox *m_skipBrainExtract;
+    QCheckBox *m_savePMap;
+    QCheckBox *m_savePreprocessing;
     QComboBox *m_mode;
     QSlider *m_thresholdSlider;
     QLineEdit *m_threshold;
@@ -57,8 +62,8 @@ private:
     QToolButton *m_fileButton;
     QPushButton *m_runButton;
 
-    QPushButton *m_savePMap;
-    QPushButton *m_savePreprocessing;
+    QPushButton *m_importModel;
+
 
     GuideWindow *guide = nullptr;
     WarningWindow *warning = nullptr;
@@ -68,6 +73,9 @@ private:
   private slots:
     void chooseFile();
     void openGuide();
+    void importModel();
+    double sliderValueToReal(int sliderValue);
+    int realToSliderValue(double realValue);
 };
 
 
