@@ -1,13 +1,16 @@
 #include "InferenceEngine.h"
-#include <utils/niftiVolume>
+#include <utils/niftiVolume.h>
 
-std::vector<float> RunInference(const QString &modelPath, 
-                                const QString &imagePath,
-                                const QString &inputName = "input",
-                                const QString &outputName = "output") {
+std::vector<float> InferenceEngine::RunInference(
+    const QString &modelPath, 
+    const QString &imagePath,
+    const QString &inputName = "input",
+    const QString &outputName = "output") 
+    
+    {
     
     // NIfTI to float vectors
-    NiftiVolume nv = loadNifti(imagePath);
+    NiftiVolume nv = NiftiVolume::loadNifti(imagePath);
 
     int C = nv.data.dimension(0);
     int X = nv.data.dimension(1);

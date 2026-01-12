@@ -1,5 +1,5 @@
 #pragma once
-#include <winrt/Microsoft.Windows.AI.MachineLearning.h>
+#include <winrt/Windows.AI.MachineLearning.h>
 #include <winml/onnxruntime_cxx_api.h>
 #include <vector>
 #include <filesystem>
@@ -13,10 +13,10 @@ class InferenceEngine {
     /// <summary>
     /// Run inference and return output tensor
     /// </summary>
-    static std::vector<Ort::Value> RunInference(const QString& modelPath,
+    static std::vector<float> RunInference(const QString &modelPath,
                                                 const QString &imagePath,
                                                 const QString& inputName = "input",
-                                                const QString& outputName = "output") 
+                                                const QString& outputName = "output"
     );
 
 };
