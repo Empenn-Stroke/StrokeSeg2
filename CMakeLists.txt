@@ -30,12 +30,12 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(spdlog)
 
 # EIGEN
-# FetchContent_Declare(
-#     eigen
-#     GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
-#     GIT_TAG 5.0.0
-# )
-# FetchContent_MakeAvailable(eigen)
+FetchContent_Declare(
+     eigen
+     GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
+     GIT_TAG 5.0.0
+)
+FetchContent_MakeAvailable(eigen)
 
 # QT
 find_package(Qt6 REQUIRED COMPONENTS Core)
