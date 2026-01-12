@@ -14,8 +14,7 @@ class InferenceEngine {
     /// Run inference and return output tensor
     /// </summary>
     static std::vector<Ort::Value> RunInference(const QString& modelPath,
-                                                const std::vector<float>& inputVector, 
-                                                const std::vector<int64_t>& inputShape,
+                                                const QString &imagePath,
                                                 const QString& inputName = "input",
                                                 const QString& outputName = "output") 
     );
