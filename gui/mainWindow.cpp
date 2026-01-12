@@ -9,6 +9,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     setWindowFlags(Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);
+
+    QSettings::setDefaultFormat(QSettings::IniFormat);
     
     // Warning window
     QSettings settings;
@@ -17,6 +19,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
         warning = new WarningWindow();
         warning->exec();
     }
+
+    
 
     // =========================================================
     //                  GLOBAL STRUCTURE
@@ -229,7 +233,13 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     connect(reduceBtn, &QPushButton::clicked, this, &QWidget::showMinimized);
 
     connect(m_thresholdSlider, &QSlider::valueChanged, this,
-            [this](int v) { m_threshold->setText(QString::number(v * 0.01f, 'f', 2)); });
+            [this](int v) { 
+            float threshold = v * 0.01f;
+            m_threshold->setText(QString::number(threshold, 'f', 2)); 
+            ConfigManager::instance().set("Postprocessing/threshold", threshold);
+        });
+
+
 
     connect(m_threshold, &QLineEdit::textChanged, this, [this](const QString &text) {
         bool ok;
