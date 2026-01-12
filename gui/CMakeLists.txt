@@ -1,5 +1,9 @@
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 
+if (WIN32)
+    set(APP_ICON_RESOURCE "${CMAKE_CURRENT_SOURCE_DIR}/appicon.rc")
+endif()
+
 qt_add_executable(${PROJECT_NAME}
     main.cpp
     mainWindow.h
@@ -8,6 +12,7 @@ qt_add_executable(${PROJECT_NAME}
     guideWindow.cpp
     warningWindow.h
     warningWindow.cpp
+    ${APP_ICON_RESOURCE}
 )
 
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)

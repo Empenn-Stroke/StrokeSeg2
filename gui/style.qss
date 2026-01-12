@@ -25,7 +25,7 @@ Black (text) : #0a0c0f;
 
 #m_mainWidget, #guideWindow,#warningWindow{
     border-radius:10px;
-    background-color:#FFFFFF;
+    background-color:transparent;
 }
 
 
@@ -173,7 +173,7 @@ QWidget QSlider {
 }
 
 QWidget#formParameters QLineEdit#thresholdLine{
-    width:35px;
+    width:41px;
     margin:0;
     text-align:left;
 }
@@ -236,12 +236,14 @@ QComboBox QAbstractItemView::item {
     border-top-right-radius:5px;
     border-bottom-right-radius:5px;
     border-bottom-left-radius:5px;
+    color:#0a0c0f;
 }
 
 QComboBox QAbstractItemView::item:hover {
     background-color: #deebf9;
     border:none;
     outline:0;
+    color:#0a0c0f;
 }
 
 QWidget#formParameters QComboBox::down-arrow:on {
@@ -251,7 +253,7 @@ QWidget#formParameters QComboBox::down-arrow:on {
 QWidget#formParameters QCheckBox {
     /* margin:4px 0 4px 120px; */
     right:0;
-    margin:4px 0 4px 0px;
+    /*margin:4px 0 4px 0px;*/
 }
 
 QWidget#formParameters QCheckBox::indicator {
@@ -260,12 +262,12 @@ QWidget#formParameters QCheckBox::indicator {
 }
 
 QWidget#formParameters QCheckBox::indicator:unchecked {
-    image: url("../../../gui/ressources/checkbox_off.png");
+    image: url("../../../gui/ressources/checkbox_off.svg");
 }
 
 QWidget#formParameters QCheckBox::indicator:checked {
     /* background-color:#5ea6f2; */
-    image: url("../../../gui/ressources/checkbox_on.png");
+    image: url("../../../gui/ressources/checkbox_on.svg");
 }
 
 QWidget#formParameters QLabel {
@@ -286,6 +288,7 @@ QWidget#bottomBtns QPushButton{
 
 QWidget#bottomBtns QPushButton:hover{
     background-color:#deebf9;
+    color:#0a0c0f;
 }
 
 

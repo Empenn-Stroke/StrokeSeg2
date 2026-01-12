@@ -14,8 +14,14 @@ WarningWindow::WarningWindow(QDialog *parent) : QDialog(parent) {
     this->setObjectName("warningWindow");
 
     QVBoxLayout *windowLayout = new QVBoxLayout(this);
-    windowLayout->setContentsMargins(0, 0, 0, 0);
+    windowLayout->setContentsMargins(15, 15, 15, 15);
     windowLayout->setSpacing(0);
+    
+    auto *shadow = new QGraphicsDropShadowEffect(this);
+    shadow->setBlurRadius(30);
+    shadow->setOffset(0, 0);
+    shadow->setColor(QColor(25, 60, 105, 30));
+    this->setGraphicsEffect(shadow);
 
     // =========================================================
     //                      TITLE BAR
@@ -134,3 +140,4 @@ bool WarningWindow::eventFilter(QObject *obj, QEvent *event) {
     }
     return QDialog::eventFilter(obj, event);
 }
+
