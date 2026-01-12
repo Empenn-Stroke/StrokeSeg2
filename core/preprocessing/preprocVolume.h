@@ -1,16 +1,45 @@
-#pragma once
-#include <utils/volume4d.h>
+﻿#pragma once
+
+#include <Eigen/Core>
+#include <unsupported/Eigen/CXX11/Tensor>
+
 #include <array>
 #include <string>
 #include <vector>
-#include <tuple>
 
 struct PreprocessedVolume {
-    Volume4D data;
-    std::array<float, 16> affine; // Flattened 4x4 matrix
-    std::array<int, 3> original_shape;
+    /**
+     * @brief Volume data (C, X, Y, Z)
+     */
+    Eigen::Tensor<float, 4, Eigen::RowMajor> data;
+
+    /**
+     * @brief Affine transformation matrix (voxel → world)
+     */
+    Eigen::Matrix4f affine = Eigen::Matrix4f::Identity();
+
+    /**
+     * @brief Original image shape before preprocessing (X, Y, Z)
+     */
+    Eigen::Vector3i original_shape;
+
+    /**
+     * @brief Path to the deformation / transformation file
+     */
     std::string trsf_path;
-    std::array<float, 3> spacing;
-    std::vector<std::array<int, 2>> padding;
+
+    /**
+     * @brief Voxel spacing (sx, sy, sz)
+     */
+    Eigen::Vector3f spacing;
+
+    /**
+     * @brief Padding applied on each axis: {{x0, x1}, {y0, y1}, {z0, z1}}
+     */
+    std::array<std::array<int, 2>, 3> padding{{{0, 0}, {0, 0}, {0, 0}}};
+
+    /**
+     * @brief Reference MNI image used for registration
+     */
     std::string MNI_base_image;
 };

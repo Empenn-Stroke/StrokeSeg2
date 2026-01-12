@@ -1,276 +1,217 @@
 ﻿#include "preprocessor.h"
+#include <cassert>
+#include <cmath>
+#include <cstring>
+#include <nifti1_io.h>
 
-Volume4D preprocessing::Preprocessor::preprocess(const Volume4D &vol,
-                                                 const std::array<float, 3> &target_spacing) {
-    return Volume4D();
-}
+namespace preprocessing {
 
-Volume4D preprocessing::Preprocessor::loadVolume(const QString &path) {
-    // --- Load file ---
-    nifti_image *nim = nifti_image_read(path.toStdString().c_str(), 1);
-    if (!nim)
-        throw std::runtime_error("Failed to read NIFTI file");
+    void Preprocessor::zScoreNormalize(NiftiVolume &vol, const NiftiVolume *seg) {
+        double sum = 0.0, sq_sum = 0.0;
+        size_t count = 0;
 
-    Volume4D vol{};
+        const int C = vol.data.dimension(0);
+        const int X = vol.data.dimension(1);
+        const int Y = vol.data.dimension(2);
+        const int Z = vol.data.dimension(3);
 
-    // --- Dimensions ---
-    vol.C = (nim->nt > 1) ? nim->nt : 1;
-    vol.X = nim->nx;
-    vol.Y = nim->ny;
-    vol.Z = nim->nz;
+        for (int c = 0; c < C; ++c)
+            for (int x = 0; x < X; ++x)
+                for (int y = 0; y < Y; ++y)
+                    for (int z = 0; z < Z; ++z) {
+                        if (seg && seg->data(c, x, y, z) < 0)
+                            continue;
+                        double v = vol.data(c, x, y, z);
+                        sum += v;
+                        sq_sum += v * v;
+                        count++;
+                    }
 
-    // --- Spacing ---
-    vol.spacing = {nim->dx > 0 ? nim->dx : 1.f, nim->dy > 0 ? nim->dy : 1.f,
-                   nim->dz > 0 ? nim->dz : 1.f};
+        if (count == 0)
+            return;
+        double mean = sum / count;
+        double std = std::sqrt(std::max(sq_sum / count - mean * mean, 1e-8));
 
-    const size_t voxelCount = static_cast<size_t>(vol.C) * vol.X * vol.Y * vol.Z;
-    vol.data.resize(voxelCount);
-
-    // --- Copy data and convert ---
-    const void *src = nim->data;
-
-    switch (nim->datatype) {
-    case NIFTI_TYPE_FLOAT32: {
-        std::memcpy(vol.data.data(), src, voxelCount * sizeof(float));
-        break;
-    }
-    case NIFTI_TYPE_INT16: {
-        const short *p = static_cast<const short *>(src);
-        for (size_t i = 0; i < voxelCount; ++i)
-            vol.data[i] = static_cast<float>(p[i]);
-        break;
-    }
-    case NIFTI_TYPE_UINT8: {
-        const unsigned char *p = static_cast<const unsigned char *>(src);
-        for (size_t i = 0; i < voxelCount; ++i)
-            vol.data[i] = static_cast<float>(p[i]);
-        break;
-    }
-    default:
-        nifti_image_free(nim);
-        throw std::runtime_error("Unsupported NIFTI datatype");
+        for (int c = 0; c < C; ++c)
+            for (int x = 0; x < X; ++x)
+                for (int y = 0; y < Y; ++y)
+                    for (int z = 0; z < Z; ++z) {
+                        if (seg && seg->data(c, x, y, z) < 0)
+                            continue;
+                        vol.data(c, x, y, z) =
+                            static_cast<float>((vol.data(c, x, y, z) - mean) / std);
+                    }
     }
 
-    nifti_image_free(nim);
-    return vol;
-}
+    std::vector<bool> Preprocessor::computeNonZeroMask(const NiftiVolume &vol) {
+        const int C = vol.data.dimension(0);
+        const int X = vol.data.dimension(1);
+        const int Y = vol.data.dimension(2);
+        const int Z = vol.data.dimension(3);
+        std::vector<bool> mask(X * Y * Z, false);
 
-void preprocessing::Preprocessor::zScoreNormalize(Volume4D &data, const Volume4D *seg) {
-    const int C = data.C;
-    const int X = data.X;
-    const int Y = data.Y;
-    const int Z = data.Z;
+        for (int x = 0; x < X; ++x)
+            for (int y = 0; y < Y; ++y)
+                for (int z = 0; z < Z; ++z) {
+                    bool nonzero = false;
+                    for (int c = 0; c < C; ++c) {
+                        if (vol.data(c, x, y, z) != 0.0f) {
+                            nonzero = true;
+                            break;
+                        }
+                    }
+                    mask[x * Y * Z + y * Z + z] = nonzero;
+                }
+        return mask;
+    }
 
-    double sum = 0.0;
-    double sq_sum = 0.0;
-    size_t count = 0;
+    NiftiVolume Preprocessor::cropToNonZero(const NiftiVolume &vol, const NiftiVolume *seg,
+                                            int nonzero_label,
+                                            std::array<std::array<int, 2>, 3> *bbox_out) {
+        auto mask = computeNonZeroMask(vol);
+        const int X = vol.data.dimension(1);
+        const int Y = vol.data.dimension(2);
+        const int Z = vol.data.dimension(3);
+
+        std::array<std::array<int, 2>, 3> bbox;
+        if (bbox_out)
+            bbox = *bbox_out;
+        else {
+            int x_min = X - 1, x_max = 0;
+            int y_min = Y - 1, y_max = 0;
+            int z_min = Z - 1, z_max = 0;
+            bool found = false;
+            for (int x = 0; x < X; ++x)
+                for (int y = 0; y < Y; ++y)
+                    for (int z = 0; z < Z; ++z)
+                        if (mask[x * Y * Z + y * Z + z]) {
+                            x_min = std::min(x_min, x);
+                            x_max = std::max(x_max, x);
+                            y_min = std::min(y_min, y);
+                            y_max = std::max(y_max, y);
+                            z_min = std::min(z_min, z);
+                            z_max = std::max(z_max, z);
+                            found = true;
+                        }
+            if (!found)
+                throw std::runtime_error("All-zero volume, cannot crop");
+            bbox = {{{x_min, x_max}, {y_min, y_max}, {z_min, z_max}}};
+        }
+        if (bbox_out)
+            *bbox_out = bbox;
+
+        NiftiVolume cropped;
+        cropped.data = Eigen::Tensor<float, 4, Eigen::RowMajor>(
+            vol.data.dimension(0), bbox[0][1] - bbox[0][0] + 1, bbox[1][1] - bbox[1][0] + 1,
+            bbox[2][1] - bbox[2][0] + 1);
+        cropped.spacing = vol.spacing;
+
+        for (int c = 0; c < vol.data.dimension(0); ++c)
+            for (int x = 0; x < cropped.data.dimension(1); ++x)
+                for (int y = 0; y < cropped.data.dimension(2); ++y)
+                    for (int z = 0; z < cropped.data.dimension(3); ++z)
+                        cropped.data(c, x, y, z) =
+                            vol.data(c, x + bbox[0][0], y + bbox[1][0], z + bbox[2][0]);
+
+        if (seg) {
+            for (int c = 0; c < seg->data.dimension(0); ++c)
+                for (int x = 0; x < cropped.data.dimension(1); ++x)
+                    for (int y = 0; y < cropped.data.dimension(2); ++y)
+                        for (int z = 0; z < cropped.data.dimension(3); ++z) {
+                            float val =
+                                seg->data(c, x + bbox[0][0], y + bbox[1][0], z + bbox[2][0]);
+                            if (val == 0 && !mask[(x + bbox[0][0]) * Y * Z + (y + bbox[1][0]) * Z +
+                                                  (z + bbox[2][0])])
+                                val = nonzero_label;
+                            cropped.data(c, x, y, z) = val;
+                        }
+        }
+
+        return cropped;
+    }
+
+    std::pair<NiftiVolume, std::vector<std::array<int, 2>>>
+    Preprocessor::padVolume(const NiftiVolume &vol, int min_size) {
+        const int X = vol.data.dimension(1);
+        const int Y = vol.data.dimension(2);
+        const int Z = vol.data.dimension(3);
+        const int C = vol.data.dimension(0);
+
+        std::vector<std::array<int, 2>> padding(3);
+        int dims[3] = {X, Y, Z};
+        for (int i = 0; i < 3; ++i) {
+            int total_pad = std::max(0, min_size - dims[i]);
+            int pad_before = total_pad / 2;
+            int pad_after = total_pad - pad_before;
+            padding[i] = {pad_before, pad_after};
+        }
+
+        NiftiVolume padded;
+        padded.data = Eigen::Tensor<float, 4, Eigen::RowMajor>(C, X + padding[0][0] + padding[0][1],
+                                                               Y + padding[1][0] + padding[1][1],
+                                                               Z + padding[2][0] + padding[2][1]);
+        padded.data.setZero();
+        padded.spacing = vol.spacing;
+
+        for (int c = 0; c < C; ++c)
+            for (int x = 0; x < X; ++x)
+                for (int y = 0; y < Y; ++y)
+                    for (int z = 0; z < Z; ++z)
+                        padded.data(c, x + padding[0][0], y + padding[1][0], z + padding[2][0]) =
+                            vol.data(c, x, y, z);
+
+        return {padded, padding};
+    }
+
+    QString Preprocessor::biasCorrect(const std::string &input_path, const std::string &prefix) {
+        std::string output_path = prefix + "_N4.nii.gz";
+
+        QStringList args;
+        args << "animaN4BiasCorrection" << "-i" << QString::fromStdString(input_path) << "-o"
+             << QString::fromStdString(output_path);
+
+        int ret = wrapper.run(args);
+        if (ret != 0) {
+            std::string err_msg = wrapper.lastStderr().toStdString();
+            if (err_msg.empty())
+                err_msg = "Unknown error in AnimaWrapper";
+            throw std::runtime_error("Bias correction failed: " + err_msg);
+        }
+
+        return QString::fromStdString(output_path);
+    }
 
     
-    if (count == 0)
-        return;
-
-    const double mean = data.mean();
-    const double var = data.variance();
-    const double std = std::sqrt(std::max(var, 1e-8));
-
-    // --- Normalize ---
-    for (int c = 0; c < C; ++c) {
-        for (int x = 0; x < X; ++x) {
-            for (int y = 0; y < Y; ++y) {
-                for (int z = 0; z < Z; ++z) {
-
-                    if (seg && seg->at(0, x, y, z) < 0)
-                        continue;
-
-                    data.at(c, x, y, z) = static_cast<float>((data.at(c, x, y, z) - mean) / std);
-                }
-            }
+    NiftiVolume Preprocessor::preprocess(const NiftiVolume &vol,
+                                         const Eigen::Vector3f &target_spacing,
+                                         bool is_segmentation) {
+        // --- Step 1: Brain extraction ---
+        QString tmp_prefix = "/tmp/preproc_" + QString::number(reinterpret_cast<uintptr_t>(&vol));
+        QString brain_img_path = vol.file_path;
+        if (!is_segmentation && brainExtraction) {
+            brain_img_path =
+                brainExtraction->run(QString::fromStdString(vol.file_path.toStdString()), tmp_prefix);
         }
-    }
-}
 
-std::vector<bool> preprocessing::Preprocessor::computeNonZeroMask(const Volume4D &data) {
+        // --- Step 2: Load volume after brain extraction (or use input) ---
+        NiftiVolume brain_vol = brain_img_path.isEmpty() ? vol : NiftiVolume.loadNifti(brain_img_path);
 
-    assert(data.C > 0);
+        // --- Step 3: Crop to non-zero region ---
+        NiftiVolume cropped = cropToNonZero(brain_vol, nullptr);
 
-    const int C = data.C;
-    const int X = data.X;
-    const int Y = data.Y;
-    const int Z = data.Z;
-
-    std::vector<bool> mask(X * Y * Z, false);
-
-    for (int x = 0; x < X; ++x) {
-        for (int y = 0; y < Y; ++y) {
-            for (int z = 0; z < Z; ++z) {
-                bool nonzero = false;
-                for (int c = 0; c < C; ++c) {
-                    if (data.at(c, x, y, z) != 0.0f) {
-                        nonzero = true;
-                        break;
-                    }
-                }
-                mask[x * Y * Z + y * Z + z] = nonzero;
-            }
+        // --- Step 4: Z-score normalization ---
+        if (!is_segmentation) {
+            zScoreNormalize(cropped, nullptr);
         }
-    }
 
-    return mask;
-}
-
-Volume4D preprocessing::Preprocessor::cropToNonZero(const Volume4D &data, 
-    Volume4D* seg,
-    int nonzero_label,
-    std::array<std::array<int, 2>, 3>* bbox_out) 
-{
-    // --- compute non-zero mask ---
-    auto mask = computeNonZeroMask(data);
-    const int X = data.X;
-    const int Y = data.Y;
-    const int Z = data.Z;
-
-    // --- compute bounding box if not provided --- 
-    std::array<std::array<int, 2>, 3> bbox;
-    if (bbox_out) {
-        bbox = *bbox_out;
-    } else {
-        int x_min = X - 1, x_max = 0;
-        int y_min = Y - 1, y_max = 0;
-        int z_min = Z - 1, z_max = 0;
-        bool found = false;
-
-        for (int x = 0; x < X; ++x) {
-            for (int y = 0; y < Y; ++y) {
-                for (int z = 0; z < Z; ++z) {
-                    if (mask[x * Y * Z + y * Z + z]) {
-                        x_min = std::min(x_min, x);
-                        x_max = std::max(x_max, x);
-                        y_min = std::min(y_min, y);
-                        y_max = std::max(y_max, y);
-                        z_min = std::min(z_min, z);
-                        z_max = std::max(z_max, z);
-                        found = true;
-                    }
-                }
-            }
+        // --- Step 5: Resampling ---
+        NiftiVolume resampled;
+        if (!is_segmentation) {
+            resampled = resampler.resample(cropped, target_spacing, false); // image
+        } else {
+            resampled = resampler.resample(cropped, target_spacing, true); // segmentation
         }
-        if (!found)
-            throw std::runtime_error("All-zero volume, cannot crop");
-        bbox = {{{x_min, x_max}, {y_min, y_max}, {z_min, z_max}}};
+
+        return resampled;
     }
-
-    if (bbox_out)
-        *bbox_out = bbox;
-
-    // --- create new cropped volume ---
-    Volume4D cropped;
-    cropped.C = data.C;
-    cropped.X = bbox[0][1] - bbox[0][0] + 1;
-    cropped.Y = bbox[1][1] - bbox[1][0] + 1;
-    cropped.Z = bbox[2][1] - bbox[2][0] + 1;
-    cropped.spacing = data.spacing;
-    cropped.data.resize(cropped.C * cropped.X * cropped.Y * cropped.Z);
-
-    // --- copy data ---
-    for (int c = 0; c < data.C; ++c) {
-        for (int x = 0; x < cropped.X; ++x) {
-            for (int y = 0; y < cropped.Y; ++y) {
-                for (int z = 0; z < cropped.Z; ++z) {
-                    cropped.at(c, x, y, z) =
-                        data.at(c, x + bbox[0][0], y + bbox[1][0], z + bbox[2][0]);
-                }
-            }
-        }
-    }
-
-    // --- crop seg if provided ---
-    if (seg) {
-        for (int c = 0; c < seg->C; ++c) {
-            for (int x = 0; x < cropped.X; ++x) {
-                for (int y = 0; y < cropped.Y; ++y) {
-                    for (int z = 0; z < cropped.Z; ++z) {
-                        float val = seg->at(c, x + bbox[0][0], y + bbox[1][0], z + bbox[2][0]);
-                        if (val == 0 && !mask[(x + bbox[0][0]) * Y * Z + (y + bbox[1][0]) * Z +
-                                              (z + bbox[2][0])])
-                            val = nonzero_label;
-                        cropped.at(c, x, y, z) = val;
-                    }
-                }
-            }
-        }
-    }
-
-    return cropped;
-}
-
-std::pair<Volume4D, std::vector<std::array<int, 2>>>
-preprocessing::Preprocessor::padVolume(const Volume4D &data, int min_size) {
-    const int C = data.C;
-    const int X = data.X;
-    const int Y = data.Y;
-    const int Z = data.Z;
-
-    // --- Compute padding for each spatial dimension ---
-    std::vector<std::array<int, 2>> padding(3); // {pad_before, pad_after} for X, Y, Z
-    int dims[3] = {X, Y, Z};
-    for (int i = 0; i < 3; ++i) {
-        int total_pad = std::max(0, min_size - dims[i]);
-        int pad_before = total_pad / 2;
-        int pad_after = total_pad - pad_before;
-        padding[i] = {pad_before, pad_after};
-    }
-
-    // --- Create padded volume ---
-    Volume4D padded;
-    padded.C = C;
-    padded.X = X + padding[0][0] + padding[0][1];
-    padded.Y = Y + padding[1][0] + padding[1][1];
-    padded.Z = Z + padding[2][0] + padding[2][1];
-    padded.spacing = data.spacing;
-    padded.data.resize(padded.C * padded.X * padded.Y * padded.Z, 0.0f); // zero pad
-
-    // --- Copy original data into padded volume ---
-    for (int c = 0; c < C; ++c) {
-        for (int x = 0; x < X; ++x) {
-            for (int y = 0; y < Y; ++y) {
-                for (int z = 0; z < Z; ++z) {
-                    int px = x + padding[0][0];
-                    int py = y + padding[1][0];
-                    int pz = z + padding[2][0];
-                    padded.at(c, px, py, pz) = data.at(c, x, y, z);
-                }
-            }
-        }
-    }
-
-    return {padded, padding};
-}
-
-
-QString preprocessing::Preprocessor::biasCorrect(const std::string &input_path,
-                                                     const std::string &prefix) {
-    // --- Build output file path ---
-    std::string output_path = prefix + "_N4.nii.gz";
-
-    // --- Build args list for AnimaWrapper ---
-    QStringList args;
-    args << "animaN4BiasCorrection"
-         << "-i" << QString::fromStdString(input_path) << "-o"
-         << QString::fromStdString(output_path);
-
-    // --- Launch AnimaWrapper ---
-    int ret = wrapper.run(args);
-
-    // --- Check Output ---
-    if (ret != 0) {
-        std::string err_msg = wrapper.lastStderr().toStdString();
-        if (err_msg.empty()) {
-            err_msg = "Unknown error in AnimaWrapper during N4 bias correction";
-        }
-        throw std::runtime_error("Bias correction failed: " + err_msg);
-    }
-
-    // --- Return corrected file path ---
-    return QString::fromStdString(output_path);
-}
-
+} // namespace preprocessing
