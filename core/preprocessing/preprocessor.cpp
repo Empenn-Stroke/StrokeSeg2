@@ -10,6 +10,8 @@ namespace preprocessing {
         double sum = 0.0, sq_sum = 0.0;
         size_t count = 0;
 
+        std::vector<int64_t> shape = vol.getShape();
+
         const int C = vol.data.dimension(0);
         const int X = vol.data.dimension(1);
         const int Y = vol.data.dimension(2);
@@ -65,7 +67,8 @@ namespace preprocessing {
         return mask;
     }
 
-    NiftiVolume Preprocessor::cropToNonZero(const NiftiVolume &vol, const NiftiVolume *seg,
+    NiftiVolume Preprocessor::cropToNonZero(const NiftiVolume &vol, 
+                                            const NiftiVolume *seg,
                                             int nonzero_label,
                                             std::array<std::array<int, 2>, 3> *bbox_out) {
         auto mask = computeNonZeroMask(vol);
@@ -163,12 +166,12 @@ namespace preprocessing {
         return {padded, padding};
     }
 
-    QString Preprocessor::biasCorrect(const std::string &input_path, const std::string &prefix) {
-        std::string output_path = prefix + "_N4.nii.gz";
+    QString Preprocessor::biasCorrect(const QString &input_path, const QString &prefix) {
+        QString output_path = prefix + "_N4.nii.gz";
 
         QStringList args;
-        args << "animaN4BiasCorrection" << "-i" << QString::fromStdString(input_path) << "-o"
-             << QString::fromStdString(output_path);
+        args << "animaN4BiasCorrection" << "-i" << input_path << "-o"
+             << output_path;
 
         int ret = wrapper.run(args);
         if (ret != 0) {
@@ -178,7 +181,115 @@ namespace preprocessing {
             throw std::runtime_error("Bias correction failed: " + err_msg);
         }
 
-        return QString::fromStdString(output_path);
+        return output_path;
+    }
+
+    std::pair<QString, QString> Preprocessor::registerToReference(const QString &input_path,
+                                                                  const QString &ref_path,
+                                                                  const QString &prefix,
+                                                                  const QString &suffix) {
+
+        const QString output_path = prefix + "_" + suffix + ".nii.gz";
+        const QString trsf_path = output_path.left(output_path.size() - 7) + ".txt";
+
+        QStringList args;
+        args << "animaPyramidalBMRegistration" 
+            << "-i" << input_path 
+            << "-m" << ref_path
+            << "-o" << output_path 
+            << "-O" << trsf_path;
+
+        int ret = wrapper.run(args);
+        if (ret != 0) {
+            std::string err_msg = wrapper.lastStderr().toStdString();
+            if (err_msg.empty())
+                err_msg = "Unknown error in AnimaWrapper";
+            throw std::runtime_error("Bias correction failed: " + err_msg);
+        }
+
+        return std::pair<QString, QString>(output_path, trsf_path);
+    }
+
+    PreprocessedVolume Preprocessor::preprocessModality(Preprocessor &pp,
+                                                        const QString &modality_path,
+                                                        bool is_MNI,
+                                                        std::array<std::array<int, 2>, 3> *bbox_ptr) {
+        PreprocessedVolume result;
+
+        // --- Step 1: Define temporary prefix ---
+        QString prefix = modality_path;
+        prefix = prefix + "_preproc";
+
+        QString img_path = modality_path;
+
+        // --- Step 2: If not MNI, run bias correction, reorient, register ---
+        QString MNI_output;
+        QString trsf_path;
+        if (!is_MNI) {
+            // Bias correction
+            MNI_output = pp.biasCorrect(modality_path, prefix);
+
+            // Reorient to RAS (assuming you have a method in Preprocessor)
+            MNI_output = pp.reorientToRAS(MNI_output, prefix);
+
+            // Register to reference MNI
+            std::tie(MNI_output, trsf_path) = pp.registerToReference(MNI_output, 
+                                                                     pp.atlasImage, 
+                                                                     "MNI", 
+                                                                     prefix);
+        } else {
+            MNI_output = modality_path;
+            trsf_path.clear();
+        }
+
+        result.trsf_path = trsf_path;
+
+        // --- Step 3: Load NiftiVolume ---
+        NiftiVolume vol = NiftiVolume::loadNifti(MNI_output);
+
+        // --- Step 4: Crop to non-zero region ---
+        NiftiVolume cropped;
+        if (bbox_ptr) {
+            cropped = pp.cropToNonZero(vol, nullptr, 1,
+                                       bbox_ptr);
+        } else {
+            std::array<std::array<int, 2>, 3> computed_bbox;
+            cropped = pp.cropToNonZero(vol,nullptr, 1, &computed_bbox);
+        }
+
+        result.original_shape =
+            Eigen::Vector3i(vol.data.dimension(1), vol.data.dimension(2), vol.data.dimension(3));
+        result.spacing = cropped.spacing;
+
+        // --- Step 5: Resampling ---
+        Eigen::Vector3f target_spacing(1.0f, 1.0f, 1.0f);
+        result.data =
+            pp.resampler.resample(cropped, target_spacing, false).data; // false = not segmentation
+
+        // --- Step 6: Z-score normalization ---
+        NiftiVolume norm_vol;
+        norm_vol.data = result.data;
+        norm_vol.spacing = result.spacing;
+        pp.zScoreNormalize(norm_vol, nullptr);
+        result.data = norm_vol.data;
+
+        // --- Step 7: Padding to ensure min size ---
+        NiftiVolume tmp_vol;
+        tmp_vol.data = result.data;
+        tmp_vol.spacing = result.spacing;
+        auto pad_result = pp.padVolume(tmp_vol, 128);
+        result.data = pad_result.first.data;
+        result.padding = {pad_result.second[0], pad_result.second[1], pad_result.second[2]};
+
+        // --- Step 8: Save MNI reference if needed ---
+        QVariant keepMNI = pp.config.get("keep_MNI", true);
+        if (keepMNI.toBool()) {
+            result.MNI_base_image = MNI_output;
+        }
+
+        return result;
+
+
     }
 
     
@@ -194,7 +305,7 @@ namespace preprocessing {
         }
 
         // --- Step 2: Load volume after brain extraction (or use input) ---
-        NiftiVolume brain_vol = brain_img_path.isEmpty() ? vol : NiftiVolume.loadNifti(brain_img_path);
+        NiftiVolume brain_vol = brain_img_path.isEmpty() ? vol : NiftiVolume::loadNifti(brain_img_path);
 
         // --- Step 3: Crop to non-zero region ---
         NiftiVolume cropped = cropToNonZero(brain_vol, nullptr);
@@ -214,4 +325,12 @@ namespace preprocessing {
 
         return resampled;
     }
+
+    
+    void Preprocessor::printAction(const QString &actionName) {
+        spdlog::info("Starting {}...²", actionName.toStdString());
+    }
+
+
+    
 } // namespace preprocessing

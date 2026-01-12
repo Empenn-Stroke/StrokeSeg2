@@ -10,10 +10,11 @@ add_library(${CORE}
  "managers/configmanager.h" 
  "managers/configmanager.cpp"
  "managers/appconfig.h"
- "managers/appconfig.h")
-  # this dummy file is only here as placeholder and can be removed
-  dummy.cpp
- "utils/animawrapper.cpp" "utils/animawrapper.h" "utils/path.h" "utils/str.h" "preprocessing/preprocessor.h" "preprocessing/preprocessor.cpp" "utils/NiftiVolume.h" "utils/NiftiVolume.cpp")
+ "managers/appconfig.h"
+ "preprocessing/preprocessor.h" 
+ "preprocessing/preprocessor.cpp" 
+ "utils/NiftiVolume.h" 
+ "utils/NiftiVolume.cpp")
 
 
 target_compile_features(${CORE} PUBLIC cxx_std_20)

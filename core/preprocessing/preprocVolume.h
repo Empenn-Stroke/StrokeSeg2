@@ -26,7 +26,7 @@ struct PreprocessedVolume {
     /**
      * @brief Path to the deformation / transformation file
      */
-    std::string trsf_path;
+    QString trsf_path;
 
     /**
      * @brief Voxel spacing (sx, sy, sz)
@@ -41,5 +41,5 @@ struct PreprocessedVolume {
     /**
      * @brief Reference MNI image used for registration
      */
-    std::string MNI_base_image;
+    QString MNI_base_image;
 };

@@ -8,11 +8,16 @@
 #include <utility>
 #include <vector>
 
+#include <spdlog/spdlog.h>
+
 #include "brainextraction.h"
-#include "preprocVolume.h"
+#include "preprocvolume.h"
 #include "resampling.h"
+
 #include <utils/animawrapper.h>
 #include <utils/niftiVolume.h>
+
+#include <managers/configmanager.h>
 
 namespace preprocessing {
 
@@ -44,22 +49,34 @@ namespace preprocessing {
         Resampling resampler;
         BrainExtraction *brainExtraction;
         AnimaWrapper wrapper;
+        ConfigManager &config = ConfigManager::instance();
+        QString atlasImage = atlas_dir + "/Reference_T1.nrrd";
 
         void zScoreNormalize(NiftiVolume &vol, const NiftiVolume *seg = nullptr);
 
         std::vector<bool> computeNonZeroMask(const NiftiVolume &vol);
-        NiftiVolume cropToNonZero(const NiftiVolume &vol, const NiftiVolume *seg = nullptr,
+        NiftiVolume cropToNonZero(const NiftiVolume &vol, 
+                                  const NiftiVolume *seg = nullptr,
                                   int nonzero_label = 1,
                                   std::array<std::array<int, 2>, 3> *bbox_out = nullptr);
+
         std::pair<NiftiVolume, std::vector<std::array<int, 2>>> padVolume(const NiftiVolume &vol,
                                                                           int min_size);
 
-        QString reorientToRAS(const std::string &input_path, const std::string &prefix);
-        QString biasCorrect(const std::string &input_path, const std::string &prefix);
+        QString reorientToRAS(const QString &input_path, const QString &prefix);
+        QString biasCorrect(const QString &input_path, const QString &prefix);
 
-        PreprocessedVolume preprocessModality(Preprocessor &pp, const std::string &modality_path,
+        std::pair<QString, QString> registerToReference(const QString &input_path,
+                                                        const QString &mni_image_path,
+                                                        const QString &prefix,
+                                                        const QString &suffix);
+
+        void printAction(const QString &actionName);
+
+        PreprocessedVolume preprocessModality(Preprocessor &pp, 
+                                              const QString &modality_path,
                                               bool is_MNI,
-                                              const std::array<int, 3> *bbox_ptr = nullptr);
+                                              std::array<std::array<int, 2>, 3> *bbox_ptr = nullptr);
     };
 
 } // namespace preprocessing
