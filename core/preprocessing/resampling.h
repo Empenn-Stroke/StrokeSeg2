@@ -1,137 +1,143 @@
 #pragma once
 
-#include <utils/volume4d.h>
-#include <array>
-#include <vector>
-#include <algorithm>
-#include <cmath>
-#include <stdexcept>
+#include <Eigen/Core>
+#include <set>
+#include <unsupported/Eigen/CXX11/Tensor>
 #include <utility>
+#include <vector>
+#include <utils/niftiVolume.h>
+
 
 #ifndef CORE_PREPROCESSING_RESAMPLING_H
 #define CORE_PREPROCESSING_RESAMPLING_H
+
 
 namespace preprocessing {
 
     /**
      * @class Resampling
-     * @brief Handles spatial resampling of 4D volumes during preprocessing.
+     * @brief Handles spatial resampling of 4D volumes using NiftiVolume and Eigen.
+     *
+     * This class provides functionality to resample 4D volumes (C x X x Y x Z)
+     * to a new spacing, optionally handling anisotropic axes separately.
+     *
+     * Features:
+     * - Linear interpolation for images.
+     * - Nearest / vote interpolation for segmentations.
+     * - Slice-by-slice resampling along the axis with the lowest resolution.
+     * - Fully compatible with Eigen::Tensor<float,4,Eigen::RowMajor> via NiftiVolume.
      */
     class Resampling {
       public:
         /**
-         * @brief Constructor of the resampling class.
+         * @brief Default constructor.
          */
-        Resampling();
+        Resampling() = default;
 
         /**
-         * @brief Destructor of the resampling class.
-         */
-        ~Resampling();
-
-        /**
-         * @brief Resamples a 4D volume to a new spatial spacing.
+         * @brief Resample a 4D volume to a new spacing.
          *
-         * Computes the new volume shape according to the desired spacing and
-         * resamples the data using interpolation. Depending on the spacing
-         * anisotropy, resampling can be performed either fully in 3D or
-         * separately along a specific axis.
+         * This function will perform full 3D linear interpolation if the spacing
+         * is isotropic, or slice-by-slice resampling along the axis with the
+         * largest spacing if anisotropy is detected.
          *
-         * @param vol Input volume to resample.
-         * @param new_spacing Desired spacing (sx', sy', sz').
-         * @return Resampled volume with updated spacing and dimensions.
+         * @param in Input NiftiVolume.
+         * @param new_spacing Desired spacing in mm (sx', sy', sz').
+         * @param is_segmentation True if the volume is a segmentation, using nearest/vote
+         * interpolation.
+         * @return Resampled NiftiVolume.
          */
-        Volume4D resample(const Volume4D &vol, const std::array<float, 3> &new_spacing);
+        NiftiVolume resample(const NiftiVolume &in, const Eigen::Vector3f &new_spacing,
+                             bool is_segmentation = false);
 
       private:
+        /// Threshold to detect if an axis is low-resolution and should be resampled separately
         float separate_z_anisotropy_threshold = 3.0f;
-        bool is_seg = false; // true if segmentation
-        int order = 1;       // linear interpolation
-        int order_z = 0;     // interpolation along low-resolution axis
 
-        /**
-         * @brief Checks whether separate Z-axis resampling is required.
-         *
-         * Compares the ratio between the minimum and maximum spacing
-         * to the anisotropy threshold.
-         *
-         * @param spacing Input volume spacing.
-         * @return True if separate Z resampling is required.
+       /**
+         * @brief Checks if any axis requires separate resampling due to anisotropy.
+         * @param spacing Spacing vector (sx, sy, sz).
+         * @return True if separate axis resampling is needed.
          */
-        bool get_do_separate_z(const std::array<float, 3> &spacing);
+        bool get_do_separate_axis(const Eigen::Vector3f &spacing) const;
+        /**
+         * @brief Finds the axis with the largest spacing (lowest resolution).
+         * @param spacing Spacing vector (sx, sy, sz).
+         * @return Index of the axis with largest spacing, or -1 if ambiguous.
+         */
+        int get_lowres_axis(const Eigen::Vector3f &spacing) const;
 
         /**
-         * @brief Computes the new volume shape after resampling.
+         * @brief Determines if resampling should be done separately along a single axis.
          *
-         * Each dimension is scaled according to the ratio between the
-         * original and target spacing.
+         * @param current_spacing Current volume spacing.
+         * @param new_spacing Target spacing.
+         * @return Pair: {true if separate resampling needed, axis index}.
+         */
+
+        std::pair<bool, int> determine_separate_axis(const Eigen::Vector3f &current_spacing,
+                                                     const Eigen::Vector3f &new_spacing) const;
+
+        /**
+         * @brief Computes new shape after resampling.
          *
-         * @param old_shape Original volume shape (X, Y, Z).
+         * Each dimension is scaled according to the ratio between original and target spacing.
+         *
+         * @param old_shape Original shape (X, Y, Z).
          * @param old_spacing Original spacing (sx, sy, sz).
-         * @param new_spacing Desired spacing (sx', sy', sz').
-         * @return New volume shape after resampling.
+         * @param new_spacing Target spacing (sx', sy', sz').
+         * @return New shape (X', Y', Z').
          */
-        std::array<int, 3> reshape(const std::array<int, 3> &old_shape,
-                                   const std::array<float, 3> &old_spacing,
-                                   const std::array<float, 3> &new_spacing);
+        Eigen::Vector3i compute_new_shape(const Eigen::Vector3i &old_shape,
+                                          const Eigen::Vector3f &old_spacing,
+                                          const Eigen::Vector3f &new_spacing) const;
 
         /**
-         * @brief Finds the axis with the lowest spatial resolution.
-         *
-         * @param spacing Volume spacing (sx, sy, sz).
-         * @return Index of the axis with the largest spacing.
-         */
-        int get_single_lowres_axis(const std::array<float, 3> &spacing);
-
-        /**
-         * @brief Determines whether separate-axis resampling is needed.
-         *
-         * Selects whether resampling should be performed separately along
-         * a specific axis based on spacing anisotropy or forced parameters.
-         *
-         * @param spacing Original spacing (sx, sy, sz).
-         * @param new_spacing Desired spacing (sx', sy', sz').
-         * @param force_separate_z Forces separate Z resampling.
-         * @param has_force Indicates whether a force flag is provided.
-         * @return Pair indicating whether separation is required and the axis index.
-         */
-        std::pair<bool, int> determine_separate_axis(const std::array<float, 3> &spacing,
-                                                     const std::array<float, 3> &new_spacing,
-                                                     bool force_separate_z = false,
-                                                     bool has_force = false);
-
-        /**
-         * @brief Performs linear interpolation between two values.
-         *
-         * @param v0 Value at t = 0.
-         * @param v1 Value at t = 1.
-         * @param t Interpolation parameter.
-         * @return Interpolated value.
-         */
-        float linear_interp(float v0, float v1, float t);
-
-        /**
-         * @brief Computes the nearest valid index from a floating-point coordinate.
-         *
-         * @param x Continuous coordinate.
-         * @param max_val Maximum valid index (exclusive).
-         * @return Nearest valid integer index.
-         */
-        int nearest_index(float x, int max_val);
-
-        /**
-         * @brief Performs trilinear interpolation on a 3D volume.
+         * @brief Performs bilinear interpolation on a 2D slice of a 3D volume.
          *
          * @param vol Input volume.
          * @param c Channel index.
-         * @param x Continuous x-coordinate in voxel space.
-         * @param y Continuous y-coordinate in voxel space.
-         * @param z Continuous z-coordinate in voxel space.
-         * @return Interpolated value at the given position.
+         * @param x Continuous x-coordinate.
+         * @param y Continuous y-coordinate.
+         * @param slice Slice index along the low-res axis.
+         * @param axis Axis of low resolution (0=X,1=Y,2=Z).
+         * @return Interpolated value.
          */
-        float trilinear_interp(const Volume4D &vol, int c, float x, float y, float z);
+        float bilinear_2d(const NiftiVolume &vol, int c, float x, float y, int slice,
+                          int axis) const;
+
+        /**
+         * @brief Nearest-neighbor interpolation along 1D axis.
+         *
+         * @param t Tensor data.
+         * @param c Channel index.
+         * @param i Coordinate along first orthogonal axis.
+         * @param j Coordinate along second orthogonal axis.
+         * @param pos Continuous position along axis.
+         * @param axis Axis index to interpolate along.
+         * @return Interpolated value.
+         */
+        float nearest_1d(const Eigen::Tensor<float, 4, Eigen::RowMajor> &t, int c, int i, int j,
+                         float pos, int axis) const;
+
+        /**
+         * @brief Nearest / vote interpolation for segmentation along 1D axis.
+         *
+         * @param t Tensor data.
+         * @param c Channel index.
+         * @param i Coordinate along first orthogonal axis.
+         * @param j Coordinate along second orthogonal axis.
+         * @param pos Continuous position along axis.
+         * @param axis Axis index to interpolate along.
+         * @return Interpolated value (nearest label).
+         */
+        float vote_nearest_1d(const Eigen::Tensor<float, 4, Eigen::RowMajor> &t, int c, int i,
+                              int j, float pos, int axis) const;
     };
 
 } // namespace preprocessing
 
+
 #endif // CORE_PREPROCESSING_RESAMPLING_H
+
+

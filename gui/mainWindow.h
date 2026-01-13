@@ -27,6 +27,7 @@
 
 #include <QSettings>
 
+#include "managers/configmanager.h"
 #include "guideWindow.h"
 #include "warningWindow.h"
 

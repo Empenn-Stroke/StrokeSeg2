@@ -9,6 +9,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     setWindowFlags(Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);
+
+    QSettings::setDefaultFormat(QSettings::IniFormat);
     
     // Warning window
     QSettings settings;
@@ -17,6 +19,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
         warning = new WarningWindow();
         warning->exec();
     }
+
+    
 
     // =========================================================
     //                  GLOBAL STRUCTURE

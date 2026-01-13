@@ -3,6 +3,12 @@
 #include <QString>
 #include <QStringList>
 
+#include "utils/animawrapper.h"
+#include "utils/path.h"
+
+#include <Qdir>
+#include <stdexcept>
+
 #ifndef CORE_PREPROCESSING_BRAINEXTRACTION_H
 #define CORE_PREPROCESSING_BRAINEXTRACTION_H
 
@@ -14,7 +20,7 @@ class MainWindow; // GUI
  * @class BrainExtraction
  * @brief This class handle the brain extraction during the preprocessing
  */
-class BrainExtraction {
+class BrainExtraction : public QObject {
     public:
         /**
         * @brief Constructor of the brain exctration class
@@ -22,7 +28,7 @@ class BrainExtraction {
         * @param atlasImage(Qstring): _description_
         * @param gui(MainWindow): _description_. Optional, default to null
         */
-      BrainExtraction(AnimaWrapper *wrapper, const QString &atlasImage, MainWindow *gui = nullptr);
+      BrainExtraction(AnimaWrapper *wrapper, const QString &atlasImage, QObject *parent = nullptr);
 
 
         /**
@@ -33,12 +39,23 @@ class BrainExtraction {
         */
       QString run(const QString &imgPath, const QString &prefix);
 
+    public slots:
+      void requestCancel();
+
+    signals:
+      void progress(float value, const QString &message);
+      void finished(const QString &outputPath);
+      void error(const QString &message);
+
+
     private: 
       AnimaWrapper* m_wrapper;
-      MainWindow* m_gui; 
       QString m_atlasImage;
       QString m_iccImage;
       QStringList m_pyramidOption;
+
+      
+      bool m_cancelRequested = false;
 
         /**
         * @brief Runs the command and make an exception if the user cancelled the action.
