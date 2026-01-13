@@ -35,17 +35,11 @@ namespace preprocessing {
 
         ~Preprocessor() = default;
 
-        /**
-         * @brief Full preprocessing pipeline for a 4D volume.
-         * @param vol Input NiftiVolume.
-         * @param target_spacing Desired spacing in mm (sx', sy', sz').
-         * @param is_segmentation True if the volume is a segmentation.
-         * @return Preprocessed NiftiVolume (brain extracted, normalized, resampled).
-         */
-        NiftiVolume preprocess(const NiftiVolume &vol, const Eigen::Vector3f &target_spacing,
-                               bool is_segmentation = false);
+        PreprocessedVolume preprocess(const QString &t1_path, const QString &flair_path,
+                                      const QString &temp_dir, bool bet_only);
 
       private:
+        std::vector<QString> preprocessing_steps;
         Resampling resampler;
         BrainExtraction *brainExtraction;
         AnimaWrapper wrapper;
@@ -71,12 +65,14 @@ namespace preprocessing {
                                                         const QString &prefix,
                                                         const QString &suffix);
 
-        void printAction(const QString &actionName);
-
         PreprocessedVolume preprocessModality(Preprocessor &pp, 
                                               const QString &modality_path,
                                               bool is_MNI,
-                                              std::array<std::array<int, 2>, 3> *bbox_ptr = nullptr);
+                           std::array<std::array<int, 2>, 3> *bbox_ptr = nullptr);
+
+        static void printAction(const QString &actionName);
+
+        QString moveToOutput(const QString &img_path);
     };
 
 } // namespace preprocessing

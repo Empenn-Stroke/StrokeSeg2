@@ -227,12 +227,15 @@ namespace preprocessing {
         QString trsf_path;
         if (!is_MNI) {
             // Bias correction
+            printAction("bias correction");
             MNI_output = pp.biasCorrect(modality_path, prefix);
 
             // Reorient to RAS (assuming you have a method in Preprocessor)
-            MNI_output = pp.reorientToRAS(MNI_output, prefix);
+            //printAction("reorient to RAS");
+            //MNI_output = pp.reorientToRAS(MNI_output, prefix);
 
             // Register to reference MNI
+            printAction("register to MNI");
             std::tie(MNI_output, trsf_path) = pp.registerToReference(MNI_output, 
                                                                      pp.atlasImage, 
                                                                      "MNI", 
@@ -245,6 +248,7 @@ namespace preprocessing {
         result.trsf_path = trsf_path;
 
         // --- Step 3: Load NiftiVolume ---
+        printAction("loading NIFTI volume");
         NiftiVolume vol = NiftiVolume::loadNifti(MNI_output);
 
         // --- Step 4: Crop to non-zero region ---
@@ -262,11 +266,13 @@ namespace preprocessing {
         result.spacing = cropped.spacing;
 
         // --- Step 5: Resampling ---
+        printAction("resampling to 1mm isotropic");
         Eigen::Vector3f target_spacing(1.0f, 1.0f, 1.0f);
         result.data =
             pp.resampler.resample(cropped, target_spacing, false).data; // false = not segmentation
 
         // --- Step 6: Z-score normalization ---
+        printAction("z-score normalization");
         NiftiVolume norm_vol;
         norm_vol.data = result.data;
         norm_vol.spacing = result.spacing;
@@ -274,6 +280,7 @@ namespace preprocessing {
         result.data = norm_vol.data;
 
         // --- Step 7: Padding to ensure min size ---
+        printAction("padding");
         NiftiVolume tmp_vol;
         tmp_vol.data = result.data;
         tmp_vol.spacing = result.spacing;
@@ -284,6 +291,7 @@ namespace preprocessing {
         // --- Step 8: Save MNI reference if needed ---
         QVariant keepMNI = pp.config.get("keep_MNI", true);
         if (keepMNI.toBool()) {
+            printAction("saving MNI base image");
             result.MNI_base_image = MNI_output;
         }
 
@@ -291,45 +299,143 @@ namespace preprocessing {
 
 
     }
-
     
-    NiftiVolume Preprocessor::preprocess(const NiftiVolume &vol,
-                                         const Eigen::Vector3f &target_spacing,
-                                         bool is_segmentation) {
-        // --- Step 1: Brain extraction ---
-        QString tmp_prefix = "/tmp/preproc_" + QString::number(reinterpret_cast<uintptr_t>(&vol));
-        QString brain_img_path = vol.file_path;
-        if (!is_segmentation && brainExtraction) {
-            brain_img_path =
-                brainExtraction->run(QString::fromStdString(vol.file_path.toStdString()), tmp_prefix);
-        }
+    PreprocessedVolume Preprocessor::preprocess(const QString &t1_path, const QString &flair_path,
+                                                const QString &temp_dir, bool bet_only) {
+        preprocessing_steps.clear(); // équivalent de self.preprocessing_steps
+        QString prefix = temp_dir + "/" + QFileInfo(t1_path).baseName();
+        QString bet_t1_path;
 
-        // --- Step 2: Load volume after brain extraction (or use input) ---
-        NiftiVolume brain_vol = brain_img_path.isEmpty() ? vol : NiftiVolume::loadNifti(brain_img_path);
-
-        // --- Step 3: Crop to non-zero region ---
-        NiftiVolume cropped = cropToNonZero(brain_vol, nullptr);
-
-        // --- Step 4: Z-score normalization ---
-        if (!is_segmentation) {
-            zScoreNormalize(cropped, nullptr);
-        }
-
-        // --- Step 5: Resampling ---
-        NiftiVolume resampled;
-        if (!is_segmentation) {
-            resampled = resampler.resample(cropped, target_spacing, false); // image
+        // --- Brain extraction T1 ---
+        if (!prefix.endsWith(QString("BET")) && !prefix.endsWith(QString("MNI"))) {
+            printAction("brain extraction");
+            bet_t1_path = brainExtraction->run(t1_path, prefix);
         } else {
-            resampled = resampler.resample(cropped, target_spacing, true); // segmentation
+            // Si déjà BET ou MNI, juste copier
+            bet_t1_path = temp_dir + "/" + QFileInfo(t1_path).fileName();
+            QFile::copy(t1_path, bet_t1_path);
         }
 
-        return resampled;
+        PreprocessedVolume t1_result;
+
+        if (!bet_only) {
+            bool is_MNI = prefix.endsWith(QString("MNI"));
+            t1_result = preprocessModality(*this, bet_t1_path, is_MNI);
+            if (!is_MNI) {
+                moveToOutput(bet_t1_path);
+            }
+        } else {
+            moveToOutput(bet_t1_path);
+        }
+
+        // --- Option FLAIR ---
+        PreprocessedVolume combined_result;
+        if (!flair_path.isEmpty()) {
+            QString flair_prefix = temp_dir + "/" + QFileInfo(flair_path).baseName();
+            QString bet_flair_path;
+
+            if (!flair_prefix.endsWith(QString("BET")) && !flair_prefix.endsWith(QString("MNI"))) {
+                printAction("register FLAIR to T1");
+                auto [flair_registered, _] =
+                    registerToReference(flair_path, t1_path, flair_prefix, QString("T1"));
+                preprocessing_steps.push_back(flair_registered);
+
+                printAction("brain extraction");
+                bet_flair_path = brainExtraction->run(flair_registered, flair_prefix);
+            } else {
+                bet_flair_path = temp_dir + "/" + QFileInfo(flair_path).fileName();
+                QFile::copy(flair_path, bet_flair_path);
+            }
+
+            PreprocessedVolume flair_result;
+            if (!bet_only) {
+                bool is_MNI = flair_prefix.endsWith(QString("MNI"));
+                flair_result =
+                    preprocessModality(*this, bet_flair_path, is_MNI, &t1_result.padding);
+                if (!is_MNI)
+                    moveToOutput(bet_flair_path);
+            } else {
+                moveToOutput(bet_flair_path);
+            }
+
+            // --- Combiner les deux canaux ---
+            int C_t1 = t1_result.data.dimension(0);
+            int C_flair = flair_result.data.dimension(0);
+            int X = t1_result.data.dimension(1);
+            int Y = t1_result.data.dimension(2);
+            int Z = t1_result.data.dimension(3);
+
+            Eigen::Tensor<float, 4, Eigen::RowMajor> combined(C_t1 + C_flair, X, Y, Z);
+            combined.slice(Eigen::array<Eigen::Index, 4>{0, 0, 0, 0},
+                           Eigen::array<Eigen::Index, 4>{C_t1, X, Y, Z}) = t1_result.data;
+            combined.slice(Eigen::array<Eigen::Index, 4>{C_t1, 0, 0, 0},
+                           Eigen::array<Eigen::Index, 4>{C_flair, X, Y, Z}) = flair_result.data;
+
+            combined_result = t1_result;
+            combined_result.data = combined;
+            combined_result.padding = t1_result.padding;
+            combined_result.MNI_base_image = t1_result.MNI_base_image;
+
+            // --- Sauvegarder preprocessing steps ---
+            if (config.get("save_preproc", true).toBool()) {
+                for (auto &path : preprocessing_steps)
+                    moveToOutput(path);
+            }
+
+            return combined_result;
+        }
+
+        // --- Si pas de FLAIR ---
+        if (!bet_only && config.get("save_preproc", true).toBool()) {
+            for (auto &path : preprocessing_steps)
+                moveToOutput(path);
+        }
+
+        return t1_result;
     }
 
     
     void Preprocessor::printAction(const QString &actionName) {
-        spdlog::info("Starting {}...²", actionName.toStdString());
+        spdlog::info("Starting {}...", actionName.toStdString());
     }
+
+    QString Preprocessor::moveToOutput(const QString &img_path) {
+        ConfigManager &config = ConfigManager::instance();
+
+        QString input_path = config.get("input_path", "").toString();
+        bool is_file = config.get("is_file", true).toBool();
+
+        QString filename = QFileInfo(img_path).fileName();
+        QString subject_name = filename.split("_").first();
+
+        QString output_dir;
+
+        if (is_file) {
+            if (input_path.contains(QString("rawdata"))) {
+                // BIDS + file input
+                QString raw_dir = input_path.section(QString("rawdata"), 0, 0);
+                output_dir = raw_dir + QString("derivatives") + "/" + subject_name + "/anat";
+            } else {
+                // Non-BIDS file input
+                output_dir = QFileInfo(input_path).absolutePath();
+            }
+        } else {
+            // Directory input (BIDS)
+            output_dir = input_path + "/" + QString("derivatives") + "/" + subject_name + "/anat";
+        }
+
+        QDir().mkpath(output_dir);
+
+        QString dst = output_dir + "/" + filename;
+
+        QFile::remove(dst); // overwrite if exists
+        if (!QFile::copy(img_path, dst)) {
+            throw std::runtime_error("Failed to copy file to output: " + dst.toStdString());
+        }
+
+        return dst;
+    }
+
 
 
     
