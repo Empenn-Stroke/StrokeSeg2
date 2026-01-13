@@ -19,6 +19,7 @@ target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/${GUI}/
     ${CMAKE_SOURCE_DIR}/${COMMON}/
+    ${CMAKE_SOURCE_DIR}/${CORE}/
 )
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
