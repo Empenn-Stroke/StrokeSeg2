@@ -1,5 +1,6 @@
 #pragma once
 #include <QApplication>
+#include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QDialog>
