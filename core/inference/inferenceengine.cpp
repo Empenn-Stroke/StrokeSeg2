@@ -11,6 +11,8 @@
 #include <algorithm>
 #include <vector>
 
+#include <QFile>
+
 std::vector<float> InferenceEngine::RunInference(
     const QString &modelPath, 
     const QString &imagePath,
@@ -18,6 +20,16 @@ std::vector<float> InferenceEngine::RunInference(
     const QString &outputName) 
     
     {
+
+    if (!QFile::exists(modelPath)) {
+        qDebug() << "Modèle introuvable !";
+        return std::vector<float>();
+    }
+
+    if (!QFile::exists(imagePath)) {
+        qDebug() << "Image introuvable !";
+        return std::vector<float>();
+    }
     
     // NIfTI to float vectors
     NiftiVolume nv = NiftiVolume::loadNifti(imagePath);
@@ -27,7 +39,7 @@ std::vector<float> InferenceEngine::RunInference(
     int Y = nv.data.dimension(2);
     int Z = nv.data.dimension(3);
 
-    std::vector<int64_t> inputShape = {1, C, Z, Y, X};
+    std::vector<int64_t> inputShape = {1, C, X, Y, Z};
     std::vector<float> inputVector(
         nv.data.data(),
         nv.data.data() + nv.data.size()

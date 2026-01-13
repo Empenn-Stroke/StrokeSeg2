@@ -9,7 +9,7 @@ public:
     /// <summary>
     /// Run inference and return output tensor
     /// </summary>
-    static std::vector<float> RunInference(
+    std::vector<float> RunInference(
         const QString &modelPath,
         const QString &imagePath,
         const QString& inputName = "input",
