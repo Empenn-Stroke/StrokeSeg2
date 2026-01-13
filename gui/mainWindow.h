@@ -23,6 +23,7 @@
 #include <QFileDialog>
 #include <QFormLayout>
 
+#include "managers/configmanager.h"
 #include "guideWindow.h"
 #include "warningWindow.h"
 

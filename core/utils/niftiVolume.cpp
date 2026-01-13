@@ -109,3 +109,18 @@ void NiftiVolume::saveNifti(const QString &path, const NiftiVolume &vol) {
     nifti_image_write(nim);
     nifti_image_free(nim);
 }
+
+std::vector<float> NiftiVolume::toVector() const 
+{
+
+    return std::vector<float>(data.data(), data.data() + data.size());
+
+}
+
+std::vector<int64_t> NiftiVolume::getShape() const 
+{
+    return {static_cast<int64_t>(data.dimension(0)),
+            static_cast<int64_t>(data.dimension(1)),
+            static_cast<int64_t>(data.dimension(2)),
+            static_cast<int64_t>(data.dimension(3))};
+}

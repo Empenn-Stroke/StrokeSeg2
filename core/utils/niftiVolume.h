@@ -3,8 +3,7 @@
 #include <Eigen/Core>
 #include <unsupported/Eigen/CXX11/Tensor>
 
-class QString;
-
+#include <QString>
 
 /**
  * @struct NiftiVolume
@@ -18,6 +17,8 @@ class QString;
  * along each spatial axis.
  */
 struct NiftiVolume {
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
     using Tensor4f = Eigen::Tensor<float, 4, Eigen::RowMajor>;
 
 
@@ -64,4 +65,33 @@ struct NiftiVolume {
      * @throws std::runtime_error If the file cannot be written.
      */
     static void saveNifti(const QString &path, const NiftiVolume &vol);
+
+    /**
+     * @brief Vectorizes the volume tensor into a contiguous 1D array.
+     *
+     * The returned vector contains all tensor elements flattened in memory order
+     * (row-major by default in Eigen::Tensor).
+     *
+     * This operation performs a copy of the underlying data.
+     *
+     * @return std::vector<float> Flattened tensor data
+     *
+     * @note The output order is consistent with Eigen::Tensor storage layout.
+     *       Ensure compatibility with downstream libraries (e.g. ONNX, NumPy).
+     */
+    std::vector<float> toVector() const;
+
+
+    /**
+     * @brief Returns the shape of the volume tensor.
+     *
+     * The shape corresponds to the tensor dimensions in the following order:
+     * - shape[0] = number of channels (C)
+     * - shape[1] = size along X
+     * - shape[2] = size along Y
+     * - shape[3] = size along Z
+     *
+     * @return std::array<int, 4> Tensor dimensions (C, X, Y, Z)
+     */
+    std::vector<int64_t> getShape() const;
 };
