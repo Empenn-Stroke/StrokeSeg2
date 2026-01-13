@@ -1,5 +1,18 @@
 #include "mainWindow.h"
 
+#include <QIcon>
+#include <algorithm>
+#include <QSettings>
+#include <QStandardPaths>
+#include <QDragEnterEvent>
+#include <QDropEvent>
+#include <QMimeData>
+#include <QDebug>
+
+#ifdef Q_OS_WIN
+#include <windows.h>
+#endif
+
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     
 
@@ -210,6 +223,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     m_fileButton->setText("Choose file");
     m_fileButton->setIcon(QIcon("../../../gui/ressources/files.png"));
     m_fileButton->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+    m_fileButton->setAcceptDrops(true);
+    m_fileButton->installEventFilter(this);
+    m_fileButton->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
 
     m_runButton = new QPushButton("RUN", mainArea);
     m_runButton->setObjectName("runBtn");
@@ -290,18 +306,54 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
 bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
     if (obj == m_titleBar) {
-        auto *e = static_cast<QMouseEvent *>(event);
-        if (event->type() == QEvent::MouseButtonPress && e->button() == Qt::LeftButton) {
-            m_dragging = true;
-            m_dragPosition = e->globalPosition().toPoint() - frameGeometry().topLeft();
-            return true;
+        if (event->type() == QEvent::MouseButtonPress || event->type() == QEvent::MouseMove ||
+            event->type() == QEvent::MouseButtonRelease) {
+            auto *e = static_cast<QMouseEvent *>(event);
+            if (event->type() == QEvent::MouseButtonPress && e->button() == Qt::LeftButton) {
+                m_dragging = true;
+                m_dragPosition = e->globalPosition().toPoint() - frameGeometry().topLeft();
+                return true;
+            }
+            if (event->type() == QEvent::MouseMove && m_dragging) {
+                move(e->globalPosition().toPoint() - m_dragPosition);
+                return true;
+            }
+            if (event->type() == QEvent::MouseButtonRelease) {
+                m_dragging = false;
+                return true;
+            }
         }
-        if (event->type() == QEvent::MouseMove && m_dragging) {
-            move(e->globalPosition().toPoint() - m_dragPosition);
+    }
+
+    if (obj == m_fileButton) {
+        if (event->type() == QEvent::DragEnter) {
+            auto *dragEvent = static_cast<QDragEnterEvent *>(event);
+            
+            if (dragEvent->mimeData()->hasUrls()) {
+                m_fileButton->setProperty("dragging", true);
+                m_fileButton->update();
+                dragEvent->acceptProposedAction();
+                return true;
+            }
+        } else if (event->type() == QEvent::DragLeave) {
+            m_fileButton->setProperty("dragging", false);
+            m_fileButton->update();
             return true;
-        }
-        if (event->type() == QEvent::MouseButtonRelease) {
-            m_dragging = false;
+        } else if (event->type() == QEvent::Drop) {
+            auto *dropEvent = static_cast<QDropEvent *>(event);
+            const QList<QUrl> urls = dropEvent->mimeData()->urls();
+
+            if (!urls.isEmpty()) {
+                QString filePath = urls.first().toLocalFile();
+
+                if (filePath.endsWith(".nii") || filePath.endsWith(".nii.gz")) {
+                    m_fileButton->setText(QFileInfo(filePath).fileName());
+                    dropEvent->acceptProposedAction();
+                } else {
+                    qDebug() << "File format not supported";
+                    dropEvent->ignore();
+                }
+            }
             return true;
         }
     }
@@ -309,19 +361,78 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
 }
 
 void MainWindow::chooseFile() {
-    QString filename = QFileDialog::getOpenFileName(this, 
+    QString filepath = QFileDialog::getOpenFileName(this, 
                                                     "Choose file",
                                                     "",
-                                                    "Medical images (*.nii *.nii.gz);;All files (*)");
-    if (!filename.isEmpty())
-        m_fileButton->setText(filename);
+                                                    "IRM images (*.nii *.nii.gz);;All files (*)");
+    if (!filepath.isEmpty())
+        m_fileButton->setText(QFileInfo(filepath).fileName());
 }
 
 void MainWindow::importModel() {
     QString filename = QFileDialog::getOpenFileName(
-        this, "Choose file", "", "ONNX model (*.onnx);;All files (*)");
-    //if (!filename.isEmpty())
-        //m_fileButton->setText(filename);
+        this, "Choose file", "", "ONNX Model (*.onnx);;All files (*)");
+
+    if (filename.isEmpty())
+        return;
+
+    // 1. Définir le chemin de destination dans ProgramData
+    
+    // appdata
+    //QString programDataPath = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
+
+    QString programDataPath = qgetenv("PROGRAMDATA");
+    if (programDataPath.isEmpty()) {
+        programDataPath = "C:/ProgramData"; // Fallback manuel si la variable est vide
+    }
+    QDir dir(programDataPath + "/StrokeSeg/Models");
+
+    if (!dir.exists()) {
+        if (!dir.mkpath(".")) {
+            qDebug() << "Critical error : Impossible to create the directory in ProgramData.";
+            return;
+        }
+    }
+
+    QString destFile = dir.filePath(QFileInfo(filename).fileName());
+
+    // 2. Nettoyer si un fichier existe déjà
+    if (QFile::exists(destFile)) {
+        if (!QFile::remove(destFile)) {
+            qDebug() << "Impossible to replace the existant file (no access).";
+            return;
+        }
+    }
+
+    bool success = false;
+    QString methodUsed = "";
+
+    // 3. Tentative de Hardlink (Windows seulement)
+#ifdef Q_OS_WIN
+    std::wstring src = filename.toStdWString();
+    std::wstring dst = destFile.toStdWString();
+
+    if (CreateHardLinkW(dst.c_str(), src.c_str(), NULL)) {
+        success = true;
+        methodUsed = "Hardlink";
+    } else
+        qDebug() << "Hardlink has failed (Probably not the same disk). Trying to copy...";
+#endif
+
+    // 4. Fallback : Copie classique si le hardlink a échoué ou si on est pas sur Windows
+    if (!success) {
+        if (QFile::copy(filename, destFile)) {
+            success = true;
+            methodUsed = "Standard copy";
+        }
+    }
+
+    // 5. Résultat
+    if (success) {
+        qDebug() << "Success ! " << methodUsed << " created at : " << destFile;
+    } else {
+        qDebug() << "Total failure. Do verify admin access.";
+    }
 }
 
 void MainWindow::openGuide() {

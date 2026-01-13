@@ -330,7 +330,7 @@ QPushButton#runBtn:hover {
 
 QToolButton#chooseFileButton {
     background-color: #deebf9;
-    padding:100px 220px;
+    padding:110px 220px;
     color:#5ea6f2;
     font-size:22px;
     font-weight:800;
@@ -338,10 +338,15 @@ QToolButton#chooseFileButton {
     border: 4px dashed #5ea6f2;
     text-align:center;
     qproperty-iconSize : 80px 80px;
-    max-width:200px;
+    max-width:120px;
 }
 
 QToolButton#chooseFileButton:hover {
+    background-color: #c7dff8;
+}
+
+
+QToolButton#chooseFileButton[dragging="true"]{
     background-color: #c7dff8;
 }
 

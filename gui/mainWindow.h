@@ -22,10 +22,6 @@
 #include <QDoubleValidator>
 #include <QFileDialog>
 #include <QFormLayout>
-#include <QIcon>
-#include <algorithm>
-
-#include <QSettings>
 
 #include "guideWindow.h"
 #include "warningWindow.h"
