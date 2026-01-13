@@ -1,11 +1,21 @@
 #include "InferenceEngine.h"
+
+//#include <onnxruntime_cxx_api.h>
+#include <winml/onnxruntime_cxx_api.h>
+//#include <C:\\Users\\dvail\\source\\repos\\strokeseg2-app\\out\\build\\x64-Debug\\__nuget\\Microsoft.WindowsAppSDK.ML.1.8.2109\\include\\winml\\onnxruntime_cxx_api.h >
+//#include <C:\\Users\\dvail\\source\\repos\\strokeseg2-app\\out\\build\\x64-Debug\\__nuget\\Microsoft.WindowsAppSDK.ML.1.8.2109\\include\\winml\\onnxruntime_c_api.h >
+#include <winml/dml_provider_factory.h>
 #include <utils/niftiVolume.h>
+
+#include <iostream>
+#include <algorithm>
+#include <vector>
 
 std::vector<float> InferenceEngine::RunInference(
     const QString &modelPath, 
     const QString &imagePath,
-    const QString &inputName = "input",
-    const QString &outputName = "output") 
+    const QString &inputName,
+    const QString &outputName) 
     
     {
     
@@ -18,26 +28,51 @@ std::vector<float> InferenceEngine::RunInference(
     int Z = nv.data.dimension(3);
 
     std::vector<int64_t> inputShape = {1, C, Z, Y, X};
-    std::vector<float> inputVector = std::vector<float>(nv.data.data(),
-                                                        nv.data.data() + nv.data.size());
+    std::vector<float> inputVector(
+        nv.data.data(),
+        nv.data.data() + nv.data.size()
+    );
     
     // SESSION OPTIONS
     Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "Inference");
     Ort::SessionOptions sessionOptions;
     
+    
+    auto providers = Ort::GetAvailableProviders();
+
     // CUDA
-    if (Ort::GetAvailableProviders().count("CUDAExecutionProvider")) {
-        sessionOptions.AppendExecutionProvider_CUDA(0);
+    if (std::find(providers.begin(), providers.end(), "CUDAExecutionProvider") != providers.end()) {
+        std::cout << "Using CUDA Execution Provider\n";
+        OrtStatus *status = OrtSessionOptionsAppendExecutionProvider_CUDA(sessionOptions, 0);
+        if (status == nullptr) {
+            std::cout << "CUDA activé avec succès\n";
+        } else {
+            std::cerr << "Erreur CUDA : " << Ort::GetApi().GetErrorMessage(status) << std::endl;
+            Ort::GetApi().ReleaseStatus(status);
+        }
     }
     // WindowsML / DirectML
-    else if (Ort::GetAvailableProviders().count("DmlExecutionProvider")) {
-        sessionOptions.AppendExecutionProvider_DML(0);
-    } else {
-        std::cout << "Using CPU (default)\n";
+    else if (std::find(providers.begin(), providers.end(), "DmlExecutionProvider") != providers.end()) {
+        std::cout << "Using DirectML Execution Provider\n";
+        OrtStatus *status = OrtSessionOptionsAppendExecutionProvider_DML(sessionOptions, 0);
+        if (status == nullptr) {
+            std::cout << "Using DirectML\n";
+        } else {
+            std::cerr << "Erreur DirectML : " << Ort::GetApi().GetErrorMessage(status) << std::endl;
+            Ort::GetApi().ReleaseStatus(status);
+        }
+    } 
+    // CPU
+    else {
+        std::cout << "Using CPU Execution Provider\n";
     }
 
     // CREATE SESSION
-    Ort::Session session(env, modelPath.toStdString().c_str(), sessionOptions);
+    Ort::Session session(
+        env,
+        modelPath.toStdWString().c_str(),
+        sessionOptions
+    );
 
 
     // TENSOR 
@@ -50,15 +85,20 @@ std::vector<float> InferenceEngine::RunInference(
     );
     
     // RUN
-    const char *inputNames[] = {inputName.toStdString().c_str()};
-    const char *outputNames[] = {outputName.toStdString().c_str()};
+    std::string inputNameStr = inputName.toStdString();
+    std::string outputNameStr = outputName.toStdString();
+    const char *inputNames[] = {inputNameStr.c_str()};
+    const char *outputNames[] = {outputNameStr.c_str()};
     
-    std::vector<Ort::Value> outputTensors = session.Run(Ort::RunOptions{nullptr}, inputNames, &inputTensor, 1, outputNames, 1);
+    try {
+        std::vector<Ort::Value> outputTensors = session.Run(Ort::RunOptions{nullptr}, inputNames, &inputTensor, 1, outputNames, 1);
 
-    // EXTRACT
-    float *outputData = outputTensors[0].GetTensorMutableData<float>();
-    size_t outputCount = outputTensors[0].GetTensorTypeAndShapeInfo().GetElementCount();
-    std::vector<float> result(outputData, outputData + outputCount);
-
-    return result;
+        // EXTRACT
+        float *outputData = outputTensors[0].GetTensorMutableData<float>();
+        size_t outputCount = outputTensors[0].GetTensorTypeAndShapeInfo().GetElementCount();
+        return std::vector<float>(outputData, outputData + outputCount);
+    } catch (const Ort::Exception &e) {
+        std::cerr << "Erreur lors de l'inférence : " << e.what() << std::endl;
+        return {};
+    }
 }

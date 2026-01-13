@@ -2,7 +2,7 @@
 #include "warningWindow.h"
 #include <QApplication>
 #include <QFile>
-#include <../core/inference/inferenceengine.h>
+//#include <../core/inference/inferenceengine.h>
 
 int main(int argc, char *argv[]) {
 

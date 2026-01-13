@@ -128,10 +128,16 @@ add_nuget_packages(
         Microsoft.WindowsAppSDK.InteractiveExperiences 1.8.251104001
         Microsoft.WindowsAppSDK.ML 1.8.2109
         Microsoft.WindowsAppSDK.Runtime 1.8.251106002
+        
 )
 
 set(CPPWINRT_VERSION "2.0.250303.1" CACHE STRING "Version of CppWinRT")
 set(CPPWINRT_SYSTEM_VERSION ${CPPWINRT_VERSION} CACHE STRING "System version of CppWinRT")
+set(CPP_WINRT_VERSION ${CPPWINRT_VERSION})
+set(WIN_APP_SDK_VERSION "1.8.251106002")
+
+set(NUGET_PACKAGES_DIR "${CMAKE_BINARY_DIR}/packages")
+file(MAKE_DIRECTORY "${NUGET_PACKAGES_DIR}")
 
 find_package(Microsoft.Windows.ImplementationLibrary CONFIG REQUIRED)
 find_package(Microsoft.WindowsAppSDK.ML CONFIG REQUIRED)
