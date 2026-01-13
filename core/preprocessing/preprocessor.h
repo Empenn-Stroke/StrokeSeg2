@@ -31,7 +31,7 @@ namespace preprocessing {
      */
     class Preprocessor {
       public:
-        Preprocessor(Resampling res, BrainExtraction *br) : resampler(res), brainExtraction(br) {}
+        Preprocessor(Resampling *res, BrainExtraction *br) : resampler(*res), brainExtraction(br) {}
 
         ~Preprocessor() = default;
 

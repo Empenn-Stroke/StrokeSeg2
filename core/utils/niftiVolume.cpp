@@ -74,7 +74,7 @@ NiftiVolume NiftiVolume::loadNifti(const QString &path) {
     return vol;
 }
 
-void NiftiVolume::saveNifti(const QString &path, const NiftiVolume &vol) {
+bool NiftiVolume::saveNifti(const QString &path, const NiftiVolume &vol) {
     nifti_image *nim = nifti_simple_init_nim();
 
     nim->nx = vol.data.dimension(1);
@@ -108,13 +108,13 @@ void NiftiVolume::saveNifti(const QString &path, const NiftiVolume &vol) {
     nifti_set_filenames(nim, path.toStdString().c_str(), 0, 1);
     nifti_image_write(nim);
     nifti_image_free(nim);
+
+    return true;
 }
 
 std::vector<float> NiftiVolume::toVector() const 
 {
-
     return std::vector<float>(data.data(), data.data() + data.size());
-
 }
 
 std::vector<int64_t> NiftiVolume::getShape() const 

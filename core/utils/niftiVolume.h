@@ -61,10 +61,12 @@ struct NiftiVolume {
      *
      * @param path(QString) Output file path.
      * @param vol(NiftiVolume) Volume to save.
+     * 
+     * @return bool True if the file was saved successfully.
      *
      * @throws std::runtime_error If the file cannot be written.
      */
-    static void saveNifti(const QString &path, const NiftiVolume &vol);
+    static bool saveNifti(const QString &path, const NiftiVolume &vol);
 
     /**
      * @brief Vectorizes the volume tensor into a contiguous 1D array.
