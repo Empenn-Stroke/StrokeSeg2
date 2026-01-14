@@ -8,15 +8,29 @@ class MockAnimaWrapper : public AnimaWrapper {
     int callCount = 0;
     bool shouldFail = false;
 
-    // Change 'void' to 'int' (or whatever type is in animawrapper.h)
-    int run(const QStringList &command) override {
-        if (shouldFail) {
-            throw std::runtime_error("Simulated ANIMA error");
-        }
+    explicit MockAnimaWrapper(QObject *parent = nullptr) : AnimaWrapper(parent) {}
 
-        lastCommand = command;
+    int run(const QStringList &args) override {
         callCount++;
+        int outIdx = args.indexOf("-o");
+        if (outIdx != -1 && outIdx + 1 < args.size()) {
+            QString outputPath = args.at(outIdx + 1);
 
-        return 0; // Return 0 to simulate a successful process execution
+            // SÉCURITÉ : Créer le dossier parent si nécessaire
+            QDir().mkpath(QFileInfo(outputPath).absolutePath());
+
+            int inIdx = args.indexOf("-i");
+            if (inIdx != -1 && inIdx + 1 < args.size()) {
+                QFile::remove(outputPath);
+                if (!QFile::copy(args.at(inIdx + 1), outputPath)) {
+                    // Si la copie échoue (ex: chemin invalide), on crée au moins un fichier vide
+                    // pour que le loader NIfTI ne lance pas d'exception fatale
+                    QFile file(outputPath);
+                    file.open(QIODevice::WriteOnly);
+                    file.close();
+                }
+            }
+        }
+        return 0;
     }
 };

@@ -31,9 +31,9 @@ class TestPreprocessor : public QObject {
         QVERIFY(NiftiVolume::saveNifti(inputVol.file_path, inputVol));
 
         Resampling resampler;
-        DummyAnimaWrapper *dummyWrapper = new DummyAnimaWrapper(this);
-        BrainExtraction brainExtractor(dummyWrapper, "");
-        Preprocessor preproc(&resampler, &brainExtractor);
+        MockAnimaWrapper *mockWrapper = new MockAnimaWrapper(this);
+        BrainExtraction brainExtractor(mockWrapper, "");
+        Preprocessor preproc(&resampler, &brainExtractor, mockWrapper);
         // ------------------------
         // Act
         // ------------------------
@@ -86,9 +86,9 @@ class TestPreprocessor : public QObject {
         QVERIFY(NiftiVolume::saveNifti(vol.file_path, vol));
 
         Resampling resampler;
-        DummyAnimaWrapper *dummyWrapper = new DummyAnimaWrapper(this);
-        BrainExtraction brainExtractor(dummyWrapper, "");
-        Preprocessor preproc(&resampler, &brainExtractor);
+        MockAnimaWrapper *mockWrapper = new MockAnimaWrapper(this);
+        BrainExtraction brainExtractor(mockWrapper, "");
+        Preprocessor preproc(&resampler, &brainExtractor, mockWrapper);
 
         // ------------------------
         // Act
@@ -115,5 +115,13 @@ class TestPreprocessor : public QObject {
     }
 };
 
-QTEST_MAIN(TestPreprocessor)
+int main(int argc, char *argv[])
+{
+    // Initialise l'infrastructure Qt pour les tests (QDir, Settings, etc.)
+    QCoreApplication app(argc, argv); 
+    
+    TestPreprocessor tc;
+    return QTest::qExec(&tc, argc, argv);
+}
+
 #include "test_preprocessor.moc"

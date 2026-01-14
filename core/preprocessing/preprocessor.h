@@ -31,7 +31,7 @@ namespace preprocessing {
      */
     class Preprocessor {
       public:
-        Preprocessor(Resampling *res, BrainExtraction *br) : resampler(*res), brainExtraction(br) {}
+        Preprocessor(Resampling *res, BrainExtraction *br, AnimaWrapper *wr) : resampler(*res), brainExtraction(br), wrapper(wr) {}
 
         ~Preprocessor() = default;
 
@@ -42,7 +42,7 @@ namespace preprocessing {
         std::vector<QString> preprocessing_steps;
         Resampling resampler;
         BrainExtraction *brainExtraction;
-        AnimaWrapper wrapper;
+        AnimaWrapper *wrapper;
         ConfigManager &config = ConfigManager::instance();
         QString atlasImage = atlas_dir + "/Reference_T1.nrrd";
 
@@ -62,13 +62,12 @@ namespace preprocessing {
 
         std::pair<QString, QString> registerToReference(const QString &input_path,
                                                         const QString &mni_image_path,
-                                                        const QString &prefix,
-                                                        const QString &suffix);
+                                                        const QString &prefix_label,
+                                                        const QString &base_path_prefix);
 
-        PreprocessedVolume preprocessModality(Preprocessor &pp, 
-                                              const QString &modality_path,
+        PreprocessedVolume preprocessModality(const QString &modality_path,
                                               bool is_MNI,
-                           std::array<std::array<int, 2>, 3> *bbox_ptr = nullptr);
+                                              std::array<std::array<int, 2>, 3> *bbox_ptr = nullptr);
 
         static void printAction(const QString &actionName);
 

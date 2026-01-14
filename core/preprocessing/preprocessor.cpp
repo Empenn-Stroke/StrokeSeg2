@@ -173,9 +173,9 @@ namespace preprocessing {
         args << "animaN4BiasCorrection" << "-i" << input_path << "-o"
              << output_path;
 
-        int ret = wrapper.run(args);
+        int ret = wrapper->run(args);
         if (ret != 0) {
-            std::string err_msg = wrapper.lastStderr().toStdString();
+            std::string err_msg = wrapper->lastStderr().toStdString();
             if (err_msg.empty())
                 err_msg = "Unknown error in AnimaWrapper";
             throw std::runtime_error("Bias correction failed: " + err_msg);
@@ -186,10 +186,12 @@ namespace preprocessing {
 
     std::pair<QString, QString> Preprocessor::registerToReference(const QString &input_path,
                                                                   const QString &ref_path,
-                                                                  const QString &prefix,
-                                                                  const QString &suffix) {
+                                                                  const QString &prefix_label,
+                                                                  const QString &base_path_prefix) {
 
-        const QString output_path = prefix + "_" + suffix + ".nii.gz";
+        QFileInfo fileInfo(base_path_prefix);
+        QString output_path =
+            fileInfo.absolutePath() + "/" + prefix_label + "_" + fileInfo.fileName() + ".nii.gz";
         const QString trsf_path = output_path.left(output_path.size() - 7) + ".txt";
 
         QStringList args;
@@ -199,9 +201,9 @@ namespace preprocessing {
             << "-o" << output_path 
             << "-O" << trsf_path;
 
-        int ret = wrapper.run(args);
+        int ret = wrapper->run(args);
         if (ret != 0) {
-            std::string err_msg = wrapper.lastStderr().toStdString();
+            std::string err_msg = wrapper->lastStderr().toStdString();
             if (err_msg.empty())
                 err_msg = "Unknown error in AnimaWrapper";
             throw std::runtime_error("Bias correction failed: " + err_msg);
@@ -210,15 +212,17 @@ namespace preprocessing {
         return std::pair<QString, QString>(output_path, trsf_path);
     }
 
-    PreprocessedVolume Preprocessor::preprocessModality(Preprocessor &pp,
-                                                        const QString &modality_path,
+    PreprocessedVolume Preprocessor::preprocessModality(const QString &modality_path,
                                                         bool is_MNI,
                                                         std::array<std::array<int, 2>, 3> *bbox_ptr) {
         PreprocessedVolume result;
 
         // --- Step 1: Define temporary prefix ---
-        QString prefix = modality_path;
-        prefix = prefix + "_preproc";
+        QString prefix =
+            QFileInfo(modality_path).absolutePath() + "/" + QFileInfo(modality_path).baseName();
+        if (prefix.endsWith(".nii"))
+            prefix.chop(4);
+        prefix += "_preproc";
 
         QString img_path = modality_path;
 
@@ -228,18 +232,18 @@ namespace preprocessing {
         if (!is_MNI) {
             // Bias correction
             printAction("bias correction");
-            MNI_output = pp.biasCorrect(modality_path, prefix);
+            MNI_output = biasCorrect(modality_path, prefix);
 
             // Reorient to RAS (assuming you have a method in Preprocessor)
             //printAction("reorient to RAS");
-            //MNI_output = pp.reorientToRAS(MNI_output, prefix);
+            //MNI_output = reorientToRAS(MNI_output, prefix);
 
             // Register to reference MNI
             printAction("register to MNI");
-            std::tie(MNI_output, trsf_path) = pp.registerToReference(MNI_output, 
-                                                                     pp.atlasImage, 
-                                                                     "MNI", 
-                                                                     prefix);
+            std::tie(MNI_output, trsf_path) = registerToReference(MNI_output, 
+                                                                     atlasImage, 
+                                                                     prefix, 
+                                                                     "MNI");
         } else {
             MNI_output = modality_path;
             trsf_path.clear();
@@ -254,11 +258,11 @@ namespace preprocessing {
         // --- Step 4: Crop to non-zero region ---
         NiftiVolume cropped;
         if (bbox_ptr) {
-            cropped = pp.cropToNonZero(vol, nullptr, 1,
+            cropped = cropToNonZero(vol, nullptr, 1,
                                        bbox_ptr);
         } else {
             std::array<std::array<int, 2>, 3> computed_bbox;
-            cropped = pp.cropToNonZero(vol,nullptr, 1, &computed_bbox);
+            cropped = cropToNonZero(vol,nullptr, 1, &computed_bbox);
         }
 
         result.original_shape =
@@ -269,14 +273,14 @@ namespace preprocessing {
         printAction("resampling to 1mm isotropic");
         Eigen::Vector3f target_spacing(1.0f, 1.0f, 1.0f);
         result.data =
-            pp.resampler.resample(cropped, target_spacing, false).data; // false = not segmentation
+            resampler.resample(cropped, target_spacing, false).data; // false = not segmentation
 
         // --- Step 6: Z-score normalization ---
         printAction("z-score normalization");
         NiftiVolume norm_vol;
         norm_vol.data = result.data;
         norm_vol.spacing = result.spacing;
-        pp.zScoreNormalize(norm_vol, nullptr);
+        zScoreNormalize(norm_vol, nullptr);
         result.data = norm_vol.data;
 
         // --- Step 7: Padding to ensure min size ---
@@ -284,12 +288,12 @@ namespace preprocessing {
         NiftiVolume tmp_vol;
         tmp_vol.data = result.data;
         tmp_vol.spacing = result.spacing;
-        auto pad_result = pp.padVolume(tmp_vol, 128);
+        auto pad_result = padVolume(tmp_vol, 128);
         result.data = pad_result.first.data;
         result.padding = {pad_result.second[0], pad_result.second[1], pad_result.second[2]};
 
         // --- Step 8: Save MNI reference if needed ---
-        QVariant keepMNI = pp.config.get("keep_MNI", true);
+        QVariant keepMNI = config.get("keep_MNI", true);
         if (keepMNI.toBool()) {
             printAction("saving MNI base image");
             result.MNI_base_image = MNI_output;
@@ -320,7 +324,7 @@ namespace preprocessing {
 
         if (!bet_only) {
             bool is_MNI = prefix.endsWith(QString("MNI"));
-            t1_result = preprocessModality(*this, bet_t1_path, is_MNI);
+            t1_result = preprocessModality(bet_t1_path, is_MNI);
             if (!is_MNI) {
                 moveToOutput(bet_t1_path);
             }
@@ -351,7 +355,7 @@ namespace preprocessing {
             if (!bet_only) {
                 bool is_MNI = flair_prefix.endsWith(QString("MNI"));
                 flair_result =
-                    preprocessModality(*this, bet_flair_path, is_MNI, &t1_result.padding);
+                    preprocessModality(bet_flair_path, is_MNI, &t1_result.padding);
                 if (!is_MNI)
                     moveToOutput(bet_flair_path);
             } else {

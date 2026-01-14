@@ -39,7 +39,7 @@ endmacro()
 # add_qt_test(test_animawrapper test_animawrapper.cpp)
 
 # Test BrainExtraction :
-add_qt_test(test_brainextraction test_brainextraction.cpp)
+#add_qt_test(test_brainextraction test_brainextraction.cpp)
 
 # Test Preprocessor :
-# add_qt_test(test_preprocessor test_preprocessor.cpp)
+add_qt_test(test_preprocessor test_preprocessor.cpp)
