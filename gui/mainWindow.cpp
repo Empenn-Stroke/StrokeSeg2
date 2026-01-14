@@ -1,5 +1,20 @@
 #include "mainWindow.h"
 
+#include <QIcon>
+#include <algorithm>
+#include <QSettings>
+#include <QStandardPaths>
+#include <QDragEnterEvent>
+#include <QDropEvent>
+#include <QMimeData>
+#include <QDebug>
+
+#include <../core/inference/inferenceengine.h>
+
+#ifdef Q_OS_WIN
+#include <windows.h>
+#endif
+
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     
 
@@ -130,7 +145,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     // Model
     m_model = new QComboBox(formParameters);
-    m_model->addItems({"Monomodal (T1)", "Bimodal (T1 + FLAIR)"});
+    QDir modelsDir = QDir("C:/ProgramData/StrokeSeg/Models");
+    QStringList entries = modelsDir.entryList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
+
+    for (const QString &entry : entries) {
+        QFileInfo info(modelsDir.filePath(entry));
+        QString displayName = info.baseName();
+        m_model->addItem(displayName);
+    }
 
     // Toggle
     m_toggleView = new QCheckBox("", formParameters);
@@ -211,18 +233,46 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     m_fileButton = new QToolButton(mainArea);
     m_fileButton->setObjectName("chooseFileButton");
-    m_fileButton->setText("Choose file");
-    m_fileButton->setIcon(QIcon("../../../gui/ressources/files.png"));
-    m_fileButton->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+    m_fileButton->setAcceptDrops(true);
+    m_fileButton->installEventFilter(this);
+    m_fileButton->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    //m_fileButton->setMinimumSize(500, 180);
 
+    // Icon and label layout 
+    QVBoxLayout *buttonLayout = new QVBoxLayout(m_fileButton);
+    buttonLayout->setContentsMargins(0, 0, 0, 0);
+    buttonLayout->setSpacing(20);
+
+    buttonLayout->addStretch();
+
+    // Icon
+    QLabel *iconLabel = new QLabel(m_fileButton);
+    QPixmap pix("../../../gui/ressources/files.png");
+    iconLabel->setPixmap(pix.scaled(80, 80, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    iconLabel->setAlignment(Qt::AlignCenter);
+    iconLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
+    buttonLayout->addWidget(iconLabel);
+
+    // Text
+    m_fileLabel = new QLabel("Choose file", m_fileButton);
+    m_fileLabel->setObjectName("fileLabel");
+    m_fileLabel->setAlignment(Qt::AlignCenter);
+    m_fileLabel->setWordWrap(true);
+    m_fileLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
+    buttonLayout->addWidget(m_fileLabel);
+
+    buttonLayout->addStretch();
+
+    // Run button
     m_runButton = new QPushButton("RUN", mainArea);
     m_runButton->setObjectName("runBtn");
 
-    mainAreaLayout->addStretch();
+    // Main area assembly
+    mainAreaLayout->addStretch(3);
     mainAreaLayout->addWidget(m_fileButton, 0, Qt::AlignHCenter);
-    mainAreaLayout->addStretch();
+    mainAreaLayout->addStretch(1);
     mainAreaLayout->addWidget(m_runButton, 0, Qt::AlignHCenter);
-    mainAreaLayout->addStretch();
+    mainAreaLayout->addStretch(4);
 
     // =========================================================
     //                    FINAL ASSEMBLY
@@ -245,6 +295,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     connect(m_importModel, &QToolButton::clicked, this, &MainWindow::importModel);
     connect(closeBtn, &QPushButton::clicked, this, &QWidget::close);
     connect(reduceBtn, &QPushButton::clicked, this, &QWidget::showMinimized);
+    connect(m_runButton, &QPushButton::clicked, this, &MainWindow::Process);
 
     connect(m_thresholdSlider, &QSlider::valueChanged, this, [this](int v) {
         double realVal = sliderValueToReal(v);
@@ -294,18 +345,56 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
 bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
     if (obj == m_titleBar) {
-        auto *e = static_cast<QMouseEvent *>(event);
-        if (event->type() == QEvent::MouseButtonPress && e->button() == Qt::LeftButton) {
-            m_dragging = true;
-            m_dragPosition = e->globalPosition().toPoint() - frameGeometry().topLeft();
-            return true;
+        if (event->type() == QEvent::MouseButtonPress || event->type() == QEvent::MouseMove ||
+            event->type() == QEvent::MouseButtonRelease) {
+            auto *e = static_cast<QMouseEvent *>(event);
+            if (event->type() == QEvent::MouseButtonPress && e->button() == Qt::LeftButton) {
+                m_dragging = true;
+                m_dragPosition = e->globalPosition().toPoint() - frameGeometry().topLeft();
+                return true;
+            }
+            if (event->type() == QEvent::MouseMove && m_dragging) {
+                move(e->globalPosition().toPoint() - m_dragPosition);
+                return true;
+            }
+            if (event->type() == QEvent::MouseButtonRelease) {
+                m_dragging = false;
+                return true;
+            }
         }
-        if (event->type() == QEvent::MouseMove && m_dragging) {
-            move(e->globalPosition().toPoint() - m_dragPosition);
+    }
+
+    if (obj == m_fileButton) {
+        if (event->type() == QEvent::DragEnter) {
+            auto *dragEvent = static_cast<QDragEnterEvent *>(event);
+            
+            if (dragEvent->mimeData()->hasUrls()) {
+                m_fileButton->setProperty("dragging", true);
+                m_fileButton->update();
+                dragEvent->acceptProposedAction();
+                return true;
+            }
+        } else if (event->type() == QEvent::DragLeave) {
+            m_fileButton->setProperty("dragging", false);
+            m_fileButton->update();
             return true;
-        }
-        if (event->type() == QEvent::MouseButtonRelease) {
-            m_dragging = false;
+        } else if (event->type() == QEvent::Drop) {
+            auto *dropEvent = static_cast<QDropEvent *>(event);
+            const QList<QUrl> urls = dropEvent->mimeData()->urls();
+
+            if (!urls.isEmpty()) {
+                QString filePath = urls.first().toLocalFile();
+
+                if (filePath.endsWith(".nii") || filePath.endsWith(".nii.gz")) {
+                    //m_fileButton->setText(QFileInfo(filePath).fileName());
+                    m_fileLabel->setText(QFileInfo(filePath).fileName());
+                    m_fileChosen = new QString(filePath);
+                    dropEvent->acceptProposedAction();
+                } else {
+                    qDebug() << "File format not supported";
+                    dropEvent->ignore();
+                }
+            }
             return true;
         }
     }
@@ -313,19 +402,91 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
 }
 
 void MainWindow::chooseFile() {
-    QString filename = QFileDialog::getOpenFileName(this, 
-                                                    "Choose file",
-                                                    "",
-                                                    "Medical images (*.nii *.nii.gz);;All files (*)");
-    if (!filename.isEmpty())
-        m_fileButton->setText(filename);
+
+    QSettings settings;
+    QString lastDirFile = settings.value(
+        "lastModelDir",
+        "C:/ProgramData/StrokeSeg/"
+    ).toString();
+
+    QString filePath = QFileDialog::getOpenFileName(
+        this, 
+        "Choose file",
+        lastDirFile,
+        "IRM images (*.nii *.nii.gz);;All files (*)"
+    );
+
+    if (!filePath.isEmpty()) {
+        //m_fileButton->setText(QFileInfo(filePath).fileName());
+        m_fileLabel->setText(QFileInfo(filePath).fileName());
+        m_fileChosen = new QString(filePath);
+    }
 }
 
 void MainWindow::importModel() {
     QString filename = QFileDialog::getOpenFileName(
-        this, "Choose file", "", "ONNX model (*.onnx);;All files (*)");
-    //if (!filename.isEmpty())
-        //m_fileButton->setText(filename);
+        this, "Choose file", "", "ONNX Model (*.onnx);;All files (*)");
+
+    if (filename.isEmpty())
+        return;
+
+    // ---- Find the path ----
+    QString programDataPath = qgetenv("PROGRAMDATA");
+    if (programDataPath.isEmpty()) {
+        programDataPath = "C:/ProgramData"; // Fallback manuel si la variable est vide
+    }
+    QDir dir(programDataPath + "/StrokeSeg/Models");
+
+    if (!dir.exists()) {
+        if (!dir.mkpath(".")) {
+            qDebug() << "Critical error : Impossible to create the directory in ProgramData.";
+            return;
+        }
+    }
+
+    QString destFile = dir.filePath(QFileInfo(filename).fileName());
+
+    // ---- Clear if already exists ----
+    if (QFile::exists(destFile)) {
+        if (!QFile::remove(destFile)) {
+            qDebug() << "Impossible to replace the existant file (no access).";
+            return;
+        }
+    }
+
+    bool success = false;
+    QString methodUsed = "";
+
+    // ---- Try to hardlink ----
+#ifdef Q_OS_WIN
+    std::wstring src = filename.toStdWString();
+    std::wstring dst = destFile.toStdWString();
+
+    if (CreateHardLinkW(dst.c_str(), src.c_str(), NULL)) {
+        success = true;
+        methodUsed = "Hardlink";
+    } else
+        qDebug() << "Hardlink has failed (Probably not the same disk). Trying to copy...";
+#endif
+
+    // ---- Standard copy if the hardlink failed ----
+    if (!success) {
+        if (QFile::copy(filename, destFile)) {
+            success = true;
+            methodUsed = "Standard copy";
+        }
+    }
+
+    // ---- Result ----
+    if (success) {
+        qDebug() << "Success ! " << methodUsed << " created at : " << destFile;
+    } else {
+        qDebug() << "Total failure. Do verify admin access.";
+    }
+
+    QFileInfo info(destFile);
+    QString displayName = info.baseName();
+    m_model->addItem(displayName);
 }
 
 void MainWindow::openGuide() {
@@ -340,46 +501,53 @@ void MainWindow::openGuide() {
 MainWindow::~MainWindow() {}
 
 double MainWindow::sliderValueToReal(int v) {
-    if (v <= 0) return 1e-5;
-    if (v <= 8) return 1e-4;
-    if (v < 16) return 1e-3;
-    if (v == 16) return 0.01;
-
-    if (v >= 100) return 1.0 - 1e-5;
-    if (v >= 92) return 1.0 - 1e-4;
-    if (v > 84) return 1.0 - 1e-3;
-    if (v == 84)  return 0.99;
+    if (v <= 0)     return 1e-5;            if (v <= 8)     return 1e-4;        
+    if (v < 16)     return 1e-3;            if (v == 16)    return 0.01;
+    if (v >= 100)   return 1.0 - 1e-5;      if (v >= 92)    return 1.0 - 1e-4; 
+    if (v > 84)     return 1.0 - 1e-3;      if (v == 84)    return 0.99;
 
     double t = (v - 10) / 80.0;
     return 0.01 + t * (0.99 - 0.01);
 }
 
 int MainWindow::realToSliderValue(double v) {
-    if (v <= 1e-5) return 0;
-    if (v <= 1e-4) return 8;
-    if (v <= 1e-3) return 16;
-
-    if (v >= 1.0 - 1e-5) return 100;
-    if (v >= 1.0 - 1e-4) return 92;
-    if (v >= 1.0 - 1e-3) return 84;
+    if (v <= 1e-5)          return 0;       if (v <= 1e-4)          return 8;
+    if (v <= 1e-3)          return 16;      if (v >= 1.0 - 1e-5)    return 100;
+    if (v >= 1.0 - 1e-4)    return 92;      if (v >= 1.0 - 1e-3)    return 84;
 
     double t = (v - 0.01) / (0.99 - 0.01);
     return 32 + int(std::round(t * 68));
 }
 
 QString MainWindow::formatThreshold(double v) {
-    if (v <= 1e-5)
-        return "10\u207B\u2075";
-    if (v <= 1e-4)
-        return "10\u207B\u2074";
-    if (v <= 1e-3)
-        return "0.001";
-    if (v >= 1.0 - 1e-5)
-        return "1-10\u207B\u2075";
-    if (v >= 1.0 - 1e-4)
-        return "1-10\u207B\u2074";
-    if (v >= 1.0 - 1e-3)
-        return "0.999";
+    if (v <= 1e-5)          return "10\u207B\u2075";    if (v <= 1e-4)          return "10\u207B\u2074";
+    if (v <= 1e-3)          return "0.001";             if (v >= 1.0 - 1e-5)    return "1-10\u207B\u2075";
+    if (v >= 1.0 - 1e-4)    return "1-10\u207B\u2074";  if (v >= 1.0 - 1e-3)    return "0.999";
 
     return QString::number(v, 'f', 2);
+}
+
+void MainWindow::Process() {
+    
+    //if (m_fileButton->text() == "Choose file")
+    if (m_fileLabel->text() == "Choose file")
+        {
+        qDebug() << "No file selected.";
+        return;
+    }
+    QString modelPath = "C:/ProgramData/StrokeSeg/Models/" + m_model->currentText() + ".onnx";
+    QString imagePath = *m_fileChosen; // Here should be the full path, not only the file name
+
+    InferenceEngine engine;
+
+    qDebug() << "Loading for image :" << imagePath ;
+    qDebug() << "And model : " << modelPath;
+
+    auto output = engine.RunInference(modelPath, imagePath);
+
+    if (output.empty()) {
+        qDebug() << "Failure : no data out";
+    } else {
+        qDebug() << "Success ! Output size =" << output.size();
+    }
 }

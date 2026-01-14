@@ -22,10 +22,6 @@
 #include <QDoubleValidator>
 #include <QFileDialog>
 #include <QFormLayout>
-#include <QIcon>
-#include <algorithm>
-
-#include <QSettings>
 
 #include "managers/configmanager.h"
 #include "guideWindow.h"
@@ -61,6 +57,8 @@ private:
     QLineEdit *m_threshold;
 
     QToolButton *m_fileButton;
+    QString *m_fileChosen = nullptr;
+    QLabel *m_fileLabel = nullptr;
     QPushButton *m_runButton;
 
     QPushButton *m_importModel;
@@ -78,6 +76,7 @@ private:
     double sliderValueToReal(int sliderValue);
     int realToSliderValue(double realValue);
     QString formatThreshold(double v);
+    void Process();
 };
 
 

@@ -101,19 +101,22 @@ QMenu {
 }
 
 QMenu::indicator {
-    padding:0px;
-    margin:0;
+    width: 13px;
+    height: 12px;
+    margin-left: 0px;
     /* border:none; */
     /* width:20px; */
     /* background-color:red; */
 }
 
-QMenu::item {
+QMenu::item,
+QMenu::item:checked,
+QMenu::item:unchecked {
     margin:0;
     border:none;
     background: #eff4fa;
     outline:0;
-    padding:4px 9px;
+    padding:4px 10px;
     border-top-right-radius:5px;
     border-bottom-left-radius:5px;
 }
@@ -327,18 +330,33 @@ QPushButton#runBtn:hover {
 
 QToolButton#chooseFileButton {
     background-color: #deebf9;
-    padding:100px 220px;
     color:#5ea6f2;
     font-size:22px;
     font-weight:800;
+
     border-radius:40px;
     border: 4px dashed #5ea6f2;
+    
     text-align:center;
     qproperty-iconSize : 80px 80px;
-    max-width:200px;
+    
+    min-width: 560px;
+    min-height: 320px;
+}
+
+QLabel#fileLabel {
+    color:#5ea6f2;
+    font-size:22px;
+    font-weight:800;
+    qproperty-alignment: AlignHCenter;
 }
 
 QToolButton#chooseFileButton:hover {
+    background-color: #c7dff8;
+}
+
+
+QToolButton#chooseFileButton[dragging="true"]{
     background-color: #c7dff8;
 }
 

@@ -4,7 +4,8 @@ if (WIN32)
     set(APP_ICON_RESOURCE "${CMAKE_CURRENT_SOURCE_DIR}/appicon.rc")
 endif()
 
-qt_add_executable(${PROJECT_NAME}
+qt_add_executable(
+    ${PROJECT_NAME}
     main.cpp
     mainWindow.h
     mainWindow.cpp
@@ -19,6 +20,7 @@ target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/${GUI}/
     ${CMAKE_SOURCE_DIR}/${COMMON}/
+    ${CMAKE_SOURCE_DIR}/${CORE}/
 )
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
