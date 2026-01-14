@@ -28,6 +28,11 @@ enable_testing()
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
+
+find_package(Qt6 REQUIRED COMPONENTS Test)
+
+message(STATUS "Qt6::Test = ${Qt6Test_FOUND}")
+
 # --------------------------
 # Test : NiftiVolume
 # --------------------------
@@ -44,6 +49,24 @@ add_test(
     NAME test_niftivolume
     COMMAND test_niftivolume
 )
+
+# --------------------------
+# Test : AnimaWrapper
+# --------------------------
+qt_add_executable(test_animawrapper
+    test_animawrapper.cpp
+)
+
+target_link_libraries(test_animawrapper PRIVATE
+    Qt6::Test
+    ${CORE}
+)
+
+add_test(
+    NAME test_animawrapper
+    COMMAND test_animawrapper
+)
+
 
 # --------------------------
 # Test : Preprocessor

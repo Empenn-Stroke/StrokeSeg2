@@ -40,7 +40,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(eigen)
 
 # QT
-find_package(Qt6 REQUIRED COMPONENTS Core Test)
+find_package(Qt6 REQUIRED COMPONENTS Core)
 qt_standard_project_setup() # sets some variables to setup qt
 
 # ZLIB
