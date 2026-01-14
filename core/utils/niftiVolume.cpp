@@ -65,6 +65,13 @@ NiftiVolume NiftiVolume::loadNifti(const QString &path) {
         break;
     }
 
+    case NIFTI_TYPE_FLOAT64: {
+        const double *p = static_cast<const double*>(src);
+        for (size_t i = 0; i < voxelCount; ++i)
+            vol.data.data()[i] = static_cast<float>(p[i]);
+        break;
+    }
+
     default:
         nifti_image_free(nim);
         throw std::runtime_error("Unsupported NIFTI datatype");

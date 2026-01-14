@@ -57,6 +57,7 @@ private:
     QLineEdit *m_threshold;
 
     QToolButton *m_fileButton;
+    QString *m_fileChosen = nullptr;
     QPushButton *m_runButton;
 
     QPushButton *m_importModel;
@@ -74,6 +75,7 @@ private:
     double sliderValueToReal(int sliderValue);
     int realToSliderValue(double realValue);
     QString formatThreshold(double v);
+    void Process();
 };
 
 

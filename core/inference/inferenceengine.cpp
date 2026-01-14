@@ -8,16 +8,17 @@
 #include <utils/niftiVolume.h>
 #include <vector>
 
-// Utilisation du type Float16 de ONNX Runtime
 using OrtFloat16 = Ort::Float16_t;
 
 std::vector<float> InferenceEngine::RunInference(const QString &modelPath, const QString &imagePath,
                                                  const QString &inputName,
                                                  const QString &outputName) {
     if (!QFile::exists(modelPath) || !QFile::exists(imagePath)) {
-        qDebug() << "Modèle ou image introuvable !";
+        qDebug() << "Image or model not found !";
         return {};
     }
+
+    // ---- Load and read Nifti ----
 
     NiftiVolume nv = NiftiVolume::loadNifti(imagePath);
 
@@ -34,7 +35,7 @@ std::vector<float> InferenceEngine::RunInference(const QString &modelPath, const
     std::vector<int64_t> inputShape = {1, C, pX, pY, pZ};
     size_t paddedSize = C * pX * pY * pZ;
 
-    // CHANGEMENT : On crée un vecteur de Float16 au lieu de float
+    // ---- Convert to float 16 for ONNX ----
     std::vector<Ort::Float16_t> inputVector(paddedSize);
     std::fill(inputVector.begin(), inputVector.end(), Ort::Float16_t{0.0f});
 
@@ -43,13 +44,13 @@ std::vector<float> InferenceEngine::RunInference(const QString &modelPath, const
             for (int y = 0; y < Y; ++y) {
                 for (int z = 0; z < Z; ++z) {
                     size_t index = c * (pX * pY * pZ) + x * (pY * pZ) + y * pZ + z;
-                    // Conversion explicite de float vers Float16
                     inputVector[index] = OrtFloat16(nv.data(c, x, y, z));
                 }
             }
         }
     }
 
+    // ---- Set environment (trying by DirectML, CPU if impossible) ----
     Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "Inference");
     Ort::SessionOptions sessionOptions;
 
@@ -61,7 +62,8 @@ std::vector<float> InferenceEngine::RunInference(const QString &modelPath, const
 
     Ort::Session session(env, modelPath.toStdWString().c_str(), sessionOptions);
 
-    // CHANGEMENT : Spécifier explicitement le type OrtFloat16 pour le tenseur
+    
+    // ---- Tensor set ----
     Ort::MemoryInfo memoryInfo = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
     Ort::Value inputTensor = Ort::Value::CreateTensor<OrtFloat16>(
         memoryInfo, inputVector.data(), inputVector.size(), inputShape.data(), inputShape.size());
@@ -71,18 +73,18 @@ std::vector<float> InferenceEngine::RunInference(const QString &modelPath, const
     const char *inputNames[] = {inputNameStr.c_str()};
     const char *outputNames[] = {outputNameStr.c_str()};
 
+    
+    // ---- Session run and extract ----
     try {
         std::vector<Ort::Value> outputTensors =
             session.Run(Ort::RunOptions{nullptr}, inputNames, &inputTensor, 1, outputNames, 1);
-
-        // CHANGEMENT : La sortie sera probablement aussi en Float16
-        // On récupère les données en Float16 et on les convertit en float pour le vecteur de retour
+            
         OrtFloat16 *outputDataRaw = outputTensors[0].GetTensorMutableData<OrtFloat16>();
         size_t outputCount = outputTensors[0].GetTensorTypeAndShapeInfo().GetElementCount();
 
         std::vector<float> result(outputCount);
         for (size_t i = 0; i < outputCount; ++i) {
-            result[i] = outputDataRaw[i].ToFloat(); // Conversion inverse
+            result[i] = outputDataRaw[i].ToFloat();
         }
 
         return result;

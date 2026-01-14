@@ -9,6 +9,8 @@
 #include <QMimeData>
 #include <QDebug>
 
+#include <../core/inference/inferenceengine.h>
+
 #ifdef Q_OS_WIN
 #include <windows.h>
 #endif
@@ -143,7 +145,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     // Model
     m_model = new QComboBox(formParameters);
-    m_model->addItems({"Monomodal (T1)", "Bimodal (T1 + FLAIR)"});
+    QDir modelsDir = QDir("C:/ProgramData/StrokeSeg/Models");
+    QStringList entries = modelsDir.entryList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
+
+    for (const QString &entry : entries) {
+        QFileInfo info(modelsDir.filePath(entry));
+        QString displayName = info.baseName();
+        m_model->addItem(displayName);
+    }
 
     // Toggle
     m_toggleView = new QCheckBox("", formParameters);
@@ -261,6 +270,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     connect(m_importModel, &QToolButton::clicked, this, &MainWindow::importModel);
     connect(closeBtn, &QPushButton::clicked, this, &QWidget::close);
     connect(reduceBtn, &QPushButton::clicked, this, &QWidget::showMinimized);
+    connect(m_runButton, &QPushButton::clicked, this, &MainWindow::Process);
 
     connect(m_thresholdSlider, &QSlider::valueChanged, this, [this](int v) {
         double realVal = sliderValueToReal(v);
@@ -352,6 +362,7 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
 
                 if (filePath.endsWith(".nii") || filePath.endsWith(".nii.gz")) {
                     m_fileButton->setText(QFileInfo(filePath).fileName());
+                    m_fileChosen = new QString(filePath);
                     dropEvent->acceptProposedAction();
                 } else {
                     qDebug() << "File format not supported";
@@ -365,12 +376,24 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
 }
 
 void MainWindow::chooseFile() {
-    QString filepath = QFileDialog::getOpenFileName(this, 
-                                                    "Choose file",
-                                                    "",
-                                                    "IRM images (*.nii *.nii.gz);;All files (*)");
-    if (!filepath.isEmpty())
-        m_fileButton->setText(QFileInfo(filepath).fileName());
+
+    QSettings settings;
+    QString lastDirFile = settings.value(
+        "lastModelDir",
+        "C:/ProgramData/StrokeSeg/"
+    ).toString();
+
+    QString filePath = QFileDialog::getOpenFileName(
+        this, 
+        "Choose file",
+        lastDirFile,
+        "IRM images (*.nii *.nii.gz);;All files (*)"
+    );
+
+    if (!filePath.isEmpty()) {
+        m_fileButton->setText(QFileInfo(filePath).fileName());
+        m_fileChosen = new QString(filePath);
+    }
 }
 
 void MainWindow::importModel() {
@@ -380,11 +403,7 @@ void MainWindow::importModel() {
     if (filename.isEmpty())
         return;
 
-    // 1. Définir le chemin de destination dans ProgramData
-    
-    // appdata
-    //QString programDataPath = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
-
+    // ---- Find the path ----
     QString programDataPath = qgetenv("PROGRAMDATA");
     if (programDataPath.isEmpty()) {
         programDataPath = "C:/ProgramData"; // Fallback manuel si la variable est vide
@@ -400,7 +419,7 @@ void MainWindow::importModel() {
 
     QString destFile = dir.filePath(QFileInfo(filename).fileName());
 
-    // 2. Nettoyer si un fichier existe déjà
+    // ---- Clear if already exists ----
     if (QFile::exists(destFile)) {
         if (!QFile::remove(destFile)) {
             qDebug() << "Impossible to replace the existant file (no access).";
@@ -411,7 +430,7 @@ void MainWindow::importModel() {
     bool success = false;
     QString methodUsed = "";
 
-    // 3. Tentative de Hardlink (Windows seulement)
+    // ---- Try to hardlink ----
 #ifdef Q_OS_WIN
     std::wstring src = filename.toStdWString();
     std::wstring dst = destFile.toStdWString();
@@ -423,7 +442,7 @@ void MainWindow::importModel() {
         qDebug() << "Hardlink has failed (Probably not the same disk). Trying to copy...";
 #endif
 
-    // 4. Fallback : Copie classique si le hardlink a échoué ou si on est pas sur Windows
+    // ---- Standard copy if the hardlink failed ----
     if (!success) {
         if (QFile::copy(filename, destFile)) {
             success = true;
@@ -431,12 +450,16 @@ void MainWindow::importModel() {
         }
     }
 
-    // 5. Résultat
+    // ---- Result ----
     if (success) {
         qDebug() << "Success ! " << methodUsed << " created at : " << destFile;
     } else {
         qDebug() << "Total failure. Do verify admin access.";
     }
+
+    QFileInfo info(destFile);
+    QString displayName = info.baseName();
+    m_model->addItem(displayName);
 }
 
 void MainWindow::openGuide() {
@@ -451,46 +474,51 @@ void MainWindow::openGuide() {
 MainWindow::~MainWindow() {}
 
 double MainWindow::sliderValueToReal(int v) {
-    if (v <= 0) return 1e-5;
-    if (v <= 8) return 1e-4;
-    if (v < 16) return 1e-3;
-    if (v == 16) return 0.01;
-
-    if (v >= 100) return 1.0 - 1e-5;
-    if (v >= 92) return 1.0 - 1e-4;
-    if (v > 84) return 1.0 - 1e-3;
-    if (v == 84)  return 0.99;
+    if (v <= 0)     return 1e-5;            if (v <= 8)     return 1e-4;        
+    if (v < 16)     return 1e-3;            if (v == 16)    return 0.01;
+    if (v >= 100)   return 1.0 - 1e-5;      if (v >= 92)    return 1.0 - 1e-4; 
+    if (v > 84)     return 1.0 - 1e-3;      if (v == 84)    return 0.99;
 
     double t = (v - 10) / 80.0;
     return 0.01 + t * (0.99 - 0.01);
 }
 
 int MainWindow::realToSliderValue(double v) {
-    if (v <= 1e-5) return 0;
-    if (v <= 1e-4) return 8;
-    if (v <= 1e-3) return 16;
-
-    if (v >= 1.0 - 1e-5) return 100;
-    if (v >= 1.0 - 1e-4) return 92;
-    if (v >= 1.0 - 1e-3) return 84;
+    if (v <= 1e-5)          return 0;       if (v <= 1e-4)          return 8;
+    if (v <= 1e-3)          return 16;      if (v >= 1.0 - 1e-5)    return 100;
+    if (v >= 1.0 - 1e-4)    return 92;      if (v >= 1.0 - 1e-3)    return 84;
 
     double t = (v - 0.01) / (0.99 - 0.01);
     return 32 + int(std::round(t * 68));
 }
 
 QString MainWindow::formatThreshold(double v) {
-    if (v <= 1e-5)
-        return "10\u207B\u2075";
-    if (v <= 1e-4)
-        return "10\u207B\u2074";
-    if (v <= 1e-3)
-        return "0.001";
-    if (v >= 1.0 - 1e-5)
-        return "1-10\u207B\u2075";
-    if (v >= 1.0 - 1e-4)
-        return "1-10\u207B\u2074";
-    if (v >= 1.0 - 1e-3)
-        return "0.999";
+    if (v <= 1e-5)          return "10\u207B\u2075";    if (v <= 1e-4)          return "10\u207B\u2074";
+    if (v <= 1e-3)          return "0.001";             if (v >= 1.0 - 1e-5)    return "1-10\u207B\u2075";
+    if (v >= 1.0 - 1e-4)    return "1-10\u207B\u2074";  if (v >= 1.0 - 1e-3)    return "0.999";
 
     return QString::number(v, 'f', 2);
+}
+
+void MainWindow::Process() {
+    
+    if (m_fileButton->text() == "Choose file") {
+        qDebug() << "No file selected.";
+        return;
+    }
+    QString modelPath = "C:/ProgramData/StrokeSeg/Models/" + m_model->currentText() + ".onnx";
+    QString imagePath = *m_fileChosen; // Here should be the full path, not only the file name
+
+    InferenceEngine engine;
+
+    qDebug() << "Loading for image :" << imagePath ;
+    qDebug() << "And model : " << modelPath;
+
+    auto output = engine.RunInference(modelPath, imagePath);
+
+    if (output.empty()) {
+        qDebug() << "Failure : no data out";
+    } else {
+        qDebug() << "Success ! Output size =" << output.size();
+    }
 }
