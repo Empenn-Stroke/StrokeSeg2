@@ -330,15 +330,25 @@ QPushButton#runBtn:hover {
 
 QToolButton#chooseFileButton {
     background-color: #deebf9;
-    padding:110px 220px;
     color:#5ea6f2;
     font-size:22px;
     font-weight:800;
+
     border-radius:40px;
     border: 4px dashed #5ea6f2;
+    
     text-align:center;
     qproperty-iconSize : 80px 80px;
-    max-width:120px;
+    
+    min-width: 560px;
+    min-height: 320px;
+}
+
+QLabel#fileLabel {
+    color:#5ea6f2;
+    font-size:22px;
+    font-weight:800;
+    qproperty-alignment: AlignHCenter;
 }
 
 QToolButton#chooseFileButton:hover {

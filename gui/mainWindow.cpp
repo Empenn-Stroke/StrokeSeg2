@@ -233,21 +233,46 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     m_fileButton = new QToolButton(mainArea);
     m_fileButton->setObjectName("chooseFileButton");
-    m_fileButton->setText("Choose file");
-    m_fileButton->setIcon(QIcon("../../../gui/ressources/files.png"));
-    m_fileButton->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
     m_fileButton->setAcceptDrops(true);
     m_fileButton->installEventFilter(this);
-    m_fileButton->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+    m_fileButton->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    //m_fileButton->setMinimumSize(500, 180);
 
+    // Icon and label layout 
+    QVBoxLayout *buttonLayout = new QVBoxLayout(m_fileButton);
+    buttonLayout->setContentsMargins(0, 0, 0, 0);
+    buttonLayout->setSpacing(20);
+
+    buttonLayout->addStretch();
+
+    // Icon
+    QLabel *iconLabel = new QLabel(m_fileButton);
+    QPixmap pix("../../../gui/ressources/files.png");
+    iconLabel->setPixmap(pix.scaled(80, 80, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    iconLabel->setAlignment(Qt::AlignCenter);
+    iconLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
+    buttonLayout->addWidget(iconLabel);
+
+    // Text
+    m_fileLabel = new QLabel("Choose file", m_fileButton);
+    m_fileLabel->setObjectName("fileLabel");
+    m_fileLabel->setAlignment(Qt::AlignCenter);
+    m_fileLabel->setWordWrap(true);
+    m_fileLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
+    buttonLayout->addWidget(m_fileLabel);
+
+    buttonLayout->addStretch();
+
+    // Run button
     m_runButton = new QPushButton("RUN", mainArea);
     m_runButton->setObjectName("runBtn");
 
-    mainAreaLayout->addStretch();
+    // Main area assembly
+    mainAreaLayout->addStretch(3);
     mainAreaLayout->addWidget(m_fileButton, 0, Qt::AlignHCenter);
-    mainAreaLayout->addStretch();
+    mainAreaLayout->addStretch(1);
     mainAreaLayout->addWidget(m_runButton, 0, Qt::AlignHCenter);
-    mainAreaLayout->addStretch();
+    mainAreaLayout->addStretch(4);
 
     // =========================================================
     //                    FINAL ASSEMBLY
@@ -361,7 +386,8 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
                 QString filePath = urls.first().toLocalFile();
 
                 if (filePath.endsWith(".nii") || filePath.endsWith(".nii.gz")) {
-                    m_fileButton->setText(QFileInfo(filePath).fileName());
+                    //m_fileButton->setText(QFileInfo(filePath).fileName());
+                    m_fileLabel->setText(QFileInfo(filePath).fileName());
                     m_fileChosen = new QString(filePath);
                     dropEvent->acceptProposedAction();
                 } else {
@@ -391,7 +417,8 @@ void MainWindow::chooseFile() {
     );
 
     if (!filePath.isEmpty()) {
-        m_fileButton->setText(QFileInfo(filePath).fileName());
+        //m_fileButton->setText(QFileInfo(filePath).fileName());
+        m_fileLabel->setText(QFileInfo(filePath).fileName());
         m_fileChosen = new QString(filePath);
     }
 }
@@ -502,7 +529,9 @@ QString MainWindow::formatThreshold(double v) {
 
 void MainWindow::Process() {
     
-    if (m_fileButton->text() == "Choose file") {
+    //if (m_fileButton->text() == "Choose file")
+    if (m_fileLabel->text() == "Choose file")
+        {
         qDebug() << "No file selected.";
         return;
     }

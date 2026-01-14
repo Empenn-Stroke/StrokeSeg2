@@ -58,6 +58,7 @@ private:
 
     QToolButton *m_fileButton;
     QString *m_fileChosen = nullptr;
+    QLabel *m_fileLabel = nullptr;
     QPushButton *m_runButton;
 
     QPushButton *m_importModel;
