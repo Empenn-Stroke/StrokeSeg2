@@ -32,11 +32,13 @@ int AnimaWrapper::run(const QStringList &args) {
 
     // Configurer et démarrer le processus
 
-    std::cout << "Starting process: " << (anima_root_path + program).toStdString()
+    QString program_path = QDir(anima_root_path).filePath(program);
+
+    std::cout << "Starting process: " << program_path.toStdString()
               << " "
               << arguments.join(' ').toStdString() << std::endl;
 
-    process.setProgram(anima_root_path + program);
+    process.setProgram(program_path);
     process.setArguments(arguments);
     process.setProcessChannelMode(QProcess::SeparateChannels);
     process.start();

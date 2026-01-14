@@ -3,6 +3,7 @@
 
 #include <utils/animawrapper.h>
 #include <utils/path.h>
+#include <iostream>
 
 class TestAnimaWrapper : public QObject {
     Q_OBJECT
@@ -11,6 +12,7 @@ private slots:
 
     void initTestCase() {
         // Vérification minimale : le dossier ANIMA existe
+        qDebug() << anima_root_path;
         QVERIFY2(QFileInfo(anima_root_path).exists(),
                  "anima_root_path does not exist");
     }
@@ -47,6 +49,26 @@ private slots:
 
         QVERIFY(wrapper.lastStdout().contains("Usage") || wrapper.lastStdout().contains("help"));
     }
+
+    void testRun_ValidProgram_ErrorExit() {
+        AnimaWrapper wrapper;
+
+        int ret = wrapper.run({"animaN4BiasCorrection", "--this-argument-does-not-exist"});
+
+        QVERIFY(ret != 0);
+        QVERIFY(!wrapper.lastStderr().isEmpty());
+    }
+
+    void testRun_OutputIsReset() {
+        AnimaWrapper wrapper;
+
+        wrapper.run({"this_program_does_not_exist"});
+        QVERIFY(!wrapper.lastStderr().isEmpty());
+
+        wrapper.run({"animaN4BiasCorrection", "--help"});
+        QVERIFY(wrapper.lastStderr().isEmpty());
+    }
+
 };
 
 QTEST_MAIN(TestAnimaWrapper)

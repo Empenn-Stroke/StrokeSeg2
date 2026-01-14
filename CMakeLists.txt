@@ -40,7 +40,9 @@ set(ANIMA_ROOT_PATH ./anima
     CACHE PATH "path to root of anima installation"
 )
 
-add_compile_definitions(ANIMA_ROOT_PATH=${CMAKE_INSTALL_PREFIX}/${ANIMA_ROOT_PATH})
+#add_compile_definitions(ANIMA_ROOT_PATH=${CMAKE_INSTALL_PREFIX}/${ANIMA_ROOT_PATH})
+add_compile_definitions(ANIMA_ROOT_PATH=${CMAKE_BINARY_DIR}/${ANIMA_ROOT_PATH})
+message(${ANIMA_ROOT_PATH})
 
 # DEPENDENCIES #####################################################################################
 

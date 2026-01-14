@@ -27,7 +27,7 @@ set(DML_INCLUDE_DIR  "${DML_PATH}/include")
 set(ONNX_LIB_DIR "${ONNX_PATH}/runtimes/win-x64/native")
 set(DML_LIB_DIR "${DML_PATH}/bin/x64-win")
 
-target_include_directories(${CORE} PRIVATE
+target_include_directories(${CORE} PUBLIC
     ${CMAKE_SOURCE_DIR}/${CORE}/
     ${CMAKE_SOURCE_DIR}/${COMMON}/
     "${ONNX_INCLUDE_DIR}"
