@@ -28,16 +28,40 @@ enable_testing()
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
+# --------------------------
+# Test : NiftiVolume
+# --------------------------
 qt_add_executable(test_niftivolume
     test_niftivolume.cpp
 )
-
-add_test(NAME test_preprocessor COMMAND test_preprocessor)
 
 target_link_libraries(test_niftivolume PRIVATE
     Qt6::Test
     ${CORE}
 )
+
+add_test(
+    NAME test_niftivolume
+    COMMAND test_niftivolume
+)
+
+# --------------------------
+# Test : Preprocessor
+# --------------------------
+qt_add_executable(test_preprocessor
+    test_preprocessor.cpp
+)
+
+target_link_libraries(test_preprocessor PRIVATE
+    Qt6::Test
+    ${CORE}
+)
+
+add_test(
+    NAME test_preprocessor
+    COMMAND test_preprocessor
+)
+
 
 target_compile_definitions(test_niftivolume PRIVATE
     TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/test_data"

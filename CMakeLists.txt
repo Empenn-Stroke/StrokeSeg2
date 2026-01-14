@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.10...3.31) # support for CXX20
 
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+
 project(strokeseg2-app
   VERSION 0.0.1
   LANGUAGES CXX

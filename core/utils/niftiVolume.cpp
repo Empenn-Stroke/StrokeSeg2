@@ -35,6 +35,8 @@ NiftiVolume NiftiVolume::loadNifti(const QString &path) {
     // ---- Allocate tensor ----
     vol.data = Tensor4f(C, X, Y, Z);
 
+    static_assert(std::is_same_v<decltype(vol.data)::Scalar, float>, "Data type must be float");
+
     const size_t voxelCount = static_cast<size_t>(C) * X * Y * Z;
 
     // ---- Copy / convert data ----
@@ -76,39 +78,78 @@ NiftiVolume NiftiVolume::loadNifti(const QString &path) {
 
 bool NiftiVolume::saveNifti(const QString &path, const NiftiVolume &vol) {
     nifti_image *nim = nifti_simple_init_nim();
+    if (!nim)
+        throw std::runtime_error("Failed to init nifti_image");
 
-    nim->nx = vol.data.dimension(1);
-    nim->ny = vol.data.dimension(2);
-    nim->nz = vol.data.dimension(3);
-    nim->nt = vol.data.dimension(0);
+    // ----------------------------
+    // Dimensions
+    // ----------------------------
+    const int nt = vol.data.dimension(0);
+    const int nx = vol.data.dimension(1);
+    const int ny = vol.data.dimension(2);
+    const int nz = vol.data.dimension(3);
 
-    nim->dx = vol.spacing.x();
-    nim->dy = vol.spacing.y();
-    nim->dz = vol.spacing.z();
+    nim->dim[0] = 4;
+    nim->dim[1] = nx;
+    nim->dim[2] = ny;
+    nim->dim[3] = nz;
+    nim->dim[4] = nt;
+    nim->dim[5] = 1;
+    nim->dim[6] = 1;
+    nim->dim[7] = 1;
 
+    nim->nx = nx;
+    nim->ny = ny;
+    nim->nz = nz;
+    nim->nt = nt;
+    nim->nu = 1;
+
+    // ----------------------------
+    // Spacing (pixdim)
+    // ----------------------------
+    nim->pixdim[0] = 1.0f;
+    nim->pixdim[1] = vol.spacing.x();
+    nim->pixdim[2] = vol.spacing.y();
+    nim->pixdim[3] = vol.spacing.z();
+    nim->pixdim[4] = 1.0f;
+
+    nim->dx = nim->pixdim[1];
+    nim->dy = nim->pixdim[2];
+    nim->dz = nim->pixdim[3];
+    nim->dt = nim->pixdim[4];
+
+    // ----------------------------
+    // Data type
+    // ----------------------------
     nim->datatype = NIFTI_TYPE_FLOAT32;
     nim->nbyper = sizeof(float);
 
-    nim->dim[0] = 4;
-    nim->dim[1] = nim->nx;
-    nim->dim[2] = nim->ny;
-    nim->dim[3] = nim->nz;
-    nim->dim[4] = nim->nt;
+    // ----------------------------
+    // Number of voxels (CRUCIAL)
+    // ----------------------------
+    nim->nvox = static_cast<size_t>(nx) * ny * nz * nt;
 
-    const size_t voxelCount = static_cast<size_t>(nim->nx) * nim->ny * nim->nz * nim->nt;
-
-    nim->data = std::malloc(voxelCount * sizeof(float));
+    // ----------------------------
+    // Allocate data buffer
+    // ----------------------------
+    nim->data = std::malloc(nim->nvox * nim->nbyper);
     if (!nim->data) {
         nifti_image_free(nim);
-        throw std::runtime_error("Failed to allocate NIFTI output buffer");
+        throw std::runtime_error("Failed to allocate NIFTI buffer");
     }
 
-    std::memcpy(nim->data, vol.data.data(), voxelCount * sizeof(float));
+    // ----------------------------
+    // Copy data (contiguous!)
+    // ----------------------------
+    std::memcpy(nim->data, vol.data.data(), nim->nvox * sizeof(float));
 
+    // ----------------------------
+    // Write file
+    // ----------------------------
     nifti_set_filenames(nim, path.toStdString().c_str(), 0, 1);
     nifti_image_write(nim);
-    nifti_image_free(nim);
 
+    nifti_image_free(nim);
     return true;
 }
 

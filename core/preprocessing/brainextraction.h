@@ -21,6 +21,7 @@ class MainWindow; // GUI
  * @brief This class handle the brain extraction during the preprocessing
  */
 class BrainExtraction : public QObject {
+    Q_OBJECT
     public:
         /**
         * @brief Constructor of the brain exctration class

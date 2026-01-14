@@ -13,13 +13,13 @@ class AnimaWrapper : public QObject {
     explicit AnimaWrapper(QObject *parent = nullptr);
 
     // Runs command synchronously. Returns exit code.
-    int run(const QStringList &args);
+    virtual int run(const QStringList &args);
 
     // Optional: get last stderr/stdout
     QString lastStdout() const { return m_stdout; }
     QString lastStderr() const { return m_stderr; }
 
-    private:
+    protected:
     QProcess process;
     QString m_stdout;
     QString m_stderr;

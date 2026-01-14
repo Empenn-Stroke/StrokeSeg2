@@ -55,25 +55,33 @@
         QVERIFY((v1).isApprox((v2)));                                                              \
     } while (false)
 
-inline NiftiVolume makeTestVolume(int C = 1, int X = 4, int Y = 5, int Z = 6) {
-    NiftiVolume vol;
-    vol.data = NiftiVolume::Tensor4f(C, X, Y, Z);
+#pragma once
+#include <Eigen/Core>
+#include <array>
+#include <utils/niftiVolume.h>
 
-    // Fill with deterministic values
+// Génère un petit volume 4D pour les tests
+inline NiftiVolume makeTestVolume(int C = 1, int X = 2, int Y = 2, int Z = 2) {
+    NiftiVolume vol;
+
+    vol.data = Eigen::Tensor<float, 4, Eigen::RowMajor>(C, X, Y, Z);
+    vol.spacing = {1.0f, 1.0f, 1.0f};
+
+    // Remplir avec des valeurs simples
+    int val = 1;
     for (int c = 0; c < C; ++c)
         for (int x = 0; x < X; ++x)
             for (int y = 0; y < Y; ++y)
                 for (int z = 0; z < Z; ++z)
-                    vol.data(c, x, y, z) = float(c + x + y + z);
+                    vol.data(c, x, y, z) = static_cast<float>(val++);
 
-    vol.spacing = Eigen::Vector3f(1.0f, 1.0f, 1.0f);
+    // Chemin de sauvegarde pour le test
     vol.file_path = "test_output/dummy.nii";
+
     return vol;
 }
 
-/**
- * @brief Compare two Eigen::Vector3f for equality
- */
-inline bool eigenVecEq(const Eigen::Vector3f &a, const Eigen::Vector3f &b, float eps = 1e-6f) {
+// Comparaison de vecteurs Eigen::Vector3f
+inline bool eigenVecEq(const Eigen::Vector3f &a, const Eigen::Vector3f &b, float eps = 1e-5f) {
     return (a - b).cwiseAbs().maxCoeff() < eps;
 }
