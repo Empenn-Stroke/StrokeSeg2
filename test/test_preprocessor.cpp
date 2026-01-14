@@ -6,7 +6,7 @@
 #include <utils/path.h>
 
 #include "test_utils.h"
-#include "DummyAnimaWrapper.h"
+#include "mockanimawrapper.h"
 
 using namespace preprocessing;
 

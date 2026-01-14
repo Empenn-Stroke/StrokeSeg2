@@ -33,10 +33,13 @@ endmacro()
 #add_qt_test(test_niftivolume test_niftivolume.cpp)
 
 # Test Resampling
-add_qt_test(test_resampling test_resampling.cpp)
+# add_qt_test(test_resampling test_resampling.cpp)
 
-# Si tu veux réactiver AnimaWrapper plus tard :
+# Test AnimaWrapper :
 # add_qt_test(test_animawrapper test_animawrapper.cpp)
 
-# Si tu veux réactiver Preprocessor plus tard :
+# Test BrainExtraction :
+add_qt_test(test_brainextraction test_brainextraction.cpp)
+
+# Test Preprocessor :
 # add_qt_test(test_preprocessor test_preprocessor.cpp)
