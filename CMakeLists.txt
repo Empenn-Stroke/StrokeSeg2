@@ -104,14 +104,6 @@ if(WIN32)
 endif()
 FetchContent_MakeAvailable(googletest)
 
-# PLATFORM-SPECIFIC
-# if(WIN32)
-    # WINDOWS SDK
-    # WindowsML powered by ONNX runtime
-#    find_library(LIB_WINDOWSML WindowsApp)
-# endif(WIN32)
-
-
 FetchContent_Declare(
   NuGetCMakePackage
   GIT_REPOSITORY https://github.com/mschofie/NuGetCMakePackage
@@ -123,6 +115,7 @@ FetchContent_MakeAvailable(NuGetCMakePackage)
 add_nuget_packages(
     PACKAGES
         Microsoft.Windows.CppWinRT 2.0.250303.1
+        Microsoft.ML.OnnxRuntime.DirectML 1.17.1
         Microsoft.Windows.ImplementationLibrary 1.0.250325.1
         Microsoft.WindowsAppSDK.Foundation 1.8.251104000
         Microsoft.WindowsAppSDK.InteractiveExperiences 1.8.251104001

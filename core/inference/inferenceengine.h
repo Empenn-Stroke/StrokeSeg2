@@ -16,4 +16,4 @@ public:
         const QString& outputName = "output"
     );
 
-};
+}; //
