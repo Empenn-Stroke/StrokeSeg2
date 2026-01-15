@@ -11,7 +11,7 @@ target_include_directories(${CORE} PRIVATE
 
 target_link_libraries(${CORE} PUBLIC
     spdlog
-    eigen
+    #eigen
     Qt6::Core
 )
 
