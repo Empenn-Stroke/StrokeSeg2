@@ -46,6 +46,7 @@ private:
     QFormLayout *m_formLayout;
 
     QLineEdit *m_suffix;
+    QLineEdit *m_destination; QPushButton *m_destinationButton;
     QComboBox *m_model;
     QCheckBox *m_toggleView;
     QCheckBox *m_toggleOutput;
@@ -53,13 +54,13 @@ private:
     QCheckBox *m_savePMap;
     QCheckBox *m_savePreprocessing;
     QComboBox *m_mode;
-    QSlider *m_thresholdSlider;
-    QLineEdit *m_threshold;
+    QSlider *m_thresholdSlider; QLineEdit *m_threshold;
 
     QToolButton *m_fileButton;
     QString *m_fileChosen = nullptr;
     QLabel *m_fileLabel = nullptr;
     QPushButton *m_runButton;
+    QLabel *m_consoleLabel;
 
     QPushButton *m_importModel;
 
@@ -70,6 +71,7 @@ private:
 
 
   private slots:
+    void chooseDestination();
     void chooseFile();
     void openGuide();
     void importModel();

@@ -143,6 +143,22 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     m_suffix->setObjectName("suffix");
     m_suffix->setPlaceholderText("Enter the suffix name");
 
+    // Destination
+    QHBoxLayout *destinationLayout = new QHBoxLayout(formParameters);
+    destinationLayout->setSpacing(8);
+    destinationLayout->setObjectName("destinationContainer");
+
+    m_destination = new QLineEdit(formParameters);
+    m_destination->setObjectName("destination");
+    m_destination->setPlaceholderText("Select output folder");
+
+    m_destinationButton = new QPushButton(formParameters);
+    m_destinationButton->setText("...");
+    m_destinationButton->setObjectName("destinationBtn");
+
+    destinationLayout->addWidget(m_destination);
+    destinationLayout->addWidget(m_destinationButton);
+
     // Model
     m_model = new QComboBox(formParameters);
     QDir modelsDir = QDir("C:/ProgramData/StrokeSeg/Models");
@@ -186,10 +202,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     thresholdLayout->setContentsMargins(0, 0, 0, 0);
     thresholdLayout->addWidget(m_threshold);
     thresholdLayout->addWidget(m_thresholdSlider);
+    thresholdLayout->setSpacing(8);
 
 
     // Assembly
     m_formLayout->addRow("Suffix :", m_suffix);
+    m_formLayout->addRow("Destination :", destinationLayout);
     m_formLayout->addRow("Model :", m_model);
     m_formLayout->addRow("Open viewer :", m_toggleView);
     m_formLayout->addRow("Output MNI space :", m_toggleOutput);
@@ -214,9 +232,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     bottomLayout->addWidget(m_importModel);
 
+    leftLayout->addSpacing(10);
+    leftLayout->addWidget(formParameters, 0, Qt::AlignTop);
     leftLayout->addStretch(1);
-    leftLayout->addWidget(formParameters);
-    leftLayout->addStretch(25);
     leftLayout->addWidget(bottomBtns);
 
     // =========================================================
@@ -267,12 +285,29 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     m_runButton = new QPushButton("RUN", mainArea);
     m_runButton->setObjectName("runBtn");
 
+    // Console log
+    QWidget *consoleContainer = new QWidget(mainArea);
+    consoleContainer->setObjectName("consoleContainer");
+    consoleContainer->setAttribute(Qt::WA_StyledBackground, true);
+
+    QHBoxLayout *consoleLayout = new QHBoxLayout(consoleContainer);
+    consoleLayout->setContentsMargins(0, 10, 8, 0);
+    consoleLayout->setSpacing(0);
+    consoleLayout->setAlignment(Qt::AlignRight);
+
+
+    m_consoleLabel = new QLabel(mainArea);
+    m_consoleLabel->setObjectName("consoleLabel");
+    m_consoleLabel->setText("Console output...");
+    consoleLayout->addWidget(m_consoleLabel);
+
     // Main area assembly
     mainAreaLayout->addStretch(3);
     mainAreaLayout->addWidget(m_fileButton, 0, Qt::AlignHCenter);
     mainAreaLayout->addStretch(1);
     mainAreaLayout->addWidget(m_runButton, 0, Qt::AlignHCenter);
     mainAreaLayout->addStretch(4);
+    mainAreaLayout->addWidget(consoleContainer, 0, Qt::AlignRight);
 
     // =========================================================
     //                    FINAL ASSEMBLY
@@ -292,6 +327,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     // =========================================================
 
     connect(m_fileButton, &QToolButton::clicked, this, &MainWindow::chooseFile);
+    connect(m_destinationButton, &QPushButton::clicked, this, &MainWindow::chooseDestination);
     connect(m_importModel, &QToolButton::clicked, this, &MainWindow::importModel);
     connect(closeBtn, &QPushButton::clicked, this, &QWidget::close);
     connect(reduceBtn, &QPushButton::clicked, this, &QWidget::showMinimized);
@@ -391,7 +427,7 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
                     m_fileChosen = new QString(filePath);
                     dropEvent->acceptProposedAction();
                 } else {
-                    qDebug() << "File format not supported";
+                    m_consoleLabel->setText("File format not supported");
                     dropEvent->ignore();
                 }
             }
@@ -423,6 +459,18 @@ void MainWindow::chooseFile() {
     }
 }
 
+void MainWindow::chooseDestination() {
+    QString folderPath = QFileDialog::getExistingDirectory(
+        this,
+        "Choose output folder",
+        "",
+        QFileDialog::ShowDirsOnly);
+
+    if (!folderPath.isEmpty()) {
+        m_destination->setText(folderPath);
+    }
+}
+
 void MainWindow::importModel() {
     QString filename = QFileDialog::getOpenFileName(
         this, "Choose file", "", "ONNX Model (*.onnx);;All files (*)");
@@ -439,7 +487,7 @@ void MainWindow::importModel() {
 
     if (!dir.exists()) {
         if (!dir.mkpath(".")) {
-            qDebug() << "Critical error : Impossible to create the directory in ProgramData.";
+            qDebug() << ("Critical Error: Failed to create directory in ProgramData.");
             return;
         }
     }
@@ -449,7 +497,7 @@ void MainWindow::importModel() {
     // ---- Clear if already exists ----
     if (QFile::exists(destFile)) {
         if (!QFile::remove(destFile)) {
-            qDebug() << "Impossible to replace the existant file (no access).";
+            qDebug() << ("Error: Unable to overwrite existing file (Access denied).");
             return;
         }
     }
@@ -528,6 +576,8 @@ QString MainWindow::formatThreshold(double v) {
 }
 
 void MainWindow::Process() {
+
+    m_consoleLabel->setText("Running inference");
     
     //if (m_fileButton->text() == "Choose file")
     if (m_fileLabel->text() == "Choose file")
@@ -535,19 +585,19 @@ void MainWindow::Process() {
         qDebug() << "No file selected.";
         return;
     }
-    QString modelPath = "C:/ProgramData/StrokeSeg/Models/" + m_model->currentText() + ".onnx";
-    QString imagePath = *m_fileChosen; // Here should be the full path, not only the file name
 
-    InferenceEngine engine;
+    QString modelPath = "C:/ProgramData/StrokeSeg/Models/" + m_model->currentText() + ".onnx";
+    QString imagePath = *m_fileChosen;
 
     qDebug() << "Loading for image :" << imagePath ;
     qDebug() << "And model : " << modelPath;
 
+    InferenceEngine engine;
     auto output = engine.RunInference(modelPath, imagePath);
 
     if (output.empty()) {
-        qDebug() << "Failure : no data out";
+        m_consoleLabel->setText("Failure : no data out");
     } else {
-        qDebug() << "Success ! Output size =" << output.size();
+        m_consoleLabel->setText(QString("Success! Output size = %1").arg(output.size()));
     }
 }
