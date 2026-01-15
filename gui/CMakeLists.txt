@@ -28,6 +28,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     Qt6::Core
     Qt6::Gui
     Qt6::Widgets
+    Qt6::Concurrent
 )
 
 if(WIN32)

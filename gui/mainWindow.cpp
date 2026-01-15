@@ -8,6 +8,7 @@
 #include <QDropEvent>
 #include <QMimeData>
 #include <QDebug>
+#include <QtConcurrent>
 
 #include <../core/inference/inferenceengine.h>
 
@@ -144,9 +145,16 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     m_suffix->setPlaceholderText("Enter the suffix name");
 
     // Destination
-    QHBoxLayout *destinationLayout = new QHBoxLayout(formParameters);
+
+    QWidget *destinationContainer = new QWidget(formParameters);
+    destinationContainer->setObjectName("destinationContainer");
+    destinationContainer->setContentsMargins(0, 0, 0, 0);
+    destinationContainer->setAttribute(Qt::WA_StyledBackground, true);
+
+    QHBoxLayout *destinationLayout = new QHBoxLayout(destinationContainer);
     destinationLayout->setSpacing(8);
-    destinationLayout->setObjectName("destinationContainer");
+    destinationLayout->setContentsMargins(0, 0, 0, 0);
+    destinationLayout->setObjectName("destinationLayout");
 
     m_destination = new QLineEdit(formParameters);
     m_destination->setObjectName("destination");
@@ -207,7 +215,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     // Assembly
     m_formLayout->addRow("Suffix :", m_suffix);
-    m_formLayout->addRow("Destination :", destinationLayout);
+
+    QLabel *destionationLabel = new QLabel("Destination :", formParameters);
+    m_formLayout->addRow(destionationLabel, destinationContainer);
+
     m_formLayout->addRow("Model :", m_model);
     m_formLayout->addRow("Open viewer :", m_toggleView);
     m_formLayout->addRow("Output MNI space :", m_toggleOutput);
@@ -347,7 +358,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
         else if (text == "1-10\u207B\u2074") val = 1.0 - 1e-4;
         else if (text == "10\u207B\u2074") val = 1e-4;
         else {
-            bool ok;
             val = text.toDouble(&ok);
             if (!ok)
                 return;
@@ -575,29 +585,57 @@ QString MainWindow::formatThreshold(double v) {
     return QString::number(v, 'f', 2);
 }
 
-void MainWindow::Process() {
+//void MainWindow::Process() {
+//
+//    m_consoleLabel->setText("Running inference");
+//    
+//    //if (m_fileButton->text() == "Choose file")
+//    if (m_fileLabel->text() == "Choose file")
+//        {
+//        qDebug() << "No file selected.";
+//        return;
+//    }
+//
+//    QString modelPath = "C:/ProgramData/StrokeSeg/Models/" + m_model->currentText() + ".onnx";
+//    QString imagePath = *m_fileChosen;
+//
+//    qDebug() << "Loading for image :" << imagePath ;
+//    qDebug() << "And model : " << modelPath;
+//
+//    InferenceEngine engine;
+//    auto output = engine.RunInference(modelPath, imagePath);
+//
+//    if (output.empty()) {
+//        m_consoleLabel->setText("Failure : no data out");
+//    } else {
+//        m_consoleLabel->setText(QString("Success! Output size = %1").arg(output.size()));
+//    }
+//}
 
-    m_consoleLabel->setText("Running inference");
-    
-    //if (m_fileButton->text() == "Choose file")
-    if (m_fileLabel->text() == "Choose file")
-        {
-        qDebug() << "No file selected.";
-        return;
-    }
+void MainWindow::Process() {
+    m_runButton->setEnabled(false); // On évite de cliquer 10 fois
+    m_consoleLabel->setText("Running inference...");
 
     QString modelPath = "C:/ProgramData/StrokeSeg/Models/" + m_model->currentText() + ".onnx";
-    QString imagePath = *m_fileChosen;
+    QString imagePath = *m_fileChosen; // Supposons que m_fileChosen n'est plus un pointeur
 
-    qDebug() << "Loading for image :" << imagePath ;
-    qDebug() << "And model : " << modelPath;
+    // Lance le calcul dans un autre thread
+    QFuture<std::vector<float>> worker = QtConcurrent::run([modelPath, imagePath]() {
+        InferenceEngine engine;
+        return engine.RunInference(modelPath, imagePath);
+    });
 
-    InferenceEngine engine;
-    auto output = engine.RunInference(modelPath, imagePath);
-
-    if (output.empty()) {
-        m_consoleLabel->setText("Failure : no data out");
-    } else {
-        m_consoleLabel->setText(QString("Success! Output size = %1").arg(output.size()));
-    }
+    // Surveille la fin du thread
+    auto watcher = new QFutureWatcher<std::vector<float>>();
+    connect(watcher, &QFutureWatcher<std::vector<float>>::finished, this, [this, watcher]() {
+        auto output = watcher->result();
+        if (output.empty()) {
+            m_consoleLabel->setText("Failure : no data out");
+        } else {
+            m_consoleLabel->setText(QString("Success! Output size = %1").arg(output.size()));
+        }
+        m_runButton->setEnabled(true);
+        watcher->deleteLater();
+    });
+    watcher->setFuture(worker);
 }

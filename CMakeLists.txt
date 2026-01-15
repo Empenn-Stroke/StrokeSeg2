@@ -59,7 +59,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(eigen)
 
 # QT
-find_package(Qt6 REQUIRED COMPONENTS Core)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Concurrent)
 qt_standard_project_setup() # sets some variables to setup qt
 
 # ZLIB
