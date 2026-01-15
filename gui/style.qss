@@ -479,3 +479,54 @@ QWidget#warningWindow QPushButton:hover{
 #dontShowAgain::indicator:checked {
     image: url("../../../gui/ressources/checkbox2_on.png");
 }
+
+/* 
+=========================================================
+                  MODEL MANAGER
+=========================================================
+*/
+
+QWidget#modelManager QWidget#mainArea {
+    background-color:#ffffff;
+    border-bottom-right-radius:10px;
+    border-bottom-left-radius:10px;
+}
+
+QLabel#modelLabel {
+    color:#0a0c0f;
+    padding:5px 10px;
+    background-color:#eff4fa;
+    border-radius:5px;
+    outline:0;
+    margin:0;
+    font-size:14px;
+    selection-background-color: #5ea6f2;
+    selection-color: #ffffff;
+    width:200px;
+}
+
+QPushButton#deleteBtn {
+    background-color: #eff4fa;
+    padding:5px 10px;
+    color:#0a0c0f;
+    font-size:14px;
+    border-radius:5px;
+    margin:0;
+    width:20px;
+}
+
+QPushButton#deleteBtn:hover  {
+    background-color:#ff8474;
+}
+
+QPushButton#importModel {
+    background-color: #5ea6f2;
+    padding:5px 20px;
+    color:#ffffff;
+    font-size:14px;
+    border-radius:5px;
+}
+
+QPushButton#importModel:hover  {
+    background-color:#94dcff;
+}

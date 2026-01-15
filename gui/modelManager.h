@@ -26,4 +26,13 @@ class ModelManager : public QWidget {
 
   private:
     QWidget *m_titleBar;
+    QWidget *m_mainArea;
+    QVBoxLayout *m_mainAreaLayout ;
+    
+  private slots:
+    void importModel();
+    void deleteModel(const QString &filePath, QWidget *container);
+  
+  signals:
+    void modelsChanged();
 };

@@ -86,12 +86,16 @@ private:
     void openGuide();
     
     void openModelManager();
-    void importModel();
 
     void Process();
 
     void saveSettings();
     void loadSettings();
+
+    void closeEvent(QCloseEvent *event) override;
+
+  public slots:
+    void refreshModelsList();
 };
 
 

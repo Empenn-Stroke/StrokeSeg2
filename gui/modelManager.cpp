@@ -1,11 +1,18 @@
 #include "modelManager.h"
+#include <QDir>
+#include <QToolButton>
+#include <QFileDialog>
+
+#ifdef Q_OS_WIN
+#include <windows.h>
+#endif
 
 ModelManager::ModelManager(QWidget *parent) : QWidget(parent) {
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowTitle("Model manager");
-    resize(1000, 600);
+    resize(250, 100);
 
-    setWindowFlags(Qt::FramelessWindowHint);
+    setWindowFlags(Qt::FramelessWindowHint | Qt::Tool);
     setAttribute(Qt::WA_TranslucentBackground);
 
     // =========================================================
@@ -53,36 +60,67 @@ ModelManager::ModelManager(QWidget *parent) : QWidget(parent) {
     titleLayout->addWidget(closeBtn);
 
     // =========================================================
-    //                    TEXT AREA
+    //                      MAIN AREA
     // =========================================================
 
-    QWidget *mainArea = new QWidget(this);
-    mainArea->setObjectName("mainArea");
-    mainArea->setAttribute(Qt::WA_StyledBackground, true);
+    m_mainArea = new QWidget(this);
+    m_mainArea->setObjectName("mainArea");
+    m_mainArea->setAttribute(Qt::WA_StyledBackground, true);
 
-    QVBoxLayout *mainAreaLayout = new QVBoxLayout(mainArea);
-    mainAreaLayout->setContentsMargins(0, 0, 0, 0);
-    mainAreaLayout->setSpacing(20);
+    m_mainAreaLayout = new QVBoxLayout(m_mainArea);
+    m_mainAreaLayout->setContentsMargins(12, 13, 12, 12);
+    m_mainAreaLayout->setSpacing(8);
 
-    QTextEdit *textArea = new QTextEdit(this);
-    textArea->setObjectName("guideContent");
-    textArea->setReadOnly(true);
+    QDir modelsDir = QDir("C:/ProgramData/StrokeSeg/Models");
+    QStringList entries = modelsDir.entryList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
 
-    QFile file("../../../gui/ressources/guide.html");
-    if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        QTextStream in(&file);
-        textArea->setHtml(in.readAll());
-        file.close();
+    for (const QString &entry : entries) {
+
+        QString fullPath = modelsDir.filePath(entry);
+        QFileInfo info(fullPath);
+        QString displayName = info.baseName();
+
+        QLabel *modelLabel = new QLabel(displayName, this);
+        modelLabel->setObjectName("modelLabel");
+        modelLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+
+        QWidget *modelContainer = new QWidget(m_mainArea);
+        modelContainer->setContentsMargins(0, 0, 0, 0);
+        QHBoxLayout *modelLayout = new QHBoxLayout(modelContainer);
+        modelLayout->setContentsMargins(0, 0, 0, 0);
+        modelLayout->setSpacing(8);
+
+        QPushButton *deleteBtn = new QPushButton(modelContainer);
+        deleteBtn->setObjectName("deleteBtn");
+        QIcon *icon = new QIcon("../../../gui/ressources/delete.svg");
+        deleteBtn->setIcon(*icon);
+        deleteBtn->setIconSize(QSize(16, 16));
+
+        connect(deleteBtn, &QPushButton::clicked, this, [this, fullPath, modelContainer]() {
+            this->deleteModel(fullPath, modelContainer);
+        });
+
+        modelLayout->addWidget(modelLabel);
+        modelLayout->addWidget(deleteBtn);
+
+        m_mainAreaLayout->addWidget(modelContainer);
     }
 
-    mainAreaLayout->addWidget(textArea);
+    QPushButton *importModel = new QPushButton(m_mainArea);
+    importModel->setText("+");
+    importModel->setObjectName("importModel");
+    importModel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+    importModel->setContentsMargins(0, 10, 0, 0);
+
+    m_mainAreaLayout->addStretch();
+    m_mainAreaLayout->addWidget(importModel, 0, Qt::AlignHCenter);
 
     // =========================================================
     //                    FINAL ASSEMBLY
     // =========================================================
 
     windowLayout->addWidget(m_titleBar);
-    windowLayout->addWidget(mainArea);
+    windowLayout->addWidget(m_mainArea);
 
     // =========================================================
     //                     CONNECT
@@ -90,6 +128,7 @@ ModelManager::ModelManager(QWidget *parent) : QWidget(parent) {
 
     connect(closeBtn, &QPushButton::clicked, this, &QWidget::close);
     connect(reduceBtn, &QPushButton::clicked, this, &QWidget::showMinimized);
+    connect(importModel, &QPushButton::clicked, this, &ModelManager::importModel);
 }
 
 // =========================================================
@@ -115,3 +154,112 @@ bool ModelManager::eventFilter(QObject *obj, QEvent *event) {
     }
     return QWidget::eventFilter(obj, event);
 }
+
+void ModelManager::importModel() {
+    QString filename =
+        QFileDialog::getOpenFileName(this, "Choose file", "C:/ProgramData/StrokeSeg/Models", "ONNX Model (*.onnx);;All files (*)");
+
+    if (filename.isEmpty())
+        return;
+
+    // ---- Find the path ----
+    QString programDataPath = qgetenv("PROGRAMDATA");
+    if (programDataPath.isEmpty()) {
+        programDataPath = "C:/ProgramData"; // Fallback manuel si la variable est vide
+    }
+    QDir dir(programDataPath + "/StrokeSeg/Models");
+
+    if (!dir.exists()) {
+        if (!dir.mkpath(".")) {
+            qDebug() << ("Critical Error: Failed to create directory in ProgramData.");
+            return;
+        }
+    }
+
+    QString destFile = dir.filePath(QFileInfo(filename).fileName());
+
+    // ---- Clear if already exists ----
+    if (QFile::exists(destFile)) {
+        if (!QFile::remove(destFile)) {
+            qDebug() << ("Error: Unable to overwrite existing file (Access denied).");
+            return;
+        }
+    }
+
+    bool success = false;
+    QString methodUsed = "";
+
+    // ---- Try to hardlink ----
+#ifdef Q_OS_WIN
+    std::wstring src = filename.toStdWString();
+    std::wstring dst = destFile.toStdWString();
+
+    if (CreateHardLinkW(dst.c_str(), src.c_str(), NULL)) {
+        success = true;
+        methodUsed = "Hardlink";
+    } else
+        qDebug() << "Hardlink has failed (Probably not the same disk). Trying to copy...";
+#endif
+
+    // ---- Standard copy if the hardlink failed ----
+    if (!success) {
+        if (QFile::copy(filename, destFile)) {
+            success = true;
+            methodUsed = "Standard copy";
+        }
+    }
+
+    // ---- Result ----
+    if (success) {
+        emit modelsChanged();
+        qDebug() << "Success ! " << methodUsed << " created at : " << destFile;
+    } else {
+        qDebug() << "Total failure. Do verify admin access.";
+    }
+
+    QFileInfo info(destFile);
+    QString displayName = info.baseName();
+
+    QLabel *modelLabel = new QLabel(displayName, this);
+    modelLabel->setObjectName("modelLabel");
+    modelLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+
+    QWidget *modelContainer = new QWidget(m_mainArea);
+    modelContainer->setContentsMargins(0, 0, 0, 0);
+    QHBoxLayout *modelLayout = new QHBoxLayout(modelContainer);
+    modelLayout->setContentsMargins(0, 0, 0, 0);
+    modelLayout->setSpacing(8);
+
+    QPushButton *deleteBtn = new QPushButton(modelContainer);
+    deleteBtn->setObjectName("deleteBtn");
+    QIcon *icon = new QIcon("../../../gui/ressources/delete.svg");
+    deleteBtn->setIcon(*icon);
+    deleteBtn->setIconSize(QSize(16, 16));
+
+    connect(deleteBtn, &QPushButton::clicked, this,
+            [this, destFile, modelContainer]() { this->deleteModel(destFile, modelContainer); });
+
+    modelLayout->addWidget(modelLabel);
+    modelLayout->addWidget(deleteBtn);
+
+    int index = m_mainAreaLayout->count() - 2;
+    m_mainAreaLayout->insertWidget(index < 0 ? 0 : index, modelContainer);
+}
+
+void ModelManager::deleteModel(const QString &filePath, QWidget *container) {
+    if (QFile::exists(filePath)) {
+        if (QFile::remove(filePath)) {
+            emit modelsChanged();
+            qDebug() << "Model successfully removed :" << filePath;
+        } else {
+            qDebug() << "Error : Unable to delete the model. Do verify admin access.";
+            return; 
+        }
+    }
+
+    if (container) {
+        container->hide();
+        container->deleteLater();
+    }
+}
+

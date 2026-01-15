@@ -286,7 +286,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     // Icon
     QLabel *iconLabel = new QLabel(m_fileButton);
-    QPixmap pix("../../../gui/ressources/files.png");
+    QPixmap pix("../../../gui/ressources/files.svg");
     iconLabel->setPixmap(pix.scaled(80, 80, Qt::KeepAspectRatio, Qt::SmoothTransformation));
     iconLabel->setAlignment(Qt::AlignCenter);
     iconLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
@@ -524,72 +524,6 @@ void MainWindow::chooseDestination() {
     }
 }
 
-void MainWindow::importModel() {
-    QString filename = QFileDialog::getOpenFileName(
-        this, "Choose file", "", "ONNX Model (*.onnx);;All files (*)");
-
-    if (filename.isEmpty())
-        return;
-
-    // ---- Find the path ----
-    QString programDataPath = qgetenv("PROGRAMDATA");
-    if (programDataPath.isEmpty()) {
-        programDataPath = "C:/ProgramData"; // Fallback manuel si la variable est vide
-    }
-    QDir dir(programDataPath + "/StrokeSeg/Models");
-
-    if (!dir.exists()) {
-        if (!dir.mkpath(".")) {
-            qDebug() << ("Critical Error: Failed to create directory in ProgramData.");
-            return;
-        }
-    }
-
-    QString destFile = dir.filePath(QFileInfo(filename).fileName());
-
-    // ---- Clear if already exists ----
-    if (QFile::exists(destFile)) {
-        if (!QFile::remove(destFile)) {
-            qDebug() << ("Error: Unable to overwrite existing file (Access denied).");
-            return;
-        }
-    }
-
-    bool success = false;
-    QString methodUsed = "";
-
-    // ---- Try to hardlink ----
-#ifdef Q_OS_WIN
-    std::wstring src = filename.toStdWString();
-    std::wstring dst = destFile.toStdWString();
-
-    if (CreateHardLinkW(dst.c_str(), src.c_str(), NULL)) {
-        success = true;
-        methodUsed = "Hardlink";
-    } else
-        qDebug() << "Hardlink has failed (Probably not the same disk). Trying to copy...";
-#endif
-
-    // ---- Standard copy if the hardlink failed ----
-    if (!success) {
-        if (QFile::copy(filename, destFile)) {
-            success = true;
-            methodUsed = "Standard copy";
-        }
-    }
-
-    // ---- Result ----
-    if (success) {
-        qDebug() << "Success ! " << methodUsed << " created at : " << destFile;
-    } else {
-        qDebug() << "Total failure. Do verify admin access.";
-    }
-
-    QFileInfo info(destFile);
-    QString displayName = info.baseName();
-    m_model->addItem(displayName);
-}
-
 void MainWindow::openGuide() {
     if (guide.isNull())
         guide = new GuideWindow();
@@ -600,13 +534,35 @@ void MainWindow::openGuide() {
 }
 
 void MainWindow::openModelManager() {
-    if (modelManager.isNull())
+    if (modelManager.isNull()) {
         modelManager = new ModelManager();
+        connect(modelManager, &ModelManager::modelsChanged, this, &MainWindow::refreshModelsList);
+    }
 
     modelManager->show();
     modelManager->raise();
     modelManager->activateWindow();
+    modelManager->move(modelManager->width() + 32,
+                       this->geometry().bottom() - modelManager->height() - 15);
 }
+
+
+void MainWindow::refreshModelsList() {
+    QString currentModel = m_model->currentText();
+    m_model->clear();
+
+    QDir modelsDir("C:/ProgramData/StrokeSeg/Models");
+    QStringList entries = modelsDir.entryList(QDir::Files | QDir::NoDotAndDotDot);
+
+    for (const QString &entry : entries) {
+        m_model->addItem(QFileInfo(entry).baseName());
+    }
+
+    int index = m_model->findText(currentModel);
+    if (index != -1)
+        m_model->setCurrentIndex(index);
+}
+
 
 double MainWindow::sliderValueToReal(int v) {
     if (v <= 0)     return 1e-5;            if (v <= 8)     return 1e-4;        
@@ -637,8 +593,13 @@ QString MainWindow::formatThreshold(double v) {
 
 void MainWindow::Process() {
 
-    if (m_destination->text() == "" || *m_fileChosen == "Choose File")
+    if (*m_fileChosen == "Choose File")
         return;
+
+    if (m_destination->text() == "") {
+        m_consoleLabel->setText("Please select an output folder.");
+        return;
+    }
 
     m_stackedArea->setCurrentIndex(1);
 
@@ -731,6 +692,20 @@ void MainWindow::loadSettings() {
 
     m_threshold->setText(settings.value("thresholdValue", "0.50").toString());
     m_thresholdSlider->setValue(settings.value("thresholdSlider", 50).toInt());
+}
+
+void MainWindow::closeEvent(QCloseEvent *event) {
+
+    if (!modelManager.isNull()) {
+        modelManager->close();
+    }
+
+    if (!guide.isNull()) {
+        guide->close();
+    }
+
+    saveSettings();
+    event->accept();
 }
 
 MainWindow::~MainWindow() {
