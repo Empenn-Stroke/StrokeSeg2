@@ -13,6 +13,8 @@ qt_add_executable(
     guideWindow.cpp
     warningWindow.h
     warningWindow.cpp
+    modelManager.h
+    modelManager.cpp
     ${APP_ICON_RESOURCE}
 )
 

@@ -9,6 +9,7 @@
 #include <QMimeData>
 #include <QDebug>
 #include <QtConcurrent>
+#include <QMovie>
 
 #include <../core/inference/inferenceengine.h>
 
@@ -222,8 +223,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     m_formLayout->addRow("Model :", m_model);
     m_formLayout->addRow("Open viewer :", m_toggleView);
     m_formLayout->addRow("Output MNI space :", m_toggleOutput);
-    m_formLayout->addRow("Skip brain extraction:", m_savePMap);
-    m_formLayout->addRow("Save probability map :", m_skipBrainExtract);
+    m_formLayout->addRow("Skip brain extraction:", m_skipBrainExtract);
+    m_formLayout->addRow("Save probability map :", m_savePMap);
     m_formLayout->addRow("Save pre-processing :", m_savePreprocessing);
     m_formLayout->addRow("Execution mode :", m_mode);
 
@@ -239,9 +240,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     QHBoxLayout *bottomLayout = new QHBoxLayout(bottomBtns);
 
-    m_importModel = new QPushButton("Import model");
+    m_modelManager = new QPushButton("Model manager");
+    m_resetSettings = new QPushButton("Reset settings");
 
-    bottomLayout->addWidget(m_importModel);
+    bottomLayout->addWidget(m_modelManager);
+    bottomLayout->addWidget(m_resetSettings);
 
     leftLayout->addSpacing(10);
     leftLayout->addWidget(formParameters, 0, Qt::AlignTop);
@@ -260,18 +263,25 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     mainAreaLayout->setContentsMargins(0, 0, 0, 0);
     mainAreaLayout->setSpacing(20);
 
-    m_fileButton = new QToolButton(mainArea);
+    // Stacked area 
+    m_stackedArea = new QStackedWidget(mainArea);
+
+    // ---------------- DEFAULT PAGE ----------------
+    QWidget *defaultPage = new QWidget();
+    QVBoxLayout *defaultLayout = new QVBoxLayout(defaultPage);
+    defaultLayout->setContentsMargins(0, 0, 0, 0);
+    defaultLayout->setSpacing(0);
+
+    m_fileButton = new QToolButton(defaultPage);
     m_fileButton->setObjectName("chooseFileButton");
     m_fileButton->setAcceptDrops(true);
     m_fileButton->installEventFilter(this);
     m_fileButton->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    //m_fileButton->setMinimumSize(500, 180);
 
     // Icon and label layout 
     QVBoxLayout *buttonLayout = new QVBoxLayout(m_fileButton);
     buttonLayout->setContentsMargins(0, 0, 0, 0);
     buttonLayout->setSpacing(20);
-
     buttonLayout->addStretch();
 
     // Icon
@@ -293,11 +303,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     buttonLayout->addStretch();
 
     // Run button
-    m_runButton = new QPushButton("RUN", mainArea);
+    m_runButton = new QPushButton("RUN", defaultPage);
     m_runButton->setObjectName("runBtn");
 
     // Console log
-    QWidget *consoleContainer = new QWidget(mainArea);
+    QWidget *consoleContainer = new QWidget(defaultPage);
     consoleContainer->setObjectName("consoleContainer");
     consoleContainer->setAttribute(Qt::WA_StyledBackground, true);
 
@@ -312,13 +322,31 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     m_consoleLabel->setText("Console output...");
     consoleLayout->addWidget(m_consoleLabel);
 
-    // Main area assembly
-    mainAreaLayout->addStretch(3);
-    mainAreaLayout->addWidget(m_fileButton, 0, Qt::AlignHCenter);
-    mainAreaLayout->addStretch(1);
-    mainAreaLayout->addWidget(m_runButton, 0, Qt::AlignHCenter);
-    mainAreaLayout->addStretch(4);
-    mainAreaLayout->addWidget(consoleContainer, 0, Qt::AlignRight);
+    // Default area assembly
+    defaultLayout->addStretch(3);
+    defaultLayout->addWidget(m_fileButton, 0, Qt::AlignHCenter);
+    defaultLayout->addStretch(1);
+    defaultLayout->addWidget(m_runButton, 0, Qt::AlignHCenter);
+    defaultLayout->addStretch(4);
+    defaultLayout->addWidget(consoleContainer, 0, Qt::AlignRight);
+
+    // ---------------- LOADING PAGE ----------------
+
+    QWidget *loadingPage = new QWidget();
+    QVBoxLayout *loadingLayout = new QVBoxLayout(loadingPage);
+    QLabel *spinnerLabel = new QLabel(loadingPage);
+    QMovie *movie = new QMovie("../../../gui/ressources/infinite-spinner-optimized.gif");
+    movie->start();
+    spinnerLabel->setMovie(movie);
+    loadingLayout->addStretch();
+    loadingLayout->addWidget(spinnerLabel, 0, Qt::AlignHCenter);
+    loadingLayout->addStretch();
+
+    // ---------------- MAIN AREA ASSEMBLY ----------------
+
+    m_stackedArea->addWidget(defaultPage);
+    m_stackedArea->addWidget(loadingPage);
+    mainAreaLayout->addWidget(m_stackedArea);
 
     // =========================================================
     //                    FINAL ASSEMBLY
@@ -339,7 +367,22 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     connect(m_fileButton, &QToolButton::clicked, this, &MainWindow::chooseFile);
     connect(m_destinationButton, &QPushButton::clicked, this, &MainWindow::chooseDestination);
-    connect(m_importModel, &QToolButton::clicked, this, &MainWindow::importModel);
+    connect(m_modelManager, &QPushButton::clicked, this, &MainWindow::openModelManager);
+    connect(m_resetSettings, &QPushButton::clicked, this, [this]() { 
+        m_suffix->setText("");
+        m_destination->setText("");
+        m_toggleView->setChecked(false);
+        m_toggleOutput->setChecked(false);
+        m_savePMap->setChecked(false);
+        m_savePreprocessing->setChecked(false);
+        m_threshold->setText("0.50");
+        m_thresholdSlider->setValue(50);
+        m_model->setCurrentIndex(1);
+        m_mode->setCurrentIndex(0);
+        m_skipBrainExtract->setChecked(false);
+
+        m_consoleLabel->setText("Settings reset");
+    });
     connect(closeBtn, &QPushButton::clicked, this, &QWidget::close);
     connect(reduceBtn, &QPushButton::clicked, this, &QWidget::showMinimized);
     connect(m_runButton, &QPushButton::clicked, this, &MainWindow::Process);
@@ -383,6 +426,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     connect(m_mode, &QComboBox::currentIndexChanged, this, [this, thresholdLabel](int index) {
         m_formLayout->setRowVisible(thresholdLabel, index != 1);
     });
+
+    loadSettings();
 }
 
 // =========================================================
@@ -450,10 +495,7 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
 void MainWindow::chooseFile() {
 
     QSettings settings;
-    QString lastDirFile = settings.value(
-        "lastModelDir",
-        "C:/ProgramData/StrokeSeg/"
-    ).toString();
+    QString lastDirFile = settings.value("lastInputPath", QDir::homePath()).toString();
 
     QString filePath = QFileDialog::getOpenFileName(
         this, 
@@ -463,21 +505,22 @@ void MainWindow::chooseFile() {
     );
 
     if (!filePath.isEmpty()) {
-        //m_fileButton->setText(QFileInfo(filePath).fileName());
         m_fileLabel->setText(QFileInfo(filePath).fileName());
         m_fileChosen = new QString(filePath);
+        settings.setValue("lastInputPath", QFileInfo(filePath).absolutePath());
     }
 }
 
 void MainWindow::chooseDestination() {
+    QSettings settings;
+    QString lastDest = settings.value("lastDestPath", QDir::homePath()).toString();
+
     QString folderPath = QFileDialog::getExistingDirectory(
-        this,
-        "Choose output folder",
-        "",
-        QFileDialog::ShowDirsOnly);
+        this,"Choose output folder", lastDest,QFileDialog::ShowDirsOnly);
 
     if (!folderPath.isEmpty()) {
         m_destination->setText(folderPath);
+        settings.setValue("lastDestPath", folderPath);
     }
 }
 
@@ -548,7 +591,7 @@ void MainWindow::importModel() {
 }
 
 void MainWindow::openGuide() {
-    if (!guide)
+    if (guide.isNull())
         guide = new GuideWindow();
 
     guide->show();
@@ -556,7 +599,14 @@ void MainWindow::openGuide() {
     guide->activateWindow();
 }
 
-MainWindow::~MainWindow() {}
+void MainWindow::openModelManager() {
+    if (modelManager.isNull())
+        modelManager = new ModelManager();
+
+    modelManager->show();
+    modelManager->raise();
+    modelManager->activateWindow();
+}
 
 double MainWindow::sliderValueToReal(int v) {
     if (v <= 0)     return 1e-5;            if (v <= 8)     return 1e-4;        
@@ -585,57 +635,104 @@ QString MainWindow::formatThreshold(double v) {
     return QString::number(v, 'f', 2);
 }
 
-//void MainWindow::Process() {
-//
-//    m_consoleLabel->setText("Running inference");
-//    
-//    //if (m_fileButton->text() == "Choose file")
-//    if (m_fileLabel->text() == "Choose file")
-//        {
-//        qDebug() << "No file selected.";
-//        return;
-//    }
-//
-//    QString modelPath = "C:/ProgramData/StrokeSeg/Models/" + m_model->currentText() + ".onnx";
-//    QString imagePath = *m_fileChosen;
-//
-//    qDebug() << "Loading for image :" << imagePath ;
-//    qDebug() << "And model : " << modelPath;
-//
-//    InferenceEngine engine;
-//    auto output = engine.RunInference(modelPath, imagePath);
-//
-//    if (output.empty()) {
-//        m_consoleLabel->setText("Failure : no data out");
-//    } else {
-//        m_consoleLabel->setText(QString("Success! Output size = %1").arg(output.size()));
-//    }
-//}
-
 void MainWindow::Process() {
-    m_runButton->setEnabled(false); // On évite de cliquer 10 fois
+
+    if (m_destination->text() == "" || *m_fileChosen == "Choose File")
+        return;
+
+    m_stackedArea->setCurrentIndex(1);
+
+    m_runButton->setEnabled(false);
     m_consoleLabel->setText("Running inference...");
 
     QString modelPath = "C:/ProgramData/StrokeSeg/Models/" + m_model->currentText() + ".onnx";
-    QString imagePath = *m_fileChosen; // Supposons que m_fileChosen n'est plus un pointeur
+    QString imagePath = *m_fileChosen;
+    QString destinationPath =
+        m_destination->text() + "/" + m_suffix->text() + QFileInfo(*m_fileChosen).fileName();
 
-    // Lance le calcul dans un autre thread
-    QFuture<std::vector<float>> worker = QtConcurrent::run([modelPath, imagePath]() {
+    // Start the computation in another thread
+    QFuture<std::vector<float>> worker = QtConcurrent::run([modelPath, imagePath,destinationPath]() {
         InferenceEngine engine;
-        return engine.RunInference(modelPath, imagePath);
+        return engine.RunInference(modelPath, imagePath, destinationPath);
     });
 
-    // Surveille la fin du thread
+    // Watch for the end of the computation
     auto watcher = new QFutureWatcher<std::vector<float>>();
-    connect(watcher, &QFutureWatcher<std::vector<float>>::finished, this, [this, watcher]() {
+    connect(watcher, &QFutureWatcher<std::vector<float>>::finished, this, [this, watcher,destinationPath]() {
         auto output = watcher->result();
         if (output.empty()) {
             m_consoleLabel->setText("Failure : no data out");
         } else {
             m_consoleLabel->setText(QString("Success! Output size = %1").arg(output.size()));
+
+            // ITK
+            if (m_toggleView->isChecked()) {
+                QStringList arguments;
+                arguments << "-g" << destinationPath;
+
+                bool started = QProcess::startDetached("itksnap", arguments);
+
+                if (!started) {
+                    QString commonPath = "C:/Program Files/ITK-SNAP 4.4/bin/ITK-SNAP.exe";
+                    if (!QProcess::startDetached(commonPath, arguments)) {
+                        m_consoleLabel->setText("Success, but ITK-SNAP not found.");
+                    }
+                }
+            }
+
         }
+
+        m_stackedArea->setCurrentIndex(0);
         m_runButton->setEnabled(true);
         watcher->deleteLater();
     });
     watcher->setFuture(worker);
+}
+
+void MainWindow::saveSettings() {
+    QSettings settings;
+
+    // Form fields
+    settings.setValue("suffix", m_suffix->text());
+    settings.setValue("destination", m_destination->text());
+    settings.setValue("modelIndex", m_model->currentIndex());
+    settings.setValue("executionMode", m_mode->currentIndex());
+
+    // Checkboxes
+    settings.setValue("toggleView", m_toggleView->isChecked());
+    settings.setValue("toggleOutput", m_toggleOutput->isChecked());
+    settings.setValue("skipBrainExtract", m_skipBrainExtract->isChecked());
+    settings.setValue("savePMap", m_savePMap->isChecked());
+    settings.setValue("savePreprocessing", m_savePreprocessing->isChecked());
+
+    // Threshold
+    settings.setValue("thresholdValue", m_threshold->text());
+    settings.setValue("thresholdSlider", m_thresholdSlider->value());
+}
+
+void MainWindow::loadSettings() {
+    QSettings settings;
+
+    m_suffix->setText(settings.value("suffix", "").toString());
+    m_destination->setText(settings.value("destination", "").toString());
+
+    // On restaure l'index du modèle seulement s'il est valide
+    int modelIdx = settings.value("modelIndex", 0).toInt();
+    if (modelIdx < m_model->count())
+        m_model->setCurrentIndex(modelIdx);
+
+    m_mode->setCurrentIndex(settings.value("executionMode", 0).toInt());
+
+    m_toggleView->setChecked(settings.value("toggleView", false).toBool());
+    m_toggleOutput->setChecked(settings.value("toggleOutput", false).toBool());
+    m_skipBrainExtract->setChecked(settings.value("skipBrainExtract", false).toBool());
+    m_savePMap->setChecked(settings.value("savePMap", false).toBool());
+    m_savePreprocessing->setChecked(settings.value("savePreprocessing", false).toBool());
+
+    m_threshold->setText(settings.value("thresholdValue", "0.50").toString());
+    m_thresholdSlider->setValue(settings.value("thresholdSlider", 50).toInt());
+}
+
+MainWindow::~MainWindow() {
+    saveSettings();
 }

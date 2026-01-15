@@ -23,7 +23,7 @@ Black (text) : #0a0c0f;
 =========================================================
 */
 
-#m_mainWidget, #guideWindow,#warningWindow{
+#m_mainWidget, #guideWindow,#warningWindow, #modelManager{
     border-radius:10px;
     background-color:transparent;
 }
@@ -401,6 +401,8 @@ QWidget#guideWindow QWidget#mainArea {
     background-color:transparent;
     border-radius:10px;
     outline:0;
+    selection-background-color: #5ea6f2;
+    selection-color: #ffffff;
 }
 
 QScrollBar:vertical {

@@ -22,9 +22,12 @@
 #include <QDoubleValidator>
 #include <QFileDialog>
 #include <QFormLayout>
+#include <QStackedWidget>
+#include <QPointer>
 
 #include "managers/configmanager.h"
 #include "guideWindow.h"
+#include "modelManager.h"
 #include "warningWindow.h"
 
 class MainWindow : public QMainWindow {
@@ -56,16 +59,18 @@ private:
     QComboBox *m_mode;
     QSlider *m_thresholdSlider; QLineEdit *m_threshold;
 
+    QStackedWidget *m_stackedArea;
     QToolButton *m_fileButton;
     QString *m_fileChosen = nullptr;
     QLabel *m_fileLabel = nullptr;
     QPushButton *m_runButton;
     QLabel *m_consoleLabel;
 
-    QPushButton *m_importModel;
+    QPushButton *m_modelManager;
+    QPushButton *m_resetSettings;
 
-
-    GuideWindow *guide = nullptr;
+    QPointer<GuideWindow> guide;
+    QPointer<ModelManager> modelManager;
     WarningWindow *warning = nullptr;
     bool showWarning = true;
 
@@ -73,12 +78,20 @@ private:
   private slots:
     void chooseDestination();
     void chooseFile();
-    void openGuide();
-    void importModel();
+
     double sliderValueToReal(int sliderValue);
     int realToSliderValue(double realValue);
     QString formatThreshold(double v);
+
+    void openGuide();
+    
+    void openModelManager();
+    void importModel();
+
     void Process();
+
+    void saveSettings();
+    void loadSettings();
 };
 
 

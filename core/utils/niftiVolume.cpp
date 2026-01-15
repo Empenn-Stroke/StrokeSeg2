@@ -3,6 +3,7 @@
 #include <QString>
 #include <cstring>
 #include <stdexcept>
+#include <QDebug>
 
 extern "C" {
 #include <nifti1_io.h>
@@ -111,6 +112,10 @@ void NiftiVolume::saveNifti(const QString &path, const NiftiVolume &vol) {
     }
 
     std::memcpy(nim->data, vol.data.data(), voxelCount * sizeof(float));
+
+    qDebug() << "Saving NIFTI to" << path << "with dimensions"
+             << nim->nt << "x" << nim->nx << "x" << nim->ny << "x" << nim->nz << "and spacing" << nim->dx << nim->dy << nim->dz;
+    qDebug() << path;
 
     nifti_set_filenames(nim, path.toStdString().c_str(), 0, 1);
     nifti_image_write(nim);
