@@ -526,7 +526,7 @@ void MainWindow::chooseDestination() {
 
 void MainWindow::openGuide() {
     if (guide.isNull())
-        guide = new GuideWindow(this);
+        guide = new GuideWindow();
 
     guide->show();
     guide->raise();
@@ -535,7 +535,7 @@ void MainWindow::openGuide() {
 
 void MainWindow::openAbout() {
     if (about.isNull())
-        about = new AboutWindow(this);
+        about = new AboutWindow();
 
     about->show();
     about->raise();

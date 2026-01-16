@@ -38,7 +38,7 @@ AboutWindow::AboutWindow(QWidget *parent) : QWidget(parent) {
     titleLayout->setContentsMargins(60, 0, 0, 2);
     titleLayout->setSpacing(0);
 
-    QLabel *title = new QLabel("Guide", m_titleBar);
+    QLabel *title = new QLabel("About", m_titleBar);
     QPushButton *reduceBtn = new QPushButton("\u2212", m_titleBar);
     QPushButton *closeBtn = new QPushButton("\u00D7", m_titleBar);
     closeBtn->setObjectName("closeBtn");
