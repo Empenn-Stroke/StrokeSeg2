@@ -53,6 +53,7 @@ private:
     QLineEdit *m_destination; QPushButton *m_destinationButton;
     QComboBox *m_model;
     QCheckBox *m_toggleView;
+    QCheckBox *m_toggleOpenFolder;
     QCheckBox *m_toggleOutput;
     QCheckBox *m_skipBrainExtract;
     QCheckBox *m_savePMap;

@@ -10,6 +10,7 @@
 #include <QDebug>
 #include <QtConcurrent>
 #include <QMovie>
+#include <QDesktopServices>
 
 #include <../core/inference/inferenceengine.h>
 
@@ -180,6 +181,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     // Toggle
     m_toggleView = new QCheckBox("", formParameters);
+    m_toggleOpenFolder = new QCheckBox("", formParameters);
     m_toggleOutput = new QCheckBox("", formParameters);
     m_skipBrainExtract = new QCheckBox("", formParameters);
     m_savePMap = new QCheckBox("", formParameters);
@@ -221,6 +223,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     m_formLayout->addRow("Model :", m_model);
     m_formLayout->addRow("Open viewer :", m_toggleView);
+    m_formLayout->addRow("Open destination folder :", m_toggleOpenFolder);
     m_formLayout->addRow("Output MNI space :", m_toggleOutput);
     m_formLayout->addRow("Skip brain extraction:", m_skipBrainExtract);
     m_formLayout->addRow("Save probability map :", m_savePMap);
@@ -318,7 +321,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     m_consoleLabel = new QLabel(mainArea);
     m_consoleLabel->setObjectName("consoleLabel");
-    m_consoleLabel->setText("Console output...");
+    m_consoleLabel->setText("v1.0.0");
     consoleLayout->addWidget(m_consoleLabel);
 
     // Default area assembly
@@ -371,6 +374,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
         m_suffix->setText("");
         m_destination->setText("");
         m_toggleView->setChecked(false);
+        m_toggleOpenFolder->setChecked(false);
         m_toggleOutput->setChecked(false);
         m_savePMap->setChecked(false);
         m_savePreprocessing->setChecked(false);
@@ -635,6 +639,10 @@ void MainWindow::Process() {
         } else {
             m_consoleLabel->setText(QString("Success! Output size = %1").arg(output.size()));
 
+            if (m_toggleOpenFolder->isChecked()) {
+                QDesktopServices::openUrl(QUrl::fromLocalFile(m_destination->text()));
+            }
+
             // ITK
             if (m_toggleView->isChecked()) {
                 QStringList arguments;
@@ -670,6 +678,7 @@ void MainWindow::saveSettings() {
 
     // Checkboxes
     settings.setValue("toggleView", m_toggleView->isChecked());
+    settings.setValue("toggleOpenFolder", m_toggleOpenFolder->isChecked());
     settings.setValue("toggleOutput", m_toggleOutput->isChecked());
     settings.setValue("skipBrainExtract", m_skipBrainExtract->isChecked());
     settings.setValue("savePMap", m_savePMap->isChecked());
@@ -694,6 +703,7 @@ void MainWindow::loadSettings() {
     m_mode->setCurrentIndex(settings.value("executionMode", 0).toInt());
 
     m_toggleView->setChecked(settings.value("toggleView", false).toBool());
+    m_toggleOpenFolder->setChecked(settings.value("toggleOpenFolder", false).toBool());
     m_toggleOutput->setChecked(settings.value("toggleOutput", false).toBool());
     m_skipBrainExtract->setChecked(settings.value("skipBrainExtract", false).toBool());
     m_savePMap->setChecked(settings.value("savePMap", false).toBool());
