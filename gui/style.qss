@@ -23,7 +23,7 @@ Black (text) : #0a0c0f;
 =========================================================
 */
 
-#m_mainWidget, #guideWindow,#warningWindow, #modelManager{
+#m_mainWidget, #guideWindow, #aboutWindow, #warningWindow, #modelManager{
     border-radius:10px;
     background-color:transparent;
 }
@@ -385,17 +385,18 @@ QToolButton#chooseFileButton[dragging="true"]{
 
 /* 
 =========================================================
-                        GUIDE
+                  GUIDE & ABOUT
 =========================================================
 */
 
-QWidget#guideWindow QWidget#mainArea {
+QWidget#guideWindow QWidget#mainArea,
+QWidget#aboutWindow QWidget#mainArea {
     background-color:#ffffff;
     border-bottom-right-radius:10px;
     border-bottom-left-radius:10px;
 }
 
-#guideContent {
+#guideContent, #aboutContent {
     color:#0a0c0f;
     padding:10px;
     background-color:transparent;

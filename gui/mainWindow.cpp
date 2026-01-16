@@ -18,7 +18,6 @@
 #endif
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
-    
 
     setWindowTitle("StrokeSeg2");
     setWindowIcon(QIcon("../../../gui/ressources/StrokeSeg2.ico"));
@@ -416,6 +415,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     });
 
     connect(actionGuide, &QAction::triggered, this, &MainWindow::openGuide);
+    connect(actionAbout, &QAction::triggered, this, &MainWindow::openAbout);
 
     connect(actionResetWW, &QAction::toggled, this, [this](bool checked) {
         showWarning = checked;
@@ -526,16 +526,25 @@ void MainWindow::chooseDestination() {
 
 void MainWindow::openGuide() {
     if (guide.isNull())
-        guide = new GuideWindow();
+        guide = new GuideWindow(this);
 
     guide->show();
     guide->raise();
     guide->activateWindow();
 }
 
+void MainWindow::openAbout() {
+    if (about.isNull())
+        about = new AboutWindow(this);
+
+    about->show();
+    about->raise();
+    about->activateWindow();
+}
+
 void MainWindow::openModelManager() {
     if (modelManager.isNull()) {
-        modelManager = new ModelManager();
+        modelManager = new ModelManager(this);
         connect(modelManager, &ModelManager::modelsChanged, this, &MainWindow::refreshModelsList);
     }
 
@@ -609,7 +618,7 @@ void MainWindow::Process() {
     QString modelPath = "C:/ProgramData/StrokeSeg/Models/" + m_model->currentText() + ".onnx";
     QString imagePath = *m_fileChosen;
     QString destinationPath =
-        m_destination->text() + "/" + m_suffix->text() + QFileInfo(*m_fileChosen).fileName();
+        m_destination->text() + "/" + QFileInfo(*m_fileChosen).fileName() + m_suffix->text();
 
     // Start the computation in another thread
     QFuture<std::vector<float>> worker = QtConcurrent::run([modelPath, imagePath,destinationPath]() {
@@ -702,6 +711,10 @@ void MainWindow::closeEvent(QCloseEvent *event) {
 
     if (!guide.isNull()) {
         guide->close();
+    }
+
+    if (!about.isNull()) {
+        about->close();
     }
 
     saveSettings();

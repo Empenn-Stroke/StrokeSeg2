@@ -11,6 +11,8 @@ qt_add_executable(
     mainWindow.cpp
     guideWindow.h
     guideWindow.cpp
+    aboutWindow.h
+    aboutWindow.cpp
     warningWindow.h
     warningWindow.cpp
     modelManager.h

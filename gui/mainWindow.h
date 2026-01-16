@@ -27,6 +27,7 @@
 
 #include "managers/configmanager.h"
 #include "guideWindow.h"
+#include "aboutWindow.h"
 #include "modelManager.h"
 #include "warningWindow.h"
 
@@ -70,6 +71,7 @@ private:
     QPushButton *m_resetSettings;
 
     QPointer<GuideWindow> guide;
+    QPointer<AboutWindow> about;
     QPointer<ModelManager> modelManager;
     WarningWindow *warning = nullptr;
     bool showWarning = true;
@@ -84,7 +86,7 @@ private:
     QString formatThreshold(double v);
 
     void openGuide();
-    
+    void openAbout();
     void openModelManager();
 
     void Process();
