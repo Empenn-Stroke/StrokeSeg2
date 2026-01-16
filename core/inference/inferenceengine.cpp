@@ -10,7 +10,9 @@
 
 using OrtFloat16 = Ort::Float16_t;
 
-std::vector<float> InferenceEngine::RunInference(const QString &modelPath, const QString &imagePath,
+std::vector<float> InferenceEngine::RunInference(const QString &modelPath, 
+                                                 const QString &imagePath,
+                                                 const QString &destinationPath,
                                                  const QString &inputName,
                                                  const QString &outputName) {
     if (!QFile::exists(modelPath) || !QFile::exists(imagePath)) {
@@ -87,9 +89,30 @@ std::vector<float> InferenceEngine::RunInference(const QString &modelPath, const
             result[i] = outputDataRaw[i].ToFloat();
         }
 
+        NiftiVolume outputVol = nv; // Copy spacing and metadata
+        outputVol.spacing = nv.spacing;
+        outputVol.data = NiftiVolume::Tensor4f(C, X, Y, Z);
+
+        qDebug() << "Max value in result:" << *std::max_element(result.begin(), result.end());
+
+        for (int c = 0; c < C; ++c) {
+            for (int x = 0; x < X; ++x) {
+                for (int y = 0; y < Y; ++y) {
+                    for (int z = 0; z < Z; ++z) {
+                        size_t index = c * (pX * pY * pZ) + x * (pY * pZ) + y * pZ + z;
+
+                        float val = result[index];
+                        outputVol.data(c, x, y, z) = std::isnan(val) ? 0.0f : val;
+                    }
+                }
+            }
+        }
+        NiftiVolume::saveNifti(destinationPath, outputVol);
+
         return result;
     } catch (const Ort::Exception &e) {
         std::cerr << "Error during inference : " << e.what() << std::endl;
         return {};
     }
+
 }

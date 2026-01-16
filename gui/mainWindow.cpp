@@ -8,6 +8,9 @@
 #include <QDropEvent>
 #include <QMimeData>
 #include <QDebug>
+#include <QtConcurrent>
+#include <QMovie>
+#include <QDesktopServices>
 
 #include <../core/inference/inferenceengine.h>
 
@@ -16,7 +19,6 @@
 #endif
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
-    
 
     setWindowTitle("StrokeSeg2");
     setWindowIcon(QIcon("../../../gui/ressources/StrokeSeg2.ico"));
@@ -143,6 +145,29 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     m_suffix->setObjectName("suffix");
     m_suffix->setPlaceholderText("Enter the suffix name");
 
+    // Destination
+
+    QWidget *destinationContainer = new QWidget(formParameters);
+    destinationContainer->setObjectName("destinationContainer");
+    destinationContainer->setContentsMargins(0, 0, 0, 0);
+    destinationContainer->setAttribute(Qt::WA_StyledBackground, true);
+
+    QHBoxLayout *destinationLayout = new QHBoxLayout(destinationContainer);
+    destinationLayout->setSpacing(8);
+    destinationLayout->setContentsMargins(0, 0, 0, 0);
+    destinationLayout->setObjectName("destinationLayout");
+
+    m_destination = new QLineEdit(formParameters);
+    m_destination->setObjectName("destination");
+    m_destination->setPlaceholderText("Select output folder");
+
+    m_destinationButton = new QPushButton(formParameters);
+    m_destinationButton->setText("...");
+    m_destinationButton->setObjectName("destinationBtn");
+
+    destinationLayout->addWidget(m_destination);
+    destinationLayout->addWidget(m_destinationButton);
+
     // Model
     m_model = new QComboBox(formParameters);
     QDir modelsDir = QDir("C:/ProgramData/StrokeSeg/Models");
@@ -156,6 +181,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     // Toggle
     m_toggleView = new QCheckBox("", formParameters);
+    m_toggleOpenFolder = new QCheckBox("", formParameters);
     m_toggleOutput = new QCheckBox("", formParameters);
     m_skipBrainExtract = new QCheckBox("", formParameters);
     m_savePMap = new QCheckBox("", formParameters);
@@ -186,15 +212,21 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     thresholdLayout->setContentsMargins(0, 0, 0, 0);
     thresholdLayout->addWidget(m_threshold);
     thresholdLayout->addWidget(m_thresholdSlider);
+    thresholdLayout->setSpacing(8);
 
 
     // Assembly
     m_formLayout->addRow("Suffix :", m_suffix);
+
+    QLabel *destionationLabel = new QLabel("Destination :", formParameters);
+    m_formLayout->addRow(destionationLabel, destinationContainer);
+
     m_formLayout->addRow("Model :", m_model);
     m_formLayout->addRow("Open viewer :", m_toggleView);
+    m_formLayout->addRow("Open destination folder :", m_toggleOpenFolder);
     m_formLayout->addRow("Output MNI space :", m_toggleOutput);
-    m_formLayout->addRow("Skip brain extraction:", m_savePMap);
-    m_formLayout->addRow("Save probability map :", m_skipBrainExtract);
+    m_formLayout->addRow("Skip brain extraction:", m_skipBrainExtract);
+    m_formLayout->addRow("Save probability map :", m_savePMap);
     m_formLayout->addRow("Save pre-processing :", m_savePreprocessing);
     m_formLayout->addRow("Execution mode :", m_mode);
 
@@ -210,13 +242,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     QHBoxLayout *bottomLayout = new QHBoxLayout(bottomBtns);
 
-    m_importModel = new QPushButton("Import model");
+    m_modelManager = new QPushButton("Model manager");
+    m_resetSettings = new QPushButton("Reset settings");
 
-    bottomLayout->addWidget(m_importModel);
+    bottomLayout->addWidget(m_modelManager);
+    bottomLayout->addWidget(m_resetSettings);
 
+    leftLayout->addSpacing(10);
+    leftLayout->addWidget(formParameters, 0, Qt::AlignTop);
     leftLayout->addStretch(1);
-    leftLayout->addWidget(formParameters);
-    leftLayout->addStretch(25);
     leftLayout->addWidget(bottomBtns);
 
     // =========================================================
@@ -231,23 +265,30 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     mainAreaLayout->setContentsMargins(0, 0, 0, 0);
     mainAreaLayout->setSpacing(20);
 
-    m_fileButton = new QToolButton(mainArea);
+    // Stacked area 
+    m_stackedArea = new QStackedWidget(mainArea);
+
+    // ---------------- DEFAULT PAGE ----------------
+    QWidget *defaultPage = new QWidget();
+    QVBoxLayout *defaultLayout = new QVBoxLayout(defaultPage);
+    defaultLayout->setContentsMargins(0, 0, 0, 0);
+    defaultLayout->setSpacing(0);
+
+    m_fileButton = new QToolButton(defaultPage);
     m_fileButton->setObjectName("chooseFileButton");
     m_fileButton->setAcceptDrops(true);
     m_fileButton->installEventFilter(this);
     m_fileButton->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    //m_fileButton->setMinimumSize(500, 180);
 
     // Icon and label layout 
     QVBoxLayout *buttonLayout = new QVBoxLayout(m_fileButton);
     buttonLayout->setContentsMargins(0, 0, 0, 0);
     buttonLayout->setSpacing(20);
-
     buttonLayout->addStretch();
 
     // Icon
     QLabel *iconLabel = new QLabel(m_fileButton);
-    QPixmap pix("../../../gui/ressources/files.png");
+    QPixmap pix("../../../gui/ressources/files.svg");
     iconLabel->setPixmap(pix.scaled(80, 80, Qt::KeepAspectRatio, Qt::SmoothTransformation));
     iconLabel->setAlignment(Qt::AlignCenter);
     iconLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
@@ -264,15 +305,50 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     buttonLayout->addStretch();
 
     // Run button
-    m_runButton = new QPushButton("RUN", mainArea);
+    m_runButton = new QPushButton("RUN", defaultPage);
     m_runButton->setObjectName("runBtn");
 
-    // Main area assembly
-    mainAreaLayout->addStretch(3);
-    mainAreaLayout->addWidget(m_fileButton, 0, Qt::AlignHCenter);
-    mainAreaLayout->addStretch(1);
-    mainAreaLayout->addWidget(m_runButton, 0, Qt::AlignHCenter);
-    mainAreaLayout->addStretch(4);
+    // Console log
+    QWidget *consoleContainer = new QWidget(defaultPage);
+    consoleContainer->setObjectName("consoleContainer");
+    consoleContainer->setAttribute(Qt::WA_StyledBackground, true);
+
+    QHBoxLayout *consoleLayout = new QHBoxLayout(consoleContainer);
+    consoleLayout->setContentsMargins(0, 10, 8, 0);
+    consoleLayout->setSpacing(0);
+    consoleLayout->setAlignment(Qt::AlignRight);
+
+
+    m_consoleLabel = new QLabel(mainArea);
+    m_consoleLabel->setObjectName("consoleLabel");
+    m_consoleLabel->setText("v1.0.0");
+    consoleLayout->addWidget(m_consoleLabel);
+
+    // Default area assembly
+    defaultLayout->addStretch(3);
+    defaultLayout->addWidget(m_fileButton, 0, Qt::AlignHCenter);
+    defaultLayout->addStretch(1);
+    defaultLayout->addWidget(m_runButton, 0, Qt::AlignHCenter);
+    defaultLayout->addStretch(4);
+    defaultLayout->addWidget(consoleContainer, 0, Qt::AlignRight);
+
+    // ---------------- LOADING PAGE ----------------
+
+    QWidget *loadingPage = new QWidget();
+    QVBoxLayout *loadingLayout = new QVBoxLayout(loadingPage);
+    QLabel *spinnerLabel = new QLabel(loadingPage);
+    QMovie *movie = new QMovie("../../../gui/ressources/infinite-spinner-optimized.gif");
+    movie->start();
+    spinnerLabel->setMovie(movie);
+    loadingLayout->addStretch();
+    loadingLayout->addWidget(spinnerLabel, 0, Qt::AlignHCenter);
+    loadingLayout->addStretch();
+
+    // ---------------- MAIN AREA ASSEMBLY ----------------
+
+    m_stackedArea->addWidget(defaultPage);
+    m_stackedArea->addWidget(loadingPage);
+    mainAreaLayout->addWidget(m_stackedArea);
 
     // =========================================================
     //                    FINAL ASSEMBLY
@@ -292,7 +368,24 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     // =========================================================
 
     connect(m_fileButton, &QToolButton::clicked, this, &MainWindow::chooseFile);
-    connect(m_importModel, &QToolButton::clicked, this, &MainWindow::importModel);
+    connect(m_destinationButton, &QPushButton::clicked, this, &MainWindow::chooseDestination);
+    connect(m_modelManager, &QPushButton::clicked, this, &MainWindow::openModelManager);
+    connect(m_resetSettings, &QPushButton::clicked, this, [this]() { 
+        m_suffix->setText("");
+        m_destination->setText("");
+        m_toggleView->setChecked(false);
+        m_toggleOpenFolder->setChecked(false);
+        m_toggleOutput->setChecked(false);
+        m_savePMap->setChecked(false);
+        m_savePreprocessing->setChecked(false);
+        m_threshold->setText("0.50");
+        m_thresholdSlider->setValue(50);
+        m_model->setCurrentIndex(1);
+        m_mode->setCurrentIndex(0);
+        m_skipBrainExtract->setChecked(false);
+
+        m_consoleLabel->setText("Settings reset");
+    });
     connect(closeBtn, &QPushButton::clicked, this, &QWidget::close);
     connect(reduceBtn, &QPushButton::clicked, this, &QWidget::showMinimized);
     connect(m_runButton, &QPushButton::clicked, this, &MainWindow::Process);
@@ -311,7 +404,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
         else if (text == "1-10\u207B\u2074") val = 1.0 - 1e-4;
         else if (text == "10\u207B\u2074") val = 1e-4;
         else {
-            bool ok;
             val = text.toDouble(&ok);
             if (!ok)
                 return;
@@ -327,6 +419,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     });
 
     connect(actionGuide, &QAction::triggered, this, &MainWindow::openGuide);
+    connect(actionAbout, &QAction::triggered, this, &MainWindow::openAbout);
 
     connect(actionResetWW, &QAction::toggled, this, [this](bool checked) {
         showWarning = checked;
@@ -337,6 +430,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     connect(m_mode, &QComboBox::currentIndexChanged, this, [this, thresholdLabel](int index) {
         m_formLayout->setRowVisible(thresholdLabel, index != 1);
     });
+
+    loadSettings();
 }
 
 // =========================================================
@@ -391,7 +486,7 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
                     m_fileChosen = new QString(filePath);
                     dropEvent->acceptProposedAction();
                 } else {
-                    qDebug() << "File format not supported";
+                    m_consoleLabel->setText("File format not supported");
                     dropEvent->ignore();
                 }
             }
@@ -404,10 +499,7 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
 void MainWindow::chooseFile() {
 
     QSettings settings;
-    QString lastDirFile = settings.value(
-        "lastModelDir",
-        "C:/ProgramData/StrokeSeg/"
-    ).toString();
+    QString lastDirFile = settings.value("lastInputPath", QDir::homePath()).toString();
 
     QString filePath = QFileDialog::getOpenFileName(
         this, 
@@ -417,80 +509,27 @@ void MainWindow::chooseFile() {
     );
 
     if (!filePath.isEmpty()) {
-        //m_fileButton->setText(QFileInfo(filePath).fileName());
         m_fileLabel->setText(QFileInfo(filePath).fileName());
         m_fileChosen = new QString(filePath);
+        settings.setValue("lastInputPath", QFileInfo(filePath).absolutePath());
     }
 }
 
-void MainWindow::importModel() {
-    QString filename = QFileDialog::getOpenFileName(
-        this, "Choose file", "", "ONNX Model (*.onnx);;All files (*)");
+void MainWindow::chooseDestination() {
+    QSettings settings;
+    QString lastDest = settings.value("lastDestPath", QDir::homePath()).toString();
 
-    if (filename.isEmpty())
-        return;
+    QString folderPath = QFileDialog::getExistingDirectory(
+        this,"Choose output folder", lastDest,QFileDialog::ShowDirsOnly);
 
-    // ---- Find the path ----
-    QString programDataPath = qgetenv("PROGRAMDATA");
-    if (programDataPath.isEmpty()) {
-        programDataPath = "C:/ProgramData"; // Fallback manuel si la variable est vide
+    if (!folderPath.isEmpty()) {
+        m_destination->setText(folderPath);
+        settings.setValue("lastDestPath", folderPath);
     }
-    QDir dir(programDataPath + "/StrokeSeg/Models");
-
-    if (!dir.exists()) {
-        if (!dir.mkpath(".")) {
-            qDebug() << "Critical error : Impossible to create the directory in ProgramData.";
-            return;
-        }
-    }
-
-    QString destFile = dir.filePath(QFileInfo(filename).fileName());
-
-    // ---- Clear if already exists ----
-    if (QFile::exists(destFile)) {
-        if (!QFile::remove(destFile)) {
-            qDebug() << "Impossible to replace the existant file (no access).";
-            return;
-        }
-    }
-
-    bool success = false;
-    QString methodUsed = "";
-
-    // ---- Try to hardlink ----
-#ifdef Q_OS_WIN
-    std::wstring src = filename.toStdWString();
-    std::wstring dst = destFile.toStdWString();
-
-    if (CreateHardLinkW(dst.c_str(), src.c_str(), NULL)) {
-        success = true;
-        methodUsed = "Hardlink";
-    } else
-        qDebug() << "Hardlink has failed (Probably not the same disk). Trying to copy...";
-#endif
-
-    // ---- Standard copy if the hardlink failed ----
-    if (!success) {
-        if (QFile::copy(filename, destFile)) {
-            success = true;
-            methodUsed = "Standard copy";
-        }
-    }
-
-    // ---- Result ----
-    if (success) {
-        qDebug() << "Success ! " << methodUsed << " created at : " << destFile;
-    } else {
-        qDebug() << "Total failure. Do verify admin access.";
-    }
-
-    QFileInfo info(destFile);
-    QString displayName = info.baseName();
-    m_model->addItem(displayName);
 }
 
 void MainWindow::openGuide() {
-    if (!guide)
+    if (guide.isNull())
         guide = new GuideWindow();
 
     guide->show();
@@ -498,7 +537,45 @@ void MainWindow::openGuide() {
     guide->activateWindow();
 }
 
-MainWindow::~MainWindow() {}
+void MainWindow::openAbout() {
+    if (about.isNull())
+        about = new AboutWindow();
+
+    about->show();
+    about->raise();
+    about->activateWindow();
+}
+
+void MainWindow::openModelManager() {
+    if (modelManager.isNull()) {
+        modelManager = new ModelManager(this);
+        connect(modelManager, &ModelManager::modelsChanged, this, &MainWindow::refreshModelsList);
+    }
+
+    modelManager->show();
+    modelManager->raise();
+    modelManager->activateWindow();
+    modelManager->move(modelManager->width() + 32,
+                       this->geometry().bottom() - modelManager->height() - 15);
+}
+
+
+void MainWindow::refreshModelsList() {
+    QString currentModel = m_model->currentText();
+    m_model->clear();
+
+    QDir modelsDir("C:/ProgramData/StrokeSeg/Models");
+    QStringList entries = modelsDir.entryList(QDir::Files | QDir::NoDotAndDotDot);
+
+    for (const QString &entry : entries) {
+        m_model->addItem(QFileInfo(entry).baseName());
+    }
+
+    int index = m_model->findText(currentModel);
+    if (index != -1)
+        m_model->setCurrentIndex(index);
+}
+
 
 double MainWindow::sliderValueToReal(int v) {
     if (v <= 0)     return 1e-5;            if (v <= 8)     return 1e-4;        
@@ -528,26 +605,132 @@ QString MainWindow::formatThreshold(double v) {
 }
 
 void MainWindow::Process() {
-    
-    //if (m_fileButton->text() == "Choose file")
-    if (m_fileLabel->text() == "Choose file")
-        {
-        qDebug() << "No file selected.";
+
+    if (*m_fileChosen == "Choose File")
+        return;
+
+    if (m_destination->text() == "") {
+        m_consoleLabel->setText("Please select an output folder.");
         return;
     }
+
+    m_stackedArea->setCurrentIndex(1);
+
+    m_runButton->setEnabled(false);
+    m_consoleLabel->setText("Running inference...");
+
     QString modelPath = "C:/ProgramData/StrokeSeg/Models/" + m_model->currentText() + ".onnx";
-    QString imagePath = *m_fileChosen; // Here should be the full path, not only the file name
+    QString imagePath = *m_fileChosen;
+    QString destinationPath =
+        m_destination->text() + "/" + QFileInfo(*m_fileChosen).fileName() + m_suffix->text();
 
-    InferenceEngine engine;
+    // Start the computation in another thread
+    QFuture<std::vector<float>> worker = QtConcurrent::run([modelPath, imagePath,destinationPath]() {
+        InferenceEngine engine;
+        return engine.RunInference(modelPath, imagePath, destinationPath);
+    });
 
-    qDebug() << "Loading for image :" << imagePath ;
-    qDebug() << "And model : " << modelPath;
+    // Watch for the end of the computation
+    auto watcher = new QFutureWatcher<std::vector<float>>();
+    connect(watcher, &QFutureWatcher<std::vector<float>>::finished, this, [this, watcher,destinationPath]() {
+        auto output = watcher->result();
+        if (output.empty()) {
+            m_consoleLabel->setText("Failure : no data out");
+        } else {
+            m_consoleLabel->setText(QString("Success! Output size = %1").arg(output.size()));
 
-    auto output = engine.RunInference(modelPath, imagePath);
+            if (m_toggleOpenFolder->isChecked()) {
+                QDesktopServices::openUrl(QUrl::fromLocalFile(m_destination->text()));
+            }
 
-    if (output.empty()) {
-        qDebug() << "Failure : no data out";
-    } else {
-        qDebug() << "Success ! Output size =" << output.size();
+            // ITK
+            if (m_toggleView->isChecked()) {
+                QStringList arguments;
+                arguments << "-g" << destinationPath;
+
+                bool started = QProcess::startDetached("itksnap", arguments);
+
+                if (!started) {
+                    QString commonPath = "C:/Program Files/ITK-SNAP 4.4/bin/ITK-SNAP.exe";
+                    if (!QProcess::startDetached(commonPath, arguments)) {
+                        m_consoleLabel->setText("Success, but ITK-SNAP not found.");
+                    }
+                }
+            }
+
+        }
+
+        m_stackedArea->setCurrentIndex(0);
+        m_runButton->setEnabled(true);
+        watcher->deleteLater();
+    });
+    watcher->setFuture(worker);
+}
+
+void MainWindow::saveSettings() {
+    QSettings settings;
+
+    // Form fields
+    settings.setValue("suffix", m_suffix->text());
+    settings.setValue("destination", m_destination->text());
+    settings.setValue("modelIndex", m_model->currentIndex());
+    settings.setValue("executionMode", m_mode->currentIndex());
+
+    // Checkboxes
+    settings.setValue("toggleView", m_toggleView->isChecked());
+    settings.setValue("toggleOpenFolder", m_toggleOpenFolder->isChecked());
+    settings.setValue("toggleOutput", m_toggleOutput->isChecked());
+    settings.setValue("skipBrainExtract", m_skipBrainExtract->isChecked());
+    settings.setValue("savePMap", m_savePMap->isChecked());
+    settings.setValue("savePreprocessing", m_savePreprocessing->isChecked());
+
+    // Threshold
+    settings.setValue("thresholdValue", m_threshold->text());
+    settings.setValue("thresholdSlider", m_thresholdSlider->value());
+}
+
+void MainWindow::loadSettings() {
+    QSettings settings;
+
+    m_suffix->setText(settings.value("suffix", "").toString());
+    m_destination->setText(settings.value("destination", "").toString());
+
+    // On restaure l'index du modèle seulement s'il est valide
+    int modelIdx = settings.value("modelIndex", 0).toInt();
+    if (modelIdx < m_model->count())
+        m_model->setCurrentIndex(modelIdx);
+
+    m_mode->setCurrentIndex(settings.value("executionMode", 0).toInt());
+
+    m_toggleView->setChecked(settings.value("toggleView", false).toBool());
+    m_toggleOpenFolder->setChecked(settings.value("toggleOpenFolder", false).toBool());
+    m_toggleOutput->setChecked(settings.value("toggleOutput", false).toBool());
+    m_skipBrainExtract->setChecked(settings.value("skipBrainExtract", false).toBool());
+    m_savePMap->setChecked(settings.value("savePMap", false).toBool());
+    m_savePreprocessing->setChecked(settings.value("savePreprocessing", false).toBool());
+
+    m_threshold->setText(settings.value("thresholdValue", "0.50").toString());
+    m_thresholdSlider->setValue(settings.value("thresholdSlider", 50).toInt());
+}
+
+void MainWindow::closeEvent(QCloseEvent *event) {
+
+    if (!modelManager.isNull()) {
+        modelManager->close();
     }
+
+    if (!guide.isNull()) {
+        guide->close();
+    }
+
+    if (!about.isNull()) {
+        about->close();
+    }
+
+    saveSettings();
+    event->accept();
+}
+
+MainWindow::~MainWindow() {
+    saveSettings();
 }
