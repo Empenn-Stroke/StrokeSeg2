@@ -288,7 +288,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     // Icon
     QLabel *iconLabel = new QLabel(m_fileButton);
-    QPixmap pix("../../../gui/ressources/files.svg");
+    QPixmap pix("../../../gui/ressources/files.png");
     iconLabel->setPixmap(pix.scaled(80, 80, Qt::KeepAspectRatio, Qt::SmoothTransformation));
     iconLabel->setAlignment(Qt::AlignCenter);
     iconLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
