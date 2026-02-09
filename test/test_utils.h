@@ -85,3 +85,34 @@ inline NiftiVolume makeTestVolume(int C = 1, int X = 2, int Y = 2, int Z = 2) {
 inline bool eigenVecEq(const Eigen::Vector3f &a, const Eigen::Vector3f &b, float eps = 1e-5f) {
     return (a - b).cwiseAbs().maxCoeff() < eps;
 }
+
+inline bool areVolumesEqual(const NiftiVolume &v1, const NiftiVolume &v2, float tolerance = 1e-4f) {
+    // 1. Vérification stricte des dimensions
+    if (v1.data.dimensions() != v2.data.dimensions()) {
+        qDebug() << "Erreur : Dimensions différentes entre produit et référence.";
+        return false;
+    }
+
+    // 2. Utilisation des pointeurs bruts (évite le conflit RowMajor/ColMajor au compilateur)
+    const float *p1 = v1.data.data();
+    const float *p2 = v2.data.data();
+    size_t count = v1.data.size();
+
+    float maxDiff = 0.0f;
+
+    for (size_t i = 0; i < count; ++i) {
+        float d = std::abs(p1[i] - p2[i]);
+        if (d > maxDiff)
+            maxDiff = d;
+
+        // Si on dépasse la tolérance, on peut s'arrêter et logger
+        if (d >= tolerance) {
+            qDebug() << "Divergence détectée à l'index" << i << "| Produit:" << p1[i]
+                     << "| Référence:" << p2[i] << "| Diff:" << d;
+            return false;
+        }
+    }
+
+    qDebug() << "Volumes identiques. Erreur max :" << maxDiff;
+    return true;
+}

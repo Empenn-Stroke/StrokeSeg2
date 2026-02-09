@@ -9,6 +9,8 @@
 #include <QMimeData>
 #include <QDebug>
 
+#include <utils/path.h>
+
 #ifdef Q_OS_WIN
 #include <windows.h>
 #endif

@@ -49,7 +49,9 @@ namespace preprocessing {
         void zScoreNormalize(NiftiVolume &vol, const NiftiVolume *seg = nullptr);
 
         std::vector<bool> computeNonZeroMask(const NiftiVolume &vol);
-        NiftiVolume cropToNonZero(const NiftiVolume &vol, 
+
+        std::pair<NiftiVolume, NiftiVolume>
+        cropToNonZero(const NiftiVolume &vol, 
                                   const NiftiVolume *seg = nullptr,
                                   int nonzero_label = 1,
                                   std::array<std::array<int, 2>, 3> *bbox_out = nullptr);

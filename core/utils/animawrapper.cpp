@@ -60,6 +60,12 @@ int AnimaWrapper::run(const QStringList &args) {
     m_stdout = QString::fromUtf8(out);
     m_stderr = QString::fromUtf8(err);
 
+    if (process.exitCode() != 0) {
+        qDebug() << "--- ANIMA CRASH LOG ---";
+        qDebug() << "STDOUT:" << m_stdout;
+        qDebug() << "STDERR:" << m_stderr;
+    }
+
     // Vérifier si le processus s'est terminé anormalement
     if (process.exitStatus() == QProcess::CrashExit) {
         // Retourner -1 pour signaler l'échec par crash
