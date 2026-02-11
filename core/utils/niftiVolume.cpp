@@ -8,8 +8,14 @@ extern "C" {
 #include <nifti1_io.h>
 }
 
-NiftiVolume NiftiVolume::loadNifti(const QString &path) {
+NiftiVolume NiftiVolume::createNifti(Tensor4f data, Eigen::Vector3f spacing) {
+    NiftiVolume vol{
+        .data = data,
+        .spacing = spacing,
+    };
+}
 
+NiftiVolume NiftiVolume::loadNifti(const QString &path) {
     nifti_image *nim = nifti_image_read(path.toStdString().c_str(), 1);
     if (!nim)
         throw std::runtime_error("Failed to read NIFTI file");
@@ -110,17 +116,16 @@ void NiftiVolume::saveNifti(const QString &path, const NiftiVolume &vol) {
     nifti_image_free(nim);
 }
 
-std::vector<float> NiftiVolume::toVector() const 
-{
+std::vector<float> NiftiVolume::toVector() const {
 
     return std::vector<float>(data.data(), data.data() + data.size());
-
 }
 
-std::vector<int64_t> NiftiVolume::getShape() const 
-{
-    return {static_cast<int64_t>(data.dimension(0)),
-            static_cast<int64_t>(data.dimension(1)),
-            static_cast<int64_t>(data.dimension(2)),
-            static_cast<int64_t>(data.dimension(3))};
+std::vector<int64_t> NiftiVolume::getShape() const {
+    return {
+        static_cast<int64_t>(data.dimension(0)),
+        static_cast<int64_t>(data.dimension(1)),
+        static_cast<int64_t>(data.dimension(2)),
+        static_cast<int64_t>(data.dimension(3)),
+    };
 }

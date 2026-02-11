@@ -21,14 +21,13 @@ struct NiftiVolume {
 
     using Tensor4f = Eigen::Tensor<float, 4, Eigen::RowMajor>;
 
-
     /**
      * @brief Voxel data stored as a 4D Eigen tensor.
      *
      * Tensor layout is (C, X, Y, Z) in row-major order.
      * All voxel values are stored as floating-point values.
      */
-    Tensor4f data;           // (C, X, Y, Z)
+    Tensor4f data; // (C, X, Y, Z)
 
     /**
      * @brief Physical voxel spacing in millimeters.
@@ -38,6 +37,12 @@ struct NiftiVolume {
     Eigen::Vector3f spacing; // (sx, sy, sz)
 
     QString file_path; // Original file path (optional)
+
+    /**
+     * @brief Create a NiftiVolume from voxel data and affine matrix. No file will
+     * be created on disk; you might want to use @ref saveNifti for this.
+     */
+    static NiftiVolume createNifti(Tensor4f data, Eigen::Vector3f spacing = {});
 
     /**
      * @brief Load a NIFTI file from disk.
@@ -80,7 +85,6 @@ struct NiftiVolume {
      *       Ensure compatibility with downstream libraries (e.g. ONNX, NumPy).
      */
     std::vector<float> toVector() const;
-
 
     /**
      * @brief Returns the shape of the volume tensor.
