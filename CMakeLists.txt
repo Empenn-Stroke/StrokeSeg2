@@ -6,6 +6,10 @@ cmake_policy(SET CMP0174 NEW)
 
 set(CMAKE_SYSTEM_VERSION "10.0.18362.0")
 
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
+
 if(CMAKE_GENERATOR MATCHES "^Visual Studio")
     # To prevent builds (including try_compile) from picking up top-level 'Directory.Build.*' files,
     # write versions specific to the CMake builds at the root of the CMake build.

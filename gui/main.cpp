@@ -7,7 +7,7 @@ int main(int argc, char *argv[]) {
 
 	QApplication app(argc, argv);
 
-    QFile styleFile("../../../gui/style.qss");
+    QFile styleFile(":/gui/style.qss");
 
     if (styleFile.open(QFile::ReadOnly)) {
         QString styleSheet = QTextStream(&styleFile).readAll();
