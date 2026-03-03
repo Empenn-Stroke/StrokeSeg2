@@ -17,6 +17,7 @@ qt_add_executable(
     warningWindow.cpp
     modelManager.h
     modelManager.cpp
+    ../resources.qrc
     ${APP_ICON_RESOURCE}
 )
 

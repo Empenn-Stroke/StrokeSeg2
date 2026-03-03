@@ -21,7 +21,7 @@
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     setWindowTitle("StrokeSeg2");
-    setWindowIcon(QIcon("../../../gui/ressources/StrokeSeg2.ico"));
+    setWindowIcon(QIcon(":/gui/ressources/StrokeSeg2.ico"));
     resize(1280, 720);
 
     setWindowFlags(Qt::FramelessWindowHint);
@@ -288,7 +288,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     // Icon
     QLabel *iconLabel = new QLabel(m_fileButton);
-    QPixmap pix("../../../gui/ressources/files.png");
+    QPixmap pix(":/gui/ressources/files.png");
     iconLabel->setPixmap(pix.scaled(80, 80, Qt::KeepAspectRatio, Qt::SmoothTransformation));
     iconLabel->setAlignment(Qt::AlignCenter);
     iconLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
@@ -337,7 +337,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     QWidget *loadingPage = new QWidget();
     QVBoxLayout *loadingLayout = new QVBoxLayout(loadingPage);
     QLabel *spinnerLabel = new QLabel(loadingPage);
-    QMovie *movie = new QMovie("../../../gui/ressources/infinite-spinner-optimized.gif");
+    QMovie *movie = new QMovie(":/gui/ressources/infinite-spinner-optimized.gif");
     movie->start();
     spinnerLabel->setMovie(movie);
     loadingLayout->addStretch();
