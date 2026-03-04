@@ -258,12 +258,14 @@ class TestPreprocessor : public QObject {
     }
 };
 
-int main(int argc, char *argv[])
-{
-    QCoreApplication app(argc, argv); 
-    
-    TestPreprocessor tc;
-    return QTest::qExec(&tc, argc, argv);
-}
+QTEST_MAIN(TestPreprocessor);
+
+//int main(int argc, char *argv[])
+//{
+//    QCoreApplication app(argc, argv); 
+//    
+//    TestPreprocessor tc;
+//    return QTest::qExec(&tc, argc, argv);
+//}
 
 #include "test_preprocessor.moc"

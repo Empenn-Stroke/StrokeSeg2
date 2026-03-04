@@ -33,10 +33,10 @@ endmacro()
 #add_qt_test(test_niftivolume test_niftivolume.cpp)
 
 # Test Resampling
-# add_qt_test(test_resampling test_resampling.cpp)
+#add_qt_test(test_resampling test_resampling.cpp)
 
 # Test AnimaWrapper :
-# add_qt_test(test_animawrapper test_animawrapper.cpp)
+#add_qt_test(test_animawrapper test_animawrapper.cpp)
 
 # Test BrainExtraction :
 #add_qt_test(test_brainextraction test_brainextraction.cpp)

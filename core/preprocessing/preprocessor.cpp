@@ -7,56 +7,20 @@
 namespace preprocessing {
 
     void Preprocessor::zScoreNormalize(NiftiVolume &vol, const NiftiVolume *seg) {
-        const int C = vol.data.dimension(0);
-        const int X = vol.data.dimension(1);
-        const int Y = vol.data.dimension(2);
-        const int Z = vol.data.dimension(3);
+        auto &tensor = vol.data;
 
-        bool useSeg = (seg && seg->data.dimension(1) == X && seg->data.dimension(2) == Y &&
-                       seg->data.dimension(3) == Z);
+        // 1. Calcul de la moyenne
+        Eigen::Tensor<float, 0, Eigen::RowMajor> meanTensor = tensor.mean();
 
-        double sum = 0.0;
-        double sq_sum = 0.0;
-        size_t count = 0;
+        // 2. Extraction de la valeur scalaire
+        float mean = meanTensor(0); // Le second () extrait la valeur du tenseur 0D
 
-        for (int c = 0; c < C; ++c) {
-            for (int x = 0; x < X; ++x) {
-                for (int y = 0; y < Y; ++y) {
-                    for (int z = 0; z < Z; ++z) {
-                        float v = vol.data(c, x, y, z);
+        // 2. Calcul de l'écart-type : sqrt(mean( (x - mean)^2 ))
+        Eigen::Tensor<float, 0, Eigen::RowMajor> variance = (tensor - mean).square().mean();
+        float std_dev = std::sqrt(std::max(variance(), 1e-8f));
 
-                        if (useSeg) {
-                            float segVal = seg->data(0, x, y, z);
-                            // On ne skip que si on est CERTAIN d'être dans le fond (-1)
-                            if (segVal < -0.5f)
-                                continue;
-                        } else {
-                            if (std::abs(v) < 1e-5f)
-                                continue;
-                        }
-
-                        sum += v;
-                        sq_sum += (double)v * v;
-                        count++;
-                    }
-                }
-            }
-        }
-
-        if (count == 0) {
-            spdlog::error("zScoreNormalize: Aucun voxel trouvé (Somme={}, Count={})", sum, count);
-            return;
-        }
-
-        double mean = sum / count;
-        double variance = (sq_sum / count) - (mean * mean);
-        double std_dev = std::sqrt(std::max(variance, 1e-8));
-
-        // Application de la normalisation
-        float *dataPtr = vol.data.data();
-        for (int i = 0; i < vol.data.size(); ++i) {
-            dataPtr[i] = static_cast<float>((dataPtr[i] - mean) / std_dev);
-        }
+        // 3. Application (Opération vectorisée en une ligne)
+        tensor = (tensor - mean) / std_dev;
     }
 
     std::vector<bool> Preprocessor::computeNonZeroMask(const NiftiVolume &vol) {
@@ -82,105 +46,91 @@ namespace preprocessing {
     }
 
     std::pair<NiftiVolume, NiftiVolume>
-    Preprocessor::cropToNonZero(const NiftiVolume &vol, const NiftiVolume *seg,
-                                            int nonzero_label,
-                                            std::array<std::array<int, 2>, 3> *bbox_out) {
-        auto mask = computeNonZeroMask(vol);
-        const int X = vol.data.dimension(1);
-        const int Y = vol.data.dimension(2);
-        const int Z = vol.data.dimension(3);
+    Preprocessor::cropToNonZero(const NiftiVolume &vol, const NiftiVolume *seg, int nonzero_label,
+                                std::array<std::array<int, 2>, 3> *bbox_out) {
+        const auto &data = vol.data;
+        const int X = data.dimension(1);
+        const int Y = data.dimension(2);
+        const int Z = data.dimension(3);
 
         std::array<std::array<int, 2>, 3> bbox;
 
+        // 1. Calcul de la Bounding Box (si non fournie)
         if (bbox_out && (*bbox_out)[0][0] != -1) {
             bbox = *bbox_out;
         } else {
-            int x_min = X, x_max = 0;
-            int y_min = Y, y_max = 0;
-            int z_min = Z, z_max = 0;
-            bool found = false;
+            // On crée un masque booléen : vrai si au moins un canal a une valeur > epsilon
+            // .abs() > 1e-5f renvoie un tenseur de booléens
+            // .any(Eigen::array<int, 1>{0}) réduit la dimension des canaux (C)
+            Eigen::Tensor<bool, 3, Eigen::RowMajor> mask =
+                (data.abs() > 1e-5f).any(Eigen::array<int, 1>{0});
 
-            for (int x = 0; x < X; ++x) {
-                for (int y = 0; y < Y; ++y) {
-                    for (int z = 0; z < Z; ++z) {
-                        if (mask[x * Y * Z + y * Z + z]) {
-                            if (x < x_min)
-                                x_min = x;
-                            if (x > x_max)
-                                x_max = x;
-                            if (y < y_min)
-                                y_min = y;
-                            if (y > y_max)
-                                y_max = y;
-                            if (z < z_min)
-                                z_min = z;
-                            if (z > z_max)
-                                z_max = z;
-                            found = true;
-                        }
+            auto get_limits = [&](int dim) -> std::pair<int, int> {
+                // On réduit les deux autres dimensions pour ne garder que celle qui nous intéresse
+                Eigen::array<int, 2> dims_to_reduce;
+                if (dim == 0)
+                    dims_to_reduce = {1, 2}; // Pour X, on réduit Y et Z
+                else if (dim == 1)
+                    dims_to_reduce = {0, 2}; // Pour Y, on réduit X et Z
+                else
+                    dims_to_reduce = {0, 1}; // Pour Z, on réduit X et Y
+
+                Eigen::Tensor<bool, 1, Eigen::RowMajor> projection = mask.any(dims_to_reduce);
+
+                int min_idx = -1, max_idx = -1;
+                for (int i = 0; i < projection.size(); ++i) {
+                    if (projection(i)) {
+                        if (min_idx == -1)
+                            min_idx = i;
+                        max_idx = i;
                     }
                 }
-            }
+                if (min_idx == -1)
+                    throw std::runtime_error("All-zero volume, cannot crop");
+                return {min_idx, max_idx + 1};
+            };
 
-            if (!found)
-                throw std::runtime_error("All-zero volume, cannot crop");
-
-            bbox = {{{x_min, x_max + 1}, {y_min, y_max + 1}, {z_min, z_max + 1}}};
+            bbox[0] = {get_limits(0).first, get_limits(0).second};
+            bbox[1] = {get_limits(1).first, get_limits(1).second};
+            bbox[2] = {get_limits(2).first, get_limits(2).second};
         }
 
         if (bbox_out)
             *bbox_out = bbox;
 
+        // 2. Extraction par Slicing (Ultra rapide)
         int newX = bbox[0][1] - bbox[0][0];
         int newY = bbox[1][1] - bbox[1][0];
         int newZ = bbox[2][1] - bbox[2][0];
 
-        NiftiVolume croppedData;
-        croppedData.data =
-            Eigen::Tensor<float, 4, Eigen::RowMajor>(vol.data.dimension(0), newX, newY, newZ);
-        croppedData.spacing = vol.spacing;
+        Eigen::array<Eigen::Index, 4> offsets = {0, bbox[0][0], bbox[1][0], bbox[2][0]};
+        Eigen::array<Eigen::Index, 4> extents = {(Eigen::Index)data.dimension(0), newX, newY, newZ};
 
+        NiftiVolume croppedData;
+        croppedData.spacing = vol.spacing;
+        croppedData.data = data.slice(offsets, extents);
+
+        // 3. Gestion du masque de segmentation
         NiftiVolume croppedSeg;
-        croppedSeg.data = Eigen::Tensor<float, 4, Eigen::RowMajor>(1, newX, newY, newZ);
         croppedSeg.spacing = vol.spacing;
 
-        // 1. Remplissage de l'Image (Data)
-        for (int c = 0; c < vol.data.dimension(0); ++c) {
-            for (int x = 0; x < newX; ++x) {
-                int old_x = x + bbox[0][0];
-                for (int y = 0; y < newY; ++y) {
-                    int old_y = y + bbox[1][0];
-                    for (int z = 0; z < newZ; ++z) {
-                        int old_z = z + bbox[2][0];
-                        croppedData.data(c, x, y, z) = vol.data(c, old_x, old_y, old_z);
-                    }
-                }
-            }
-        }
+        if (seg) {
+            croppedSeg.data = seg->data.slice(offsets, extents);
+        } else {
+            Eigen::array<int, 1> reduction_axis = {0};
+            Eigen::Tensor<bool, 3, Eigen::RowMajor> local_mask =
+                (croppedData.data.abs() > 1e-5f).any(reduction_axis);
 
-        // 2. Remplissage du Segmentation Mask (Seg) - COPIE STRICTE PYTHON
-        for (int x = 0; x < newX; ++x) {
-            int old_x = x + bbox[0][0];
-            for (int y = 0; y < newY; ++y) {
-                int old_y = y + bbox[1][0];
-                for (int z = 0; z < newZ; ++z) {
-                    int old_z = z + bbox[2][0];
+            // 2. Préparer les constantes au format FLOAT explicitement
+            float f_zero = 0.0f;
+            float f_label = static_cast<float>(nonzero_label);
 
-                    bool is_nonzero = mask[old_x * Y * Z + old_y * Z + old_z];
-
-                    if (seg) {
-                        // Si on a un seg en entrée (ex: cas du FLAIR qui réutilise le seg du T1)
-                        float val = seg->data(0, old_x, old_y, old_z);
-                        if (val == 0 && !is_nonzero)
-                            val = nonzero_label;
-                        croppedSeg.data(0, x, y, z) = val;
-                    } else {
-                        // LOGIQUE PYTHON : seg = np.where(nonzero_mask, np.int8(0),
-                        // np.int8(nonzero_label))
-                        croppedSeg.data(0, x, y, z) = is_nonzero ? 0.0f : (float)nonzero_label;
-                    }
-                }
-            }
+            // 3. Utiliser select avec des types strictement identiques (float)
+            // On caste local_mask en float AVANT de faire les opérations si nécessaire,
+            // ou on s'assure que select renvoie des float.
+            croppedSeg.data.chip(0, 0) =
+                local_mask.select(croppedSeg.data.chip(0, 0).constant(f_zero),
+                                  croppedSeg.data.chip(0, 0).constant(f_label));
         }
 
         return {croppedData, croppedSeg};
@@ -193,35 +143,28 @@ namespace preprocessing {
         const int Y = vol.data.dimension(2);
         const int Z = vol.data.dimension(3);
 
-        int newX = std::max(X, min_size);
-        int newY = std::max(Y, min_size);
-        int newZ = std::max(Z, min_size);
+        // Calcul des paddings (même logique)
+        int padX = std::max(0, min_size - X);
+        int padY = std::max(0, min_size - Y);
+        int padZ = std::max(0, min_size - Z);
 
-        std::vector<std::array<int, 2>> padding(3);
-        int current_dims[3] = {X, Y, Z};
-        int target_dims[3] = {newX, newY, newZ};
-
-        for (int i = 0; i < 3; ++i) {
-            int total_pad = target_dims[i] - current_dims[i];
-            int pad_before = total_pad / 2;
-            padding[i] = {pad_before, total_pad - pad_before};
-        }
+        std::vector<std::array<int, 2>> padding = {{padX / 2, padX - (padX / 2)},
+                                                   {padY / 2, padY - (padY / 2)},
+                                                   {padZ / 2, padZ - (padZ / 2)}};
 
         NiftiVolume padded;
-        padded.data = Eigen::Tensor<float, 4, Eigen::RowMajor>(C, newX, newY, newZ);
-        padded.data.setZero();
         padded.spacing = vol.spacing;
 
-        for (int c = 0; c < C; ++c) {
-            for (int x = 0; x < X; ++x) {
-                for (int y = 0; y < Y; ++y) {
-                    for (int z = 0; z < Z; ++z) {
-                        padded.data(c, x + padding[0][0], y + padding[1][0], z + padding[2][0]) =
-                            vol.data(c, x, y, z);
-                    }
-                }
-            }
-        }
+        // Eigen padding : on définit les paires de (avant, après) pour chaque dimension
+        Eigen::array<std::pair<int, int>, 4> pad_dims;
+        pad_dims[0] = {0, 0}; // Pas de pad sur les canaux (C)
+        pad_dims[1] = {padding[0][0], padding[0][1]};
+        pad_dims[2] = {padding[1][0], padding[1][1]};
+        pad_dims[3] = {padding[2][0], padding[2][1]};
+
+        // L'opération magique :
+        padded.data = vol.data.pad(pad_dims);
+
         return {padded, padding};
     }
 

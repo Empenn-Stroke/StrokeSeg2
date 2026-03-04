@@ -12,6 +12,13 @@ class MockAnimaWrapper : public AnimaWrapper {
     explicit MockAnimaWrapper(QObject *parent = nullptr) : AnimaWrapper(parent) {}
 
     int run(const QStringList &args) override {
+
+        this->callCount++;
+        this->lastCommand = args;
+
+        if (shouldFail)
+            return 1;
+
         // 1. On cherche TOUS les fichiers de sortie potentiels dans la commande
         for (int i = 0; i < args.size(); ++i) {
             QString currentArg = args[i];
