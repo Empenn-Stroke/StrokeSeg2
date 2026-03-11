@@ -89,7 +89,9 @@ QString BrainExtraction::run(const QString &imgPath, const QString &prefix) {
         command.clear();
         command << "animaDenseSVFBMRegistration"
                 << "-r" << (prefix + "_c.nrrd") << "-m" << (prefix + "_aff.nrrd") << "-o"
-                << (prefix + "_nl.nrrd") << "-O" << (prefix + "_nl_tr.nrrd") << "--tub" << "2";
+                << (prefix + "_nl.nrrd") << "-O" << (prefix + "_nl_tr.nrrd") << "-T" << "0" << "--tub"
+                << "2";
+        command += m_pyramidOption;
         runCommand(command);
 
         // --- Transform serie (non-linear) ---

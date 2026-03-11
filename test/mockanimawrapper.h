@@ -12,7 +12,6 @@ class MockAnimaWrapper : public AnimaWrapper {
     explicit MockAnimaWrapper(QObject *parent = nullptr) : AnimaWrapper(parent) {}
 
     int run(const QStringList &args) override {
-
         this->callCount++;
         this->lastCommand = args;
 
@@ -31,13 +30,17 @@ class MockAnimaWrapper : public AnimaWrapper {
                 // CAS 1 : C'est l'image de sortie principale
                 if (outputPath.endsWith(".nii") || outputPath.endsWith(".nii.gz")) {
                     NiftiVolume emergencyVol;
-                    // On garde 64 pour la rapidité des tests unitaires
-                    emergencyVol.data = Eigen::Tensor<float, 4, Eigen::RowMajor>(1, 64, 64, 64);
+
+                    // CORRECTION : Passage en ColMajor et ordre (X, Y, Z, C)
+                    // On garde 64x64x64x1
+                    emergencyVol.data = Eigen::Tensor<float, 4, Eigen::ColMajor>(64, 64, 64, 1);
                     emergencyVol.data.setConstant(1.0f);
-                    for (int x = 16; x < 48; ++x)
+
+                    // Remplissage d'un cube central pour simuler un "objet"
+                    for (int z = 16; z < 48; ++z)
                         for (int y = 16; y < 48; ++y)
-                            for (int z = 16; z < 48; ++z)
-                                emergencyVol.data(0, x, y, z) = 100.0f;
+                            for (int x = 16; x < 48; ++x)
+                                emergencyVol.data(x, y, z, 0) = 100.0f;
 
                     emergencyVol.spacing = Eigen::Vector3f(1.0f, 1.0f, 1.0f);
 

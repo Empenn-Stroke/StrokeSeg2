@@ -176,9 +176,9 @@ class TestPreprocessor : public QObject {
 
     void testIntegrationT1Pipeline() {
         // 1. Chemins
-        QString inputPath = QDir(base_dir).filePath("test/test_data/sub-r001s001_T1w.nii.gz");
+        QString inputPath = QDir(base_dir).filePath("test/test_data/sub-r001s002_T1w.nii.gz");
         QString referencePath =
-            QDir(base_dir).filePath("test/test_data/sub-r001s001_T1w_MNI_ref.nii.gz");
+            QDir(base_dir).filePath("test/test_data/sub-r001s002_T1w_ss_N4_MNI.nii.gz");
         QString outputDir = QCoreApplication::applicationDirPath() + "/output_data";
         QDir().mkpath(outputDir);
 
@@ -190,18 +190,25 @@ class TestPreprocessor : public QObject {
         Preprocessor preproc(&resampler, &brainExtractor, realWrapper);
 
         // 3. Exécution
-        qDebug() << "Lancement du pipeline d'intégration sur :" << inputPath;
+        qDebug() << "Lancement du pipeline d'integration sur :" << inputPath;
         PreprocessedVolume result;
         try {
             result = preproc.preprocess(inputPath, "", outputDir, false);
         } catch (const std::exception &e) {
-            QFAIL(qPrintable(QString("Le pipeline a crashé : %1").arg(e.what())));
+            QFAIL(qPrintable(QString("Le pipeline a crashe : %1").arg(e.what())));
         }
 
         // 4. Préparation du volume produit (on utilise le tenseur final result.data)
-        // On le sauve temporairement pour s'assurer qu'on teste bien le dernier état (128x128x128)
         QString finalPath = outputDir + "/final_processed_result.nii.gz";
         NiftiVolume volToSave;
+
+        //if (result.data.dimension(0) > 2) {
+        //    qDebug() << "WARNING: Redressement des axes détecté (C > 1)";
+        //    volToSave.data = result.data.shuffle(Eigen::array<int, 4>{1, 2, 3, 0});
+        //} else {
+        //    volToSave.data = result.data;
+        //}
+
         volToSave.data = result.data;
         volToSave.spacing = result.spacing;
         NiftiVolume::saveNifti(finalPath, volToSave);
@@ -253,8 +260,8 @@ class TestPreprocessor : public QObject {
         qDebug() << "Corrélation (Pearson) :" << correlation;
 
         // Un recalage médical est considéré comme excellent si Correlation > 0.95
-        QVERIFY2(correlation > 0.98, "Les images sont spatialement identiques mais les intensités "
-                                     "ne sont pas assez corrélées.");
+        QVERIFY2(correlation > 0.98, "Les images sont spatialement identiques mais les intensites "
+                                     "ne sont pas assez correlees.");
     }
 };
 

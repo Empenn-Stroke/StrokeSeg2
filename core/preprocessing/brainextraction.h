@@ -14,7 +14,7 @@
 
 
 class AnimaWrapper;
-class MainWindow; // GUI
+class MainWindow;
 
 /**
  * @class BrainExtraction

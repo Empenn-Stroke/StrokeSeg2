@@ -1,7 +1,7 @@
 #include "NiftiVolume.h"
-
-#include <QString>
 #include <QDir>
+#include <QString>
+#include <QtDebug>
 #include <cstring>
 #include <stdexcept>
 
@@ -10,118 +10,64 @@ extern "C" {
 }
 
 NiftiVolume NiftiVolume::loadNifti(const QString &path) {
-
     nifti_image *nim = nifti_image_read(path.toStdString().c_str(), 1);
     if (!nim)
-        throw std::runtime_error("Failed to read NIFTI file");
+        throw std::runtime_error("Failed to read NIFTI file: " + path.toStdString());
 
     NiftiVolume vol;
     vol.file_path = path;
 
-    // ---- Dimensions ----
-    const int C = (nim->nt > 1) ? nim->nt : 1;
-    const int X = nim->nx;
-    const int Y = nim->ny;
-    const int Z = nim->nz;
+    const int nx = nim->nx;
+    const int ny = nim->ny;
+    const int nz = nim->nz;
+    const int nt = (nim->nt > 1) ? nim->nt : 1;
 
-    if (X <= 0 || Y <= 0 || Z <= 0) {
-        nifti_image_free(nim);
-        throw std::runtime_error("Invalid NIFTI dimensions");
+    vol.spacing = Eigen::Vector3f(nim->dx > 0 ? nim->dx : 1.0f, nim->dy > 0 ? nim->dy : 1.0f,
+                                  nim->dz > 0 ? nim->dz : 1.0f);
+
+    const size_t totalVoxels = static_cast<size_t>(nx) * ny * nz * nt;
+    std::vector<float> floatBuffer(totalVoxels);
+    const void *srcData = nim->data;
+
+    // Conversion des types de données vers float
+    if (nim->datatype == NIFTI_TYPE_FLOAT32) {
+        std::memcpy(floatBuffer.data(), srcData, totalVoxels * sizeof(float));
+    } else {
+        for (size_t i = 0; i < totalVoxels; ++i) {
+            if (nim->datatype == NIFTI_TYPE_FLOAT64)
+                floatBuffer[i] = static_cast<float>(static_cast<const double *>(srcData)[i]);
+            else if (nim->datatype == NIFTI_TYPE_INT16)
+                floatBuffer[i] = static_cast<float>(static_cast<const int16_t *>(srcData)[i]);
+            else if (nim->datatype == NIFTI_TYPE_UINT16)
+                floatBuffer[i] = static_cast<float>(static_cast<const uint16_t *>(srcData)[i]);
+            else if (nim->datatype == NIFTI_TYPE_UINT8)
+                floatBuffer[i] = static_cast<float>(static_cast<const uint8_t *>(srcData)[i]);
+        }
     }
 
-    // ---- Spacing ----
-    vol.spacing = Eigen::Vector3f(nim->dx > 0 ? nim->dx : 1.f, nim->dy > 0 ? nim->dy : 1.f,
-                                  nim->dz > 0 ? nim->dz : 1.f);
+    // --- LOGIQUE COHÉRENTE : Tout en ColMajor ---
+    // NIfTI stocke [X][Y][Z][T].
+    // En ColMajor(nx, ny, nz, nt), la mémoire est exactement ordonnée comme [X][Y][Z][T].
+    // Plus besoin de shuffle complexe. On définit juste les dimensions.
 
-    // ---- Allocate tensor ----
-    vol.data = Tensor4f(C, X, Y, Z);
-
-    static_assert(std::is_same_v<decltype(vol.data)::Scalar, float>, "Data type must be float");
-
-    const size_t voxelCount = static_cast<size_t>(C) * X * Y * Z;
-
-    // ---- Copy / convert data ----
-    const void *src = nim->data;
-    if (!src) {
-        nifti_image_free(nim);
-        throw std::runtime_error("NIFTI data pointer is null");
-    }
-
-    switch (nim->datatype) {
-
-    case NIFTI_TYPE_FLOAT32: {
-        std::memcpy(vol.data.data(), src, voxelCount * sizeof(float));
-        break;
-    }
-
-    case NIFTI_TYPE_FLOAT64: {
-        const double *p = static_cast<const double *>(src);
-        float *dest = vol.data.data();
-        for (size_t i = 0; i < voxelCount; ++i)
-            dest[i] = static_cast<float>(p[i]);
-        break;
-    }
-
-    case NIFTI_TYPE_INT16: {
-        const int16_t *p = static_cast<const int16_t *>(src);
-        float *dest = vol.data.data();
-        for (size_t i = 0; i < voxelCount; ++i)
-            dest[i] = static_cast<float>(p[i]);
-        break;
-    }
-
-    case NIFTI_TYPE_UINT16: { // Optionnel mais conseillé pour ANIMA
-        const uint16_t *p = static_cast<const uint16_t *>(src);
-        float *dest = vol.data.data();
-        for (size_t i = 0; i < voxelCount; ++i)
-            dest[i] = static_cast<float>(p[i]);
-        break;
-    }
-
-    case NIFTI_TYPE_UINT8: {
-        const uint8_t *p = static_cast<const uint8_t *>(src);
-        float *dest = vol.data.data();
-        for (size_t i = 0; i < voxelCount; ++i)
-            dest[i] = static_cast<float>(p[i]);
-        break;
-    }
-
-    default:
-        int dtype = nim->datatype;
-        nifti_image_free(nim);
-        throw std::runtime_error("Unsupported NIFTI datatype: " + std::to_string(dtype));
-    }
+    vol.data = Eigen::Tensor<float, 4, Eigen::ColMajor>(nx, ny, nz, nt);
+    std::memcpy(vol.data.data(), floatBuffer.data(), totalVoxels * sizeof(float));
 
     nifti_image_free(nim);
     return vol;
 }
 
 bool NiftiVolume::saveNifti(const QString &path, const NiftiVolume &vol) {
-    qDebug() << "=== saveNifti() ===";
-    qDebug() << "Path:" << path;
-
-    Q_ASSERT_X(path.endsWith(".nii") || path.endsWith(".nii.gz"), "saveNifti",
-               "Attempt to write NIFTI to non-NIFTI file");
-
-
     nifti_image *nim = nifti_simple_init_nim();
     if (!nim)
         throw std::runtime_error("Failed to init nifti_image");
 
-    const int nt = vol.data.dimension(0);
-    const int nx = vol.data.dimension(1);
-    const int ny = vol.data.dimension(2);
-    const int nz = vol.data.dimension(3);
+    // Puisque nous sommes en ColMajor, les dimensions sont (X, Y, Z, T)
+    const int nx = vol.data.dimension(0);
+    const int ny = vol.data.dimension(1);
+    const int nz = vol.data.dimension(2);
+    const int nt = vol.data.dimension(3);
 
-    qDebug() << "[INPUT] tensor shape:"
-             << "C=" << nt << "X=" << nx << "Y=" << ny << "Z=" << nz;
-    qDebug() << "[INPUT] spacing x:" << vol.spacing[0];
-    qDebug() << "[INPUT] spacing y:" << vol.spacing[1];
-    qDebug() << "[INPUT] spacing z:" << vol.spacing[2];
-
-    // ----------------------------
-    // Dimensions
-    // ----------------------------
     nim->dim[0] = 4;
     nim->dim[1] = nx;
     nim->dim[2] = ny;
@@ -130,91 +76,51 @@ bool NiftiVolume::saveNifti(const QString &path, const NiftiVolume &vol) {
     nim->dim[5] = 1;
     nim->dim[6] = 1;
     nim->dim[7] = 1;
-
-    nim->ndim = 4;
     nim->nx = nx;
     nim->ny = ny;
     nim->nz = nz;
     nim->nt = nt;
-    nim->nu = 1;
-
     nim->nvox = static_cast<size_t>(nx) * ny * nz * nt;
 
-    qDebug() << "[HEADER BEFORE WRITE]";
-    qDebug() << " dim =" << nim->dim[0] << nim->dim[1] << nim->dim[2] << nim->dim[3] << nim->dim[4]
-             << nim->dim[5] << nim->dim[6] << nim->dim[7];
-    qDebug() << " ndim =" << nim->ndim;
-    qDebug() << " nx ny nz nt =" << nim->nx << nim->ny << nim->nz << nim->nt;
-    qDebug() << " nvox =" << nim->nvox;
-
-    // ----------------------------
-    // Spacing
-    // ----------------------------
-    nim->pixdim[0] = 1.0f;
     nim->pixdim[1] = vol.spacing.x();
     nim->pixdim[2] = vol.spacing.y();
     nim->pixdim[3] = vol.spacing.z();
-    nim->pixdim[4] = 1.0f;
-
     nim->dx = nim->pixdim[1];
     nim->dy = nim->pixdim[2];
     nim->dz = nim->pixdim[3];
-    nim->dt = nim->pixdim[4];
 
-    // ----------------------------
-    // Data
-    // ----------------------------
     nim->datatype = NIFTI_TYPE_FLOAT32;
     nim->nbyper = sizeof(float);
-
     nim->data = std::malloc(nim->nvox * nim->nbyper);
-    if (!nim->data)
-        throw std::runtime_error("Failed to allocate NIFTI buffer");
 
+    // Comme le tenseur est déjà en ColMajor (nx, ny, nz, nt),
+    // le buffer mémoire est déjà parfaitement aligné pour NIfTI.
     std::memcpy(nim->data, vol.data.data(), nim->nvox * sizeof(float));
 
-    // ----------------------------
-    // Write
-    // ----------------------------
     nifti_set_filenames(nim, path.toStdString().c_str(), 0, 1);
     nifti_image_write(nim);
-
     nifti_image_free(nim);
 
-    // ----------------------------
-    // RELECTURE IMMÉDIATE
-    // ----------------------------
-    qDebug() << "[POST-WRITE] Reloading file...";
+    // --- RELECTURE DEBUG ---
     nifti_image *check = nifti_image_read(path.toStdString().c_str(), 0);
-
-    if (!check) {
-        qCritical() << "nifti_image_read FAILED immediately after write";
-        return false;
+    if (check) {
+        qDebug() << "[SAVE CHECK]" << path << "Dims:" << check->nx << check->ny << check->nz
+                 << check->nt;
+        nifti_image_free(check);
     }
 
-    qDebug() << "[HEADER AFTER READ]";
-    qDebug() << " dim =" << check->dim[0] << check->dim[1] << check->dim[2] << check->dim[3]
-             << check->dim[4] << check->dim[5] << check->dim[6] << check->dim[7];
-    qDebug() << " ndim =" << check->ndim;
-    qDebug() << " nx ny nz nt =" << check->nx << check->ny << check->nz << check->nt;
-    qDebug() << " nvox =" << check->nvox;
-    qDebug() << " datatype =" << check->datatype << "nbyper =" << check->nbyper;
-
-    nifti_image_free(check);
-
-    qDebug() << "=== saveNifti DONE ===";
     return true;
 }
 
-std::vector<float> NiftiVolume::toVector() const 
-{
+std::vector<float> NiftiVolume::toVector() const {
     return std::vector<float>(data.data(), data.data() + data.size());
 }
 
-std::vector<int64_t> NiftiVolume::getShape() const 
-{
-    return {static_cast<int64_t>(data.dimension(0)),
-            static_cast<int64_t>(data.dimension(1)),
-            static_cast<int64_t>(data.dimension(2)),
-            static_cast<int64_t>(data.dimension(3))};
+std::vector<int64_t> NiftiVolume::getShape() const {
+    return {
+        static_cast<int64_t>(data.dimension(0)), // X
+        static_cast<int64_t>(data.dimension(1)), // Y
+        static_cast<int64_t>(data.dimension(2)), // Z
+        static_cast<int64_t>(data.dimension(3))  // C
+    };
 }

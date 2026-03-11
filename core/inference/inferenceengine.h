@@ -12,8 +12,8 @@ public:
     std::vector<float> RunInference(
         const QString &modelPath,
         const QString &imagePath,
-        const QString& inputName = "input",
-        const QString& outputName = "output"
+        const QString &inputName = "input",
+        const QString &outputName = "output"
     );
 
 }; //

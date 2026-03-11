@@ -61,23 +61,26 @@
 #include <utils/niftiVolume.h>
 
 // Génère un petit volume 4D pour les tests
-inline NiftiVolume makeTestVolume(int C = 1, int X = 2, int Y = 2, int Z = 2) {
+/**
+ * @brief Génère un petit volume 4D pour les tests en respectant le layout ColMajor (X, Y, Z, C)
+ */
+inline NiftiVolume makeTestVolume(int X = 2, int Y = 2, int Z = 2, int C = 1) {
     NiftiVolume vol;
 
-    vol.data = Eigen::Tensor<float, 4, Eigen::RowMajor>(C, X, Y, Z);
+    // CORRECTION : Utiliser Eigen::ColMajor (ou 0) et l'ordre (X, Y, Z, C)
+    vol.data = Eigen::Tensor<float, 4, Eigen::ColMajor>(X, Y, Z, C);
     vol.spacing = {1.0f, 1.0f, 1.0f};
 
     // Remplir avec des valeurs simples
+    // En ColMajor, la boucle la plus interne doit être la première dimension (X)
     int val = 1;
     for (int c = 0; c < C; ++c)
-        for (int x = 0; x < X; ++x)
+        for (int z = 0; z < Z; ++z)
             for (int y = 0; y < Y; ++y)
-                for (int z = 0; z < Z; ++z)
-                    vol.data(c, x, y, z) = static_cast<float>(val++);
+                for (int x = 0; x < X; ++x)
+                    vol.data(x, y, z, c) = static_cast<float>(val++);
 
-    // Chemin de sauvegarde pour le test
     vol.file_path = "test_output/dummy.nii";
-
     return vol;
 }
 
@@ -86,29 +89,28 @@ inline bool eigenVecEq(const Eigen::Vector3f &a, const Eigen::Vector3f &b, float
     return (a - b).cwiseAbs().maxCoeff() < eps;
 }
 
+/**
+ * @brief Compare deux volumes via leurs pointeurs bruts.
+ * Valide pour comparer ColMajor vs ColMajor.
+ */
 inline bool areVolumesEqual(const NiftiVolume &v1, const NiftiVolume &v2, float tolerance = 1e-4f) {
-    // 1. Vérification stricte des dimensions
     if (v1.data.dimensions() != v2.data.dimensions()) {
-        qDebug() << "Erreur : Dimensions différentes entre produit et référence.";
+        qDebug() << "Erreur : Dimensions différentes.";
         return false;
     }
 
-    // 2. Utilisation des pointeurs bruts (évite le conflit RowMajor/ColMajor au compilateur)
     const float *p1 = v1.data.data();
     const float *p2 = v2.data.data();
-    size_t count = v1.data.size();
+    size_t count = static_cast<size_t>(v1.data.size());
 
     float maxDiff = 0.0f;
-
     for (size_t i = 0; i < count; ++i) {
         float d = std::abs(p1[i] - p2[i]);
         if (d > maxDiff)
             maxDiff = d;
 
-        // Si on dépasse la tolérance, on peut s'arrêter et logger
         if (d >= tolerance) {
-            qDebug() << "Divergence détectée à l'index" << i << "| Produit:" << p1[i]
-                     << "| Référence:" << p2[i] << "| Diff:" << d;
+            qDebug() << "Divergence index" << i << "| V1:" << p1[i] << "| V2:" << p2[i];
             return false;
         }
     }

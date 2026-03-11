@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <QDebug>
 
 namespace preprocessing {
 
@@ -121,6 +122,12 @@ namespace preprocessing {
     // ------------------------------------------------------------
     NiftiVolume Resampling::resample(const NiftiVolume &in, const Eigen::Vector3f &new_spacing,
                                      bool is_segmentation) {
+
+        qDebug() << "RESAMPLE START - Input Dims:" << in.data.dimension(0) << "x" // C
+                 << in.data.dimension(1) << "x"                                   // X
+                 << in.data.dimension(2) << "x"                                   // Y
+                 << in.data.dimension(3);                                         // Z
+
         NiftiVolume out;
         out.spacing = new_spacing;
 
@@ -128,7 +135,7 @@ namespace preprocessing {
         Eigen::Vector3i old_shape(src.dimension(1), src.dimension(2), src.dimension(3));
         Eigen::Vector3i new_shape = compute_new_shape(old_shape, in.spacing, new_spacing);
 
-        out.data = Eigen::Tensor<float, 4, Eigen::RowMajor>(src.dimension(0), new_shape.x(),
+        out.data = Eigen::Tensor<float, 4, Eigen::ColMajor>(src.dimension(0), new_shape.x(),
                                                             new_shape.y(), new_shape.z());
 
         auto [do_sep, axis] = determine_separate_axis(in.spacing, new_spacing);

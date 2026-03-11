@@ -19,7 +19,7 @@
 struct NiftiVolume {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    using Tensor4f = Eigen::Tensor<float, 4, Eigen::RowMajor>;
+    using Tensor4f = Eigen::Tensor<float, 4, Eigen::ColMajor>;
 
 
     /**
