@@ -25,6 +25,8 @@ if(NOT EXISTS "$ENV{WindowsSdkDir}/Platforms/UAP/10.0.26100.0/Platform.xml")
     message(FATAL_ERROR "Windows SDK UWP 10.0.26100.0 non trouvé.")
 endif()
 
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+
 project(strokeseg2-app
   VERSION 0.0.1
   LANGUAGES CXX
@@ -42,7 +44,9 @@ set(ANIMA_ROOT_PATH ./anima
     CACHE PATH "path to root of anima installation"
 )
 
-add_compile_definitions(ANIMA_ROOT_PATH=${CMAKE_INSTALL_PREFIX}/${ANIMA_ROOT_PATH})
+#add_compile_definitions(ANIMA_ROOT_PATH=${CMAKE_INSTALL_PREFIX}/${ANIMA_ROOT_PATH})
+add_compile_definitions(ANIMA_ROOT_PATH=${CMAKE_BINARY_DIR}/${ANIMA_ROOT_PATH})
+message(${ANIMA_ROOT_PATH})
 
 # DEPENDENCIES #####################################################################################
 
@@ -97,16 +101,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(nifti)
 
-
-# TESTING
-FetchContent_Declare(
-    googletest
-    URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
-)
-if(WIN32)
-    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-endif()
-FetchContent_MakeAvailable(googletest)
 
 FetchContent_Declare(
   NuGetCMakePackage

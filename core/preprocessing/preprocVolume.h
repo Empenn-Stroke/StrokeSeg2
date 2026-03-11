@@ -11,7 +11,7 @@ struct PreprocessedVolume {
     /**
      * @brief Volume data (C, X, Y, Z)
      */
-    Eigen::Tensor<float, 4, Eigen::RowMajor> data;
+    Eigen::Tensor<float, 4, Eigen::ColMajor> data;
 
     /**
      * @brief Affine transformation matrix (voxel → world)

@@ -17,7 +17,14 @@ void BrainExtraction::runCommand(const QStringList &command) {
         throw std::runtime_error("Brain extraction cancelled by user");
     }
 
-    m_wrapper->run(command);
+    int exitCode = m_wrapper->run(command);
+
+    if (exitCode != 0) {
+        QString toolName = command.isEmpty() ? "Unknown tool" : command.first();
+        throw std::runtime_error(QString("%1 failed with exit code %2")
+                                 .arg(toolName)
+                                 .arg(exitCode).toStdString());
+    }
 }
 
 QString BrainExtraction::run(const QString &imgPath, const QString &prefix) {
@@ -82,7 +89,9 @@ QString BrainExtraction::run(const QString &imgPath, const QString &prefix) {
         command.clear();
         command << "animaDenseSVFBMRegistration"
                 << "-r" << (prefix + "_c.nrrd") << "-m" << (prefix + "_aff.nrrd") << "-o"
-                << (prefix + "_nl.nrrd") << "-O" << (prefix + "_nl_tr.nrrd") << "--tub" << "2";
+                << (prefix + "_nl.nrrd") << "-O" << (prefix + "_nl_tr.nrrd") << "-T" << "0" << "--tub"
+                << "2";
+        command += m_pyramidOption;
         runCommand(command);
 
         // --- Transform serie (non-linear) ---

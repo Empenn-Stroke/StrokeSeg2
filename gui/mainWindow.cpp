@@ -14,6 +14,8 @@
 
 #include <../core/inference/inferenceengine.h>
 
+#include <utils/path.h>
+
 #ifdef Q_OS_WIN
 #include <windows.h>
 #endif

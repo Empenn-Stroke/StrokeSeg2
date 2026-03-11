@@ -8,7 +8,7 @@ AnimaWrapper::AnimaWrapper(QObject *parent)
       m_stdout(),
       m_stderr()
 {
-    // Utiliser des canaux séparés pour capturer stdout et stderr distinctement.
+    // Use separate channels to get stdout and stderr
     process.setProcessChannelMode(QProcess::SeparateChannels);
 }
 
@@ -24,24 +24,25 @@ int AnimaWrapper::run(const QStringList &args) {
     const QString program = args.first();
     const QStringList arguments = args.mid(1);
 
-    // Si un précédent processus est encore en cours, tenter de l'arrêter.
+    // If a precedent process is still running, try to stop it.
     if (process.state() != QProcess::NotRunning) {
         process.kill();
         process.waitForFinished(3000);
     }
 
-    // Configurer et démarrer le processus
+    // Configure and start process.
+    QString program_path = QDir(anima_root_path).filePath(program);
 
-    std::cout << "Starting process: " << (anima_root_path + program).toStdString()
+    std::cout << "Starting process: " << program_path.toStdString()
               << " "
               << arguments.join(' ').toStdString() << std::endl;
 
-    process.setProgram(anima_root_path + program);
+    process.setProgram(program_path);
     process.setArguments(arguments);
     process.setProcessChannelMode(QProcess::SeparateChannels);
     process.start();
 
-    // Attendre le démarrage (5s).
+    // Wait for start.
     if (!process.waitForStarted(5000)) {
         m_stderr = process.errorString();
         if (m_stderr.isEmpty())
@@ -49,18 +50,24 @@ int AnimaWrapper::run(const QStringList &args) {
         return -1;
     }
 
-    // Attendre la fin (blocage indéfini).
+    // Wait for end.
     process.waitForFinished(-1);
 
-    // Lire les sorties
+    // Read outputs.
     const QByteArray out = process.readAllStandardOutput();
     const QByteArray err = process.readAllStandardError();
     m_stdout = QString::fromUtf8(out);
     m_stderr = QString::fromUtf8(err);
 
-    // Vérifier si le processus s'est terminé anormalement
+    if (process.exitCode() != 0) {
+        qDebug() << "--- ANIMA CRASH LOG ---";
+        qDebug() << "STDOUT:" << m_stdout;
+        qDebug() << "STDERR:" << m_stderr;
+    }
+
+    // Check if process abnormally stopped.
     if (process.exitStatus() == QProcess::CrashExit) {
-        // Retourner -1 pour signaler l'échec par crash
+        // Return -1 to notify the crash.
         return -1;
     }
 
