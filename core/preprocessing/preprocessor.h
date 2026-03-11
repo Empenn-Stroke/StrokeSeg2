@@ -46,9 +46,11 @@ namespace preprocessing {
         ConfigManager &config = ConfigManager::instance();
         QString atlasImage = atlas_dir + "/Reference_T1.nrrd";
 
-        void zScoreNormalize(NiftiVolume &vol, const NiftiVolume *seg = nullptr);
+        void 
+        zScoreNormalize(NiftiVolume &vol, const NiftiVolume *seg = nullptr);
 
-        std::vector<bool> computeNonZeroMask(const NiftiVolume &vol);
+        std::vector<bool> 
+        computeNonZeroMask(const NiftiVolume &vol);
 
         std::pair<NiftiVolume, NiftiVolume>
         cropToNonZero(const NiftiVolume &vol, 
@@ -56,16 +58,20 @@ namespace preprocessing {
                                   int nonzero_label = 1,
                                   std::array<std::array<int, 2>, 3> *bbox_out = nullptr);
 
-        std::pair<NiftiVolume, std::vector<std::array<int, 2>>> padVolume(const NiftiVolume &vol,
-                                                                          int min_size);
+        std::pair<NiftiVolume, std::vector<std::array<int, 2>>> 
+        padVolume(const NiftiVolume &vol, int min_size, int div);
 
-        QString reorientToRAS(const QString &input_path, const QString &prefix);
-        QString biasCorrect(const QString &input_path, const QString &prefix);
+        QString 
+        reorientToRAS(const QString &input_path, const QString &prefix);
 
-        std::pair<QString, QString> registerToReference(const QString &input_path,
-                                                        const QString &mni_image_path,
-                                                        const QString &prefix_label,
-                                                        const QString &base_path_prefix);
+        QString 
+        biasCorrect(const QString &input_path, const QString &prefix);
+
+        std::pair<QString, QString> 
+        registerToReference(const QString &input_path,
+                            const QString &mni_image_path,
+                            const QString &prefix_label,
+                            const QString &base_path_prefix);
 
         PreprocessedVolume preprocessModality(const QString &modality_path,
                                               bool is_MNI,

@@ -90,7 +90,6 @@ namespace preprocessing {
         Eigen::array<Eigen::Index, 4> offsets = {x0, y0, z0, 0};
         Eigen::array<Eigen::Index, 4> extents = {nX, nY, nZ, C};
 
-        // On évalue le slice dans un tenseur temporaire ColMajor pour éviter l'erreur d'assignation
         Eigen::Tensor<float, 4, Eigen::ColMajor> temp = vol.data.slice(offsets, extents);
         cropped.data = temp;
 
@@ -98,24 +97,33 @@ namespace preprocessing {
     }
 
     std::pair<NiftiVolume, std::vector<std::array<int, 2>>>
-    Preprocessor::padVolume(const NiftiVolume &vol, int min_size) {
+    Preprocessor::padVolume(const NiftiVolume &vol, int min_size = 128, int div = 32) {
         const int X = (int)vol.data.dimension(0);
         const int Y = (int)vol.data.dimension(1);
         const int Z = (int)vol.data.dimension(2);
         const int C = (int)vol.data.dimension(3);
 
-        int tX = std::max(X, min_size);
-        int tY = std::max(Y, min_size);
-        int tZ = std::max(Z, min_size);
+        auto get_target_size = [min_size, div](int current) {
+            int base = std::max(current, min_size);
+            return (base + div - 1) / div * div;
+        };
+
+        int tX = get_target_size(X);
+        int tY = get_target_size(Y);
+        int tZ = get_target_size(Z);
 
         int pX = (tX - X) / 2;
         int pY = (tY - Y) / 2;
         int pZ = (tZ - Z) / 2;
 
+        Eigen::Tensor<float, 0> min_tensor = vol.data.minimum();
+        float min_background = min_tensor(0);
+
         NiftiVolume padded;
         padded.spacing = vol.spacing;
         padded.data.resize(tX, tY, tZ, C);
-        padded.data.setZero();
+
+        padded.data.setConstant(min_background);
 
         Eigen::array<Eigen::Index, 4> offsets = {pX, pY, pZ, 0};
         Eigen::array<Eigen::Index, 4> extents = {X, Y, Z, C};
@@ -123,6 +131,7 @@ namespace preprocessing {
 
         std::vector<std::array<int, 2>> p_info = {
             {pX, tX - X - pX}, {pY, tY - Y - pY}, {pZ, tZ - Z - pZ}};
+
         return {padded, p_info};
     }
 
@@ -150,15 +159,12 @@ namespace preprocessing {
                                                                   const QString &prefix_label,
                                                                   const QString &base_path_prefix) {
 
-        // On extrait uniquement le nom du fichier du suffixe pour éviter de concaténer des chemins
-        // absolus
+
         QString cleanSuffix = QFileInfo(prefix_label).fileName();
 
-        // On construit le chemin de sortie dans le même dossier que l'input
         QString outDir = QFileInfo(input_path).absolutePath();
         const QString output_path = outDir + "/" + base_path_prefix + "_" + cleanSuffix + ".nii.gz";
 
-        // On enlève le .nii.gz pour le fichier de transformation (.txt)
         QString trsf_base = output_path;
         if (trsf_base.endsWith(".nii.gz"))
             trsf_base.chop(7);
@@ -188,7 +194,6 @@ namespace preprocessing {
         PreprocessedVolume result;
         QString path = modality_path;
 
-        // On définit un préfixe pour les fichiers de debug basé sur le dossier de l'input
         QString debug_prefix = QFileInfo(modality_path).absolutePath() + "/debug_" +
                                QFileInfo(modality_path).baseName();
 
@@ -205,7 +210,6 @@ namespace preprocessing {
 
         printAction("loading NIFTI volume");
         NiftiVolume vol = NiftiVolume::loadNifti(path);
-        // Debug: Volume original (ou recalé si !is_MNI)
         NiftiVolume::saveNifti(debug_prefix + "_1_loaded.nii.gz", vol);
 
         printAction("cropping to non-zero content");

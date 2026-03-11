@@ -219,10 +219,10 @@ class TestPreprocessor : public QObject {
 
         // 5. Diagnostic Dimensions & Spacing
         qDebug() << "--- DIAGNOSTIC ---";
-        qDebug() << "Dimensions Produit  :" << volProduced.data.dimension(1) << "x"
-                 << volProduced.data.dimension(2) << "x" << volProduced.data.dimension(3);
-        qDebug() << "Dimensions Expected :" << volExpected.data.dimension(1) << "x"
-                 << volExpected.data.dimension(2) << "x" << volExpected.data.dimension(3);
+        qDebug() << "Dimensions Produit  :" << volProduced.data.dimension(0) << "x"
+                 << volProduced.data.dimension(1) << "x" << volProduced.data.dimension(2);
+        qDebug() << "Dimensions Expected :" << volExpected.data.dimension(0) << "x"
+                 << volExpected.data.dimension(1) << "x" << volExpected.data.dimension(2);
 
         /*QCOMPARE(volProduced.data.dimension(1), volExpected.data.dimension(1));
         QCOMPARE(volProduced.data.dimension(2), volExpected.data.dimension(2));
@@ -266,13 +266,5 @@ class TestPreprocessor : public QObject {
 };
 
 QTEST_MAIN(TestPreprocessor);
-
-//int main(int argc, char *argv[])
-//{
-//    QCoreApplication app(argc, argv); 
-//    
-//    TestPreprocessor tc;
-//    return QTest::qExec(&tc, argc, argv);
-//}
 
 #include "test_preprocessor.moc"
