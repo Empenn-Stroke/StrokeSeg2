@@ -29,21 +29,53 @@ qt_standard_project_setup()
 # car le Superprojet les a déjà buildées pour nous.
 
 # 1. Eigen
+
+set(EIGEN_INSTALL_DIR "${CMAKE_BINARY_DIR}/../../bin/eigen") # À ajuster selon votre arborescence réelle
+
+list(APPEND CMAKE_PREFIX_PATH 
+    "${EIGEN_INSTALL_DIR}"
+    "${CMAKE_BINARY_DIR}/../../bin"
+)
+
 find_package(Eigen3 REQUIRED)
 
+message(STATUS "Searching for Eigen3 in: ${CMAKE_PREFIX_PATH}")
+
 # 2. ZLIB
-find_package(ZLIB REQUIRED)
+get_filename_component(OUT_DIR "${CMAKE_BINARY_DIR}/../../.." ABSOLUTE)
+set(ZLIB_LIB_DIR "${OUT_DIR}/bin/zlib/lib")
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(ZLIB_LIBRARY "${ZLIB_LIB_DIR}/zsd.lib")
+else()
+    set(ZLIB_LIBRARY "${ZLIB_LIB_DIR}/zd.lib")
+endif()
 
 # 3. NIFTI (compilé via ExternalProject dans le superprojet)
 # Si NIFTI n'exporte pas de config CMake, on le cherche manuellement
-find_path(NIFTI_INCLUDE_DIR NAMES nifti1.h PATHS ${CMAKE_PREFIX_PATH}/include)
-find_library(NIFTI_LIBRARY NAMES niftiio PATHS ${CMAKE_PREFIX_PATH}/lib)
+get_filename_component(OUT_DIR "${CMAKE_BINARY_DIR}/../../.." ABSOLUTE)
+
+set(NIFTI_INSTALL_ROOT "${OUT_DIR}/bin/Nifti_clib")
+
+set(NIFTI_INCLUDE_DIR "${NIFTI_INSTALL_ROOT}/include/nifti")
+set(NIFTI_LIBS 
+    "${NIFTI_INSTALL_ROOT}/lib/niftiio.lib"
+    "${NIFTI_INSTALL_ROOT}/lib/znz.lib"
+)
+
+# On vérifie si les chemins existent pour aider au debug
+message(STATUS "Checking Nifti in: ${NIFTI_INCLUDE_DIR}")
 
 # 4. QT
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Concurrent)
 qt_standard_project_setup() # sets some variables to setup qt
 
 # --- NuGet Packages (Gardé ici car spécifique au build MSVC de l'app) ---
+set(CPPWINRT_VERSION "2.0.250303.1" CACHE STRING "Version of CppWinRT")
+set(CPPWINRT_SYSTEM_VERSION ${CPPWINRT_VERSION} CACHE STRING "System version of CppWinRT")
+set(CPP_WINRT_VERSION ${CPPWINRT_VERSION}) # Parfois requis par certains scripts
+set(WIN_APP_SDK_VERSION "1.8.251106002" CACHE STRING "Version of Windows App SDK")
+
 include(FetchContent)
 FetchContent_Declare(
     NuGetCMakePackage

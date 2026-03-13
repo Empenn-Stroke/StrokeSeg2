@@ -4,7 +4,6 @@
 #include <cmath>
 #include <cstring>
 #include <nifti1_io.h>
-#include <spdlog/spdlog.h>
 
 namespace preprocessing {
 
@@ -284,7 +283,7 @@ namespace preprocessing {
 
     
     void Preprocessor::printAction(const QString &actionName) {
-        spdlog::info("Starting {}...", actionName.toStdString());
+        qDebug() << "Starting" << actionName << "...";
     }
 
     QString Preprocessor::moveToOutput(const QString &img_path) {
@@ -326,8 +325,7 @@ namespace preprocessing {
         QFile::remove(dst);
         if (!QFile::copy(img_path, dst)) {
             // Au lieu de throw, on log une erreur pour ne pas stopper tout le pipeline
-            spdlog::error("Failed to copy file from {} to {}", img_path.toStdString(),
-                          dst.toStdString());
+            qCritical() << "Failed to copy file from" << img_path << "to" << dst;
             return img_path;
         }
 

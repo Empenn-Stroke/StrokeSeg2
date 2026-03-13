@@ -20,6 +20,7 @@ set(ML_LIB_PATH "${ML_PACKAGE_ROOT}/lib/native/x64")
 
 set(ONNX_PATH "${CMAKE_BINARY_DIR}/__nuget/Microsoft.ML.OnnxRuntime.DirectML.1.17.1")
 set(DML_PATH  "${CMAKE_BINARY_DIR}/__nuget/Microsoft.AI.DirectML.1.13.1")
+set(ZLIB_DLL "${OUT_DIR}/bin/zlib/bin/zd.dll")
 
 set(ONNX_INCLUDE_DIR "${ONNX_PATH}/build/native/include")
 set(DML_INCLUDE_DIR  "${DML_PATH}/include")
@@ -32,15 +33,15 @@ target_include_directories(${CORE} PUBLIC
     ${CMAKE_SOURCE_DIR}/${COMMON}/
     "${ONNX_INCLUDE_DIR}"
     "${DML_INCLUDE_DIR}"
+    ${NIFTI_INCLUDE_DIR}
 )
 
+
 target_link_libraries(${CORE} PUBLIC
-    zlibstatic
-    niftiio
-    znz
-    spdlog
+    "${ZLIB_LIBRARY}"
+    ${NIFTI_LIBS}
     Qt6::Core
-    eigen
+    Eigen3::Eigen
     "${ONNX_LIB_DIR}/onnxruntime.lib"
     "${DML_LIB_DIR}/DirectML.lib"
     Configuration
@@ -50,7 +51,8 @@ add_custom_command(TARGET ${CORE} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
     "${ONNX_LIB_DIR}/onnxruntime.dll"
     "${DML_LIB_DIR}/DirectML.dll"
-    $<TARGET_FILE_DIR:${CORE}>
+    "${ZLIB_DLL}"
+    $<TARGET_FILE_DIR:strokeseg2-app>
 )
 
-add_dependencies(${CORE} zlib)
+#add_dependencies(${CORE} zlib)

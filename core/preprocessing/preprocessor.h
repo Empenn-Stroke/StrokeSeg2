@@ -8,8 +8,6 @@
 #include <utility>
 #include <vector>
 
-#include <spdlog/spdlog.h>
-
 #include "brainextraction.h"
 #include "preprocvolume.h"
 #include "resampling.h"
