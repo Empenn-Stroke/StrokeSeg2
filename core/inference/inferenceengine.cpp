@@ -2,19 +2,51 @@
 #include <QDebug>
 #include <QFile>
 #include <algorithm>
-#include <dml_provider_factory.h>
 #include <iostream>
-#include <onnxruntime_cxx_api.h>
-#include <utils/niftiVolume.h>
 #include <vector>
 
 using OrtFloat16 = Ort::Float16_t;
 
-std::vector<float> InferenceEngine::RunInference(const QString &modelPath, 
-                                                 const QString &imagePath,
-                                                 const QString &destinationPath,
-                                                 const QString &inputName,
-                                                 const QString &outputName) {
+InferenceEngine::InferenceEngine() {}
+
+QStringList InferenceEngine::getAvailableModels() {
+    QString programDataPath = qgetenv("PROGRAMDATA");
+    if (programDataPath.isEmpty())
+        programDataPath = "C:/ProgramData";
+
+    QDir modelsDir(programDataPath + "/StrokeSeg/Models");
+    return modelsDir.entryList({"*.onnx"}, QDir::Files);
+}
+
+void InferenceEngine::loadModel(const QString &modelName) {
+
+    QString fullPath = getModelsPath() + modelName;
+
+    if (QFile::exists(fullPath)) {
+        this->initSession(fullPath);
+    }
+}
+
+void InferenceEngine::initSession(const QString &modelPath) {
+    env = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "Inference");
+    Ort::SessionOptions sessionOptions;
+
+    auto providers = Ort::GetAvailableProviders();
+    if (std::find(providers.begin(), providers.end(), "DmlExecutionProvider") != providers.end()) {
+        Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_DML(sessionOptions, 0));
+        sessionOptions.SetExecutionMode(ExecutionMode::ORT_SEQUENTIAL);
+    }
+
+    session =
+        std::make_unique<Ort::Session>(*env, modelPath.toStdWString().c_str(), sessionOptions);
+}
+
+NiftiVolume InferenceEngine::runInference(const QString &modelPath, 
+                                          const QString &imagePath,
+                                          const QString &destinationPath,
+                                          const QString &inputName,
+                                          const QString &outputName) {
+
     if (!QFile::exists(modelPath) || !QFile::exists(imagePath)) {
         qDebug() << "Image or model not found !";
         return {};
@@ -29,40 +61,22 @@ std::vector<float> InferenceEngine::RunInference(const QString &modelPath,
     int Y = nv.data.dimension(2);
     int Z = nv.data.dimension(3);
 
-    auto pad = [](int64_t d) { return (d % 32 == 0) ? d : ((d / 32) + 1) * 32; };
-    int64_t pX = pad(X);
-    int64_t pY = pad(Y);
-    int64_t pZ = pad(Z);
-
-    std::vector<int64_t> inputShape = {1, C, pX, pY, pZ};
-    size_t paddedSize = C * pX * pY * pZ;
+    std::vector<int64_t> inputShape = {1, C, X, Y, Z};
+    size_t size = C * X * Y * Z;
 
     // ---- Convert to float 16 for ONNX ----
-    std::vector<Ort::Float16_t> inputVector(paddedSize);
-    std::fill(inputVector.begin(), inputVector.end(), Ort::Float16_t{0.0f});
 
-    for (int c = 0; c < C; ++c) {
-        for (int x = 0; x < X; ++x) {
-            for (int y = 0; y < Y; ++y) {
-                for (int z = 0; z < Z; ++z) {
-                    size_t index = c * (pX * pY * pZ) + x * (pY * pZ) + y * pZ + z;
-                    inputVector[index] = OrtFloat16(nv.data(c, x, y, z));
-                }
-            }
-        }
-    }
+    auto casted_expression = nv.data.cast<OrtFloat16>();
 
-    // ---- Set environment (trying by DirectML, CPU if impossible) ----
-    Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "Inference");
-    Ort::SessionOptions sessionOptions;
+    std::vector<OrtFloat16> inputVector(nv.data.size());
 
-    auto providers = Ort::GetAvailableProviders();
-    if (std::find(providers.begin(), providers.end(), "DmlExecutionProvider") != providers.end()) {
-        Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_DML(sessionOptions, 0));
-        std::cout << "DirectML enabled." << std::endl;
-    }
+    Eigen::TensorMap<Eigen::Tensor<OrtFloat16, 4, Eigen::ColMajor>> map(
+        reinterpret_cast<OrtFloat16 *>(inputVector.data()), C, X, Y, Z);
 
-    Ort::Session session(env, modelPath.toStdWString().c_str(), sessionOptions);
+    map = casted_expression; 
+
+    // ---- Set environment ----
+    initSession(modelPath);
 
     
     // ---- Tensor set ----
@@ -95,21 +109,15 @@ std::vector<float> InferenceEngine::RunInference(const QString &modelPath,
 
         qDebug() << "Max value in result:" << *std::max_element(result.begin(), result.end());
 
-        for (int c = 0; c < C; ++c) {
-            for (int x = 0; x < X; ++x) {
-                for (int y = 0; y < Y; ++y) {
-                    for (int z = 0; z < Z; ++z) {
-                        size_t index = c * (pX * pY * pZ) + x * (pY * pZ) + y * pZ + z;
+        Eigen::TensorMap<Eigen::Tensor<float, 4, Eigen::ColMajor>> result_tensor(result.data(), C,
+                                                                                 X, Y, Z);
 
-                        float val = result[index];
-                        outputVol.data(c, x, y, z) = std::isnan(val) ? 0.0f : val;
-                    }
-                }
-            }
-        }
+        outputVol.data =
+            (result_tensor.isnan()).select(result_tensor.constant(0.0f), result_tensor);
+
         NiftiVolume::saveNifti(destinationPath, outputVol);
 
-        return result;
+        return outputVol;
     } catch (const Ort::Exception &e) {
         std::cerr << "Error during inference : " << e.what() << std::endl;
         return {};
