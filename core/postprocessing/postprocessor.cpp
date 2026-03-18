@@ -145,6 +145,36 @@ namespace {
         return volume.data[0];
     }
 
+    //void postprocess(const NiftiVolume::Tensor4f &data,
+    //                                                const PreprocessedVolume &preproc_volume,
+    //                                                const std::array<std::array<int, 2>, 3> &bbox,
+    //                                                float segmentation_threshold, bool save_pmap,
+    //                                                QString dir, QString trsf_path) {
+    //    // --- Step 1: Convert to segmentation ---
+    //    printAction("Convert to segmentation");
+    //    Segmentation segmentation = convert_to_segmentation(data, segmentation_threshold, save_pmap);
+
+    //    // --- Step 2: Convert to segmentation ---
+    //    printAction("Remove padding");
+    //    segmentation = remove_padding(segmentation, preproc_volume.padding);
+
+    //    // --- Step 3: Uncrop ---
+    //    printAction("Uncrop");
+    //    segmentation = uncrop_from_bbox(segmentation, bbox, preproc_volume.original_shape);
+
+    //    // --- Step 4: Resample ---
+    //    printAction("Resample");
+    //    Eigen::Vector3f new_spacing{1, 1, 1};
+    //    NiftiVolume segmentation_as_nifti = segmentation_to_nifti_volume(segmentation, new_spacing);
+    //    resampler.resample(segmentation_as_nifti, new_spacing);
+    //    segmentation.seg = nifti_volume_to_tensor3f(segmentation_as_nifti);
+
+    //    // --- Step 5: Save image ---
+    //    printAction("Saving image to nii");
+    //    QString nii_file = save_img(dir, segmentation_as_nifti.data, "azerty", "pmap");
+    //    // TODO:
+    //}
+
 }; // namespace
 
 void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &data,

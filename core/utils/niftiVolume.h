@@ -27,7 +27,7 @@ struct NiftiVolume {
      * Tensor layout is (X, Y, Z, C) in column-major order.
      * This layout matches the native NIfTI disk storage, where X is the
      * fastest-varying dimension in memory.
-    Tensor4f data; // (X, Y, Z, C)
+     */
     Tensor4f data;           // (C, X, Y, Z)
 
     /**

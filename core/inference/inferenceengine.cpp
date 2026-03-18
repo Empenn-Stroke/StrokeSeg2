@@ -209,7 +209,6 @@ NiftiVolume InferenceEngine::run(const QString &modelPath, const QString &imageP
                 Eigen::Tensor<float, 4, Eigen::ColMajor> pred_col =
                     output_map.cast<float>().shuffle(to_spatial);
 
-                // 4. ACCUMULATION (Spatiale X, Y, Z, C)
                 output_accum.slice(Eigen::array<int, 4>{x, y, z, 0},
                                    Eigen::array<int, 4>{128, 128, 128, num_classes}) +=
                     pred_col * g_out;

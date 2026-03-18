@@ -30,6 +30,12 @@ namespace postprocessing {
          */
         void postprocess(const PreprocessedVolume &volume);
 
+        void postprocess(const NiftiVolume::Tensor4f &data,
+                         const PreprocessedVolume &preproc_volume,
+                         const std::array<std::array<int, 2>, 3> &bbox,
+                         float segmentation_threshold, bool save_pmap, QString dir,
+                         QString trsf_path);
+
       private:
         ConfigManager &config = ConfigManager::instance();
         AnimaWrapper wrapper;
