@@ -4,7 +4,7 @@
 #include "utils/niftiVolume.h"
 
 #include "preprocessing/preprocVolume.h"
-#include "utils/resampling.h" // TODO: move this file to utils/?
+#include "preprocessing/resampling.h" // TODO: move this file to utils/?
 
 namespace postprocessing {
 
@@ -39,7 +39,7 @@ namespace postprocessing {
       private:
         ConfigManager &config = ConfigManager::instance();
         AnimaWrapper wrapper;
-        Resampling resampler;
+        preprocessing::Resampling resampler;
     };
 
 } // namespace postprocessing

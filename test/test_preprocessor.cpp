@@ -15,7 +15,7 @@ class TestPreprocessor : public QObject {
 
   private slots:
 
-    void initTestCase() { QDir().mkpath("test_output"); }
+    void initTestCase() {  }
 
     //void testPreprocessSingleModality() {
 
@@ -176,7 +176,7 @@ class TestPreprocessor : public QObject {
 
     void testIntegrationT1Pipeline() {
         // 1. Chemins
-        QString inputPath = QDir(base_dir).filePath("test/test_data/sub-r001s002_T1w.nii.gz");
+        QString inputPath = QDir(base_dir).filePath("test/test_data/sub-r001s002-T1w.nii.gz");
         QString referencePath =
             QDir(base_dir).filePath("test/test_data/sub-r001s002_T1w_ss_N4_MNI.nii.gz");
         QString outputDir = QCoreApplication::applicationDirPath() + "/output_data";

@@ -177,6 +177,8 @@ NiftiVolume InferenceEngine::run(const QString &modelPath, const QString &imageP
     for (int x : steps[0]) {
         for (int y : steps[1]) {
             for (int z : steps[2]) {
+                qDebug() << "Processing patch at (x:" << x << ", y:" << y << ", z:" << z << ")";
+                
                 Eigen::array<int, 4> offset = {x, y, z, 0};
                 Eigen::array<int, 4> extent = {128, 128, 128, C};
                 Eigen::Tensor<float, 4, Eigen::ColMajor> patch_col = nv.data.slice(offset, extent);

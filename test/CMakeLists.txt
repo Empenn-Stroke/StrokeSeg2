@@ -46,3 +46,6 @@ add_qt_test(test_preprocessor test_preprocessor.cpp)
 
 # Test Inference :
 #add_qt_test(test_inference test_inference.cpp)
+
+# Test Postprocessor :
+#add_qt_test(test_postprocessor test_postprocessor.cpp)

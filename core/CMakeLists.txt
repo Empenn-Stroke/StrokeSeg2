@@ -3,6 +3,7 @@ add_library(${CORE}
     "utils/path.h" 
     "utils/str.h" 
     "utils/NiftiVolume.h"               "utils/NiftiVolume.cpp" 
+    "utils/log.h"                       "utils/log.cpp"
     "preprocessing/preprocessor.h"      "preprocessing/preprocessor.cpp" 
     "preprocessing/resampling.h"        "preprocessing/resampling.cpp"
     "preprocessing/brainextraction.h"   "preprocessing/brainextraction.cpp"
