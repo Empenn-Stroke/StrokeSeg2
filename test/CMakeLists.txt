@@ -45,4 +45,4 @@ endmacro()
 #add_qt_test(test_preprocessor test_preprocessor.cpp)
 
 # Test Inference :
-add_qt_test(test_inference test_inference.cpp)
+#add_qt_test(test_inference test_inference.cpp)

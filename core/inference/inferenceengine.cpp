@@ -174,16 +174,20 @@ NiftiVolume InferenceEngine::run(const QString &modelPath, const QString &imageP
 
     qDebug() << "Running inference on patches...";
 
+    int patch_cpt = 0;
     for (int x : steps[0]) {
         for (int y : steps[1]) {
             for (int z : steps[2]) {
+                patch_cpt++;
+                qDebug() << "Processing patch (" << patch_cpt << "/8) at (X:" << x << ", Y:" << y << ", Z:" << z << ")";
+
                 Eigen::array<int, 4> offset = {x, y, z, 0};
                 Eigen::array<int, 4> extent = {128, 128, 128, C};
                 Eigen::Tensor<float, 4, Eigen::ColMajor> patch_col = nv.data.slice(offset, extent);
 
                 Eigen::array<int, 4> to_onnx_dims = {2, 1, 0, 3};
                 Eigen::Tensor<OrtFloat16, 4, Eigen::ColMajor> patch_onnx_ready =
-                    patch_col.shuffle(to_onnx_dims).cast<OrtFloat16>();
+                    patch_col.cast<OrtFloat16>();
 
                 std::vector<OrtFloat16> patch_vec(patch_onnx_ready.size());
                 std::copy(patch_onnx_ready.data(),
@@ -206,8 +210,7 @@ NiftiVolume InferenceEngine::run(const QString &modelPath, const QString &imageP
 
                 Eigen::array<int, 4> to_spatial = {2, 1, 0, 3};
 
-                Eigen::Tensor<float, 4, Eigen::ColMajor> pred_col =
-                    output_map.cast<float>().shuffle(to_spatial);
+                Eigen::Tensor<float, 4, Eigen::ColMajor> pred_col = output_map.cast<float>();
 
                 // 4. ACCUMULATION (Spatiale X, Y, Z, C)
                 output_accum.slice(Eigen::array<int, 4>{x, y, z, 0},
