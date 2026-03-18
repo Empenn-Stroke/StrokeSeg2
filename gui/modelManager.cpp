@@ -92,7 +92,7 @@ ModelManager::ModelManager(QWidget *parent) : QWidget(parent) {
 
         QPushButton *deleteBtn = new QPushButton(modelContainer);
         deleteBtn->setObjectName("deleteBtn");
-        QIcon *icon = new QIcon("../../../gui/ressources/delete.svg");
+        QIcon *icon = new QIcon(":/gui/ressources/delete.svg");
         deleteBtn->setIcon(*icon);
         deleteBtn->setIconSize(QSize(16, 16));
 
@@ -232,7 +232,7 @@ void ModelManager::importModel() {
 
     QPushButton *deleteBtn = new QPushButton(modelContainer);
     deleteBtn->setObjectName("deleteBtn");
-    QIcon *icon = new QIcon("../../../gui/ressources/delete.svg");
+    QIcon *icon = new QIcon(":/gui/ressources/delete.svg");
     deleteBtn->setIcon(*icon);
     deleteBtn->setIconSize(QSize(16, 16));
 
