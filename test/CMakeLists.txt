@@ -1,24 +1,45 @@
 enable_testing()
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-# test = test
+find_package(Qt6 REQUIRED COMPONENTS Test)
 
-# Test program for core library
-add_executable(core_test
-    # Add source files here. No need for headers declarations as the tests aren't to be included in
-    # other files. core_test.cpp is a dummy file, you can change it if you want.
-    core_test.cpp
-)
+# --------------------------
+# Macro pour créer un test facilement
+# --------------------------
+macro(add_qt_test TEST_NAME TEST_SRC)
+    qt_add_executable(${TEST_NAME} ${TEST_SRC})
 
-# # Test program for gui executable
-# add_executable(gui_test
-#     # Add source files here. No need for headers declarations as the tests aren't to be included in
-#     # other files. gui_test.cpp is a dummy file, you can change it if you want.
-#     # gui_test.cpp
-# )
+    target_link_libraries(${TEST_NAME} PRIVATE
+        Qt6::Test
+        ${CORE}
+    )
 
-target_link_libraries(core_test PRIVATE GTest::gtest_main ${CORE})
-# target_link_libraries(gui_test PRIVATE GTest::gtest_main ${GUI})
+    add_test(
+        NAME ${TEST_NAME}
+        COMMAND ${TEST_NAME}
+    )
 
-include(GoogleTest)
-gtest_discover_tests(core_test)
-# gtest_discover_tests(gui_test)
+    target_compile_definitions(${TEST_NAME} PRIVATE
+        TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/test_data"
+    )
+endmacro()
+
+# --------------------------
+# Tests
+# --------------------------
+
+# Test NiftiVolume
+#add_qt_test(test_niftivolume test_niftivolume.cpp)
+
+# Test Resampling
+#add_qt_test(test_resampling test_resampling.cpp)
+
+# Test AnimaWrapper :
+#add_qt_test(test_animawrapper test_animawrapper.cpp)
+
+# Test BrainExtraction :
+#add_qt_test(test_brainextraction test_brainextraction.cpp)
+
+# Test Preprocessor :
+add_qt_test(test_preprocessor test_preprocessor.cpp)

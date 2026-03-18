@@ -14,16 +14,17 @@
 
 
 class AnimaWrapper;
-class MainWindow; // GUI
+class MainWindow;
 
 /**
  * @class BrainExtraction
  * @brief This class handle the brain extraction during the preprocessing
  */
 class BrainExtraction : public QObject {
+    Q_OBJECT
     public:
         /**
-        * @brief Constructor of the brain exctration class
+        * @brief Constructor of the brain extraction class
         * @param wrapper(AnimaWrapper): A wrapper to simplify the use of anima executables atlasImage
         * @param atlasImage(Qstring): _description_
         * @param gui(MainWindow): _description_. Optional, default to null

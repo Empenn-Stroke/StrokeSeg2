@@ -23,7 +23,7 @@ Black (text) : #0a0c0f;
 =========================================================
 */
 
-#m_mainWidget, #guideWindow,#warningWindow{
+#m_mainWidget, #guideWindow, #aboutWindow, #warningWindow, #modelManager{
     border-radius:10px;
     background-color:transparent;
 }
@@ -101,19 +101,22 @@ QMenu {
 }
 
 QMenu::indicator {
-    padding:0px;
-    margin:0;
+    width: 13px;
+    height: 12px;
+    margin-left: 0px;
     /* border:none; */
     /* width:20px; */
     /* background-color:red; */
 }
 
-QMenu::item {
+QMenu::item,
+QMenu::item:checked,
+QMenu::item:unchecked {
     margin:0;
     border:none;
     background: #eff4fa;
     outline:0;
-    padding:4px 9px;
+    padding:4px 10px;
     border-top-right-radius:5px;
     border-bottom-left-radius:5px;
 }
@@ -147,36 +150,53 @@ QWidget#formParameters{
     background-color: #FFFFFF;
 }
 
+
 QWidget#formParameters QLineEdit,
-QWidget#formParameters QComboBox {
-    margin:0px 10px 0px 0;
+QWidget#formParameters QComboBox,
+QWidget#formParameters QPushButton{
     background-color:#eff4fa;
     color:#0a0c0f;
     padding:5px 10px;
     border-radius:5px;
     border: none;
     font-size:14px;
+    selection-background-color: #5ea6f2;
+    selection-color: #ffffff;
 }
 
-QWidget#thresholdContainer {
+QWidget#formParameters QLineEdit#suffix,
+QWidget#formParameters QComboBox,
+QWidget#formParameters QPushButton {
     margin:0px 10px 0px 0;
-    /* width:180px; */
+}
+
+QWidget#formParameters QComboBox {
+    width:170px;
+}
+
+QWidget#formParameters QPushButton:hover{
+    background-color:#deebf9;
+}
+
+QLineEdit#destination {
+    margin:0;
+}
+
+QPushButton#destinationBtn{
+    width:15px;
+    margin:0px 10px 0px 0;
 }
 
 QWidget QSlider {
-    /* margin:0px 10px 0px 0; */
     border-color:blue;
-    padding:5px 10px;
+    padding:5px 0px;
+    margin:0px 10px 0px 0;
 }
 
-QWidget#formParameters QLineEdit#thresholdLine{
+QLineEdit#thresholdLine {
     width:41px;
     margin:0;
     text-align:left;
-}
-
-QWidget#formParameters QLineEdit#suffix {
-    width:180px;
 }
 
 QSlider::groove:horizontal {
@@ -193,10 +213,8 @@ QSlider::handle:horizontal {
     border-radius: 3px;
 }
 
-QWidget#formParameters QComboBox { width:161px;}
-
 QWidget#formParameters QComboBox::down-arrow {
-    image: url("../../../gui/ressources/arrow_down.png");
+    image: url(":/gui/ressources/arrow_down.png");
     width:6px;
     height:6px;
 }
@@ -244,7 +262,7 @@ QComboBox QAbstractItemView::item:hover {
 }
 
 QWidget#formParameters QComboBox::down-arrow:on {
-    image: url("../../../gui/ressources/arrow_up.png");
+    image: url(":/gui/ressources/arrow_up.png");
 }
 
 QWidget#formParameters QCheckBox {
@@ -259,12 +277,12 @@ QWidget#formParameters QCheckBox::indicator {
 }
 
 QWidget#formParameters QCheckBox::indicator:unchecked {
-    image: url("../../../gui/ressources/checkbox_off.svg");
+    image: url(":/gui/ressources/checkbox_off.svg");
 }
 
 QWidget#formParameters QCheckBox::indicator:checked {
     /* background-color:#5ea6f2; */
-    image: url("../../../gui/ressources/checkbox_on.svg");
+    image: url(":/gui/ressources/checkbox_on.svg");
 }
 
 QWidget#formParameters QLabel {
@@ -327,15 +345,32 @@ QPushButton#runBtn:hover {
 
 QToolButton#chooseFileButton {
     background-color: #deebf9;
-    padding:100px 220px;
     color:#5ea6f2;
     font-size:22px;
     font-weight:800;
+
     border-radius:40px;
     border: 4px dashed #5ea6f2;
+    
     text-align:center;
     qproperty-iconSize : 80px 80px;
-    max-width:200px;
+    
+    min-width: 560px;
+    min-height: 320px;
+}
+
+QLabel#fileLabel {
+    color:#5ea6f2;
+    font-size:22px;
+    font-weight:800;
+    qproperty-alignment: AlignHCenter;
+}
+
+QLabel#consoleLabel {
+    color:#5ea6f2;
+    font-size:10px;
+    font-weight:bold;
+    font-family: "Consolas";
 }
 
 QToolButton#chooseFileButton:hover {
@@ -343,24 +378,32 @@ QToolButton#chooseFileButton:hover {
 }
 
 
+QToolButton#chooseFileButton[dragging="true"]{
+    background-color: #c7dff8;
+}
+
+
 /* 
 =========================================================
-                        GUIDE
+                  GUIDE & ABOUT
 =========================================================
 */
 
-QWidget#guideWindow QWidget#mainArea {
+QWidget#guideWindow QWidget#mainArea,
+QWidget#aboutWindow QWidget#mainArea {
     background-color:#ffffff;
     border-bottom-right-radius:10px;
     border-bottom-left-radius:10px;
 }
 
-#guideContent {
+#guideContent, #aboutContent {
     color:#0a0c0f;
     padding:10px;
     background-color:transparent;
     border-radius:10px;
     outline:0;
+    selection-background-color: #5ea6f2;
+    selection-color: #ffffff;
 }
 
 QScrollBar:vertical {
@@ -431,9 +474,60 @@ QWidget#warningWindow QPushButton:hover{
 }
 
 #dontShowAgain::indicator:unchecked {
-    image: url("../../../gui/ressources/checkbox2_off.png");
+    image: url(":/gui/ressources/checkbox2_off.png");
 }
 
 #dontShowAgain::indicator:checked {
-    image: url("../../../gui/ressources/checkbox2_on.png");
+    image: url(":/gui/ressources/checkbox2_on.png");
+}
+
+/* 
+=========================================================
+                  MODEL MANAGER
+=========================================================
+*/
+
+QWidget#modelManager QWidget#mainArea {
+    background-color:#ffffff;
+    border-bottom-right-radius:10px;
+    border-bottom-left-radius:10px;
+}
+
+QLabel#modelLabel {
+    color:#0a0c0f;
+    padding:5px 10px;
+    background-color:#eff4fa;
+    border-radius:5px;
+    outline:0;
+    margin:0;
+    font-size:14px;
+    selection-background-color: #5ea6f2;
+    selection-color: #ffffff;
+    width:200px;
+}
+
+QPushButton#deleteBtn {
+    background-color: #eff4fa;
+    padding:5px 10px;
+    color:#0a0c0f;
+    font-size:14px;
+    border-radius:5px;
+    margin:0;
+    width:20px;
+}
+
+QPushButton#deleteBtn:hover  {
+    background-color:#ff8474;
+}
+
+QPushButton#importModel {
+    background-color: #5ea6f2;
+    padding:5px 20px;
+    color:#ffffff;
+    font-size:14px;
+    border-radius:5px;
+}
+
+QPushButton#importModel:hover  {
+    background-color:#94dcff;
 }

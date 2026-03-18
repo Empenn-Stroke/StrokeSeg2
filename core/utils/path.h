@@ -12,11 +12,14 @@
 
 static inline QString roaming = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
 static inline QString local = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
-static inline QString programData =
-    QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
+
+static inline const QString programData = []() {
+    QString path = qEnvironmentVariable("ProgramData");
+    return path.isEmpty() ? "C:/ProgramData" : path;
+}();
 
 static inline const QString base_dir =
-    QDir(QFileInfo(__FILE__).absolutePath() + "/..").canonicalPath();
+    QDir(QFileInfo(__FILE__).absolutePath() + "../../..").canonicalPath();
 static inline const QString config_file = QDir(roaming).filePath(app_name + "/config.ini");
 static inline const QString anima_root_path =
     QCoreApplication::applicationDirPath() + QT_STRINGIFY(ANIMA_ROOT_PATH);
