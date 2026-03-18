@@ -24,7 +24,7 @@ static inline const QString config_file = QDir(roaming).filePath(app_name + "/co
 static inline const QString anima_root_path =
     QCoreApplication::applicationDirPath() + QT_STRINGIFY(ANIMA_ROOT_PATH);
 
-static inline const QString model_dir = QDir(programData).filePath(app_name + "/Models");
+static inline const QString model_dir = QDir(programData).filePath(app_name + "/Model");
 static inline const QString atlas_dir = QDir(programData).filePath(app_name + "/Atlas");
 static inline const QString logo_inria = QDir(base_dir).filePath("assets/INRIA.png");
 static inline const QString logo_institutions =

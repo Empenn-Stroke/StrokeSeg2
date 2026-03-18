@@ -62,7 +62,6 @@ bool NiftiVolume::saveNifti(const QString &path, const NiftiVolume &vol) {
     if (!nim)
         throw std::runtime_error("Failed to init nifti_image");
 
-    // Puisque nous sommes en ColMajor, les dimensions sont (X, Y, Z, T)
     const int nx = vol.data.dimension(0);
     const int ny = vol.data.dimension(1);
     const int nz = vol.data.dimension(2);
@@ -93,7 +92,7 @@ bool NiftiVolume::saveNifti(const QString &path, const NiftiVolume &vol) {
     nim->nbyper = sizeof(float);
     nim->data = std::malloc(nim->nvox * nim->nbyper);
 
-    // Comme le tenseur est déjà en ColMajor (nx, ny, nz, nt),
+    // Comme le tenseur est déjà en (nx, ny, nz, nt),
     // le buffer mémoire est déjà parfaitement aligné pour NIfTI.
     std::memcpy(nim->data, vol.data.data(), nim->nvox * sizeof(float));
 

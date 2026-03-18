@@ -1,22 +1,25 @@
-<!DOCTYPE RCC><RCC version="1.0">
-<qresource prefix="/">
-    <file>gui/style.qss</file>
-    <file>gui/ressources/arrow_down.png</file>
-    <file>gui/ressources/arrow_up.png</file>
-    <file>gui/ressources/checkbox_off.svg</file>
-    <file>gui/ressources/checkbox_on.svg</file>
-    <file>gui/ressources/checkbox2_off.png</file>
-    <file>gui/ressources/checkbox2_on.png</file>
-    <file>gui/ressources/about.html</file>
-    <file>gui/ressources/files.png</file>
-    <file>gui/ressources/guide.html</file>
-    <file>gui/ressources/infinite-spinner-optimized.gif</file>
-    <file>gui/ressources/infinite-spinner-transparent.gif</file>
-    <file>gui/ressources/infinite-spinner.gif</file>
-    <file>gui/ressources/logos_one_line.png</file>
-    <file>gui/ressources/logos_two_lines.png</file>
-    <file>gui/ressources/StrokeSeg2.ico</file>
-    <file>gui/ressources/StrokeSeg2.png</file>
-    <file>gui/ressources/StrokeSeg2_HD.png</file>
-</qresource>
+<!DOCTYPE RCC>
+<RCC version="1.0">
+	<qresource prefix="/">
+		<file>gui/style.qss</file>
+		<file>gui/ressources/arrow_down.png</file>
+		<file>gui/ressources/arrow_up.png</file>
+		<file>gui/ressources/checkbox_off.svg</file>
+		<file>gui/ressources/checkbox_on.svg</file>
+		<file>gui/ressources/checkbox2_off.png</file>
+		<file>gui/ressources/checkbox2_on.png</file>
+		<file>gui/ressources/about.html</file>
+		<file>gui/ressources/files.png</file>
+		<file>gui/ressources/files.svg</file>
+		<file>gui/ressources/delete.svg</file>
+		<file>gui/ressources/guide.html</file>
+		<file>gui/ressources/infinite-spinner-optimized.gif</file>
+		<file>gui/ressources/infinite-spinner-transparent.gif</file>
+		<file>gui/ressources/infinite-spinner.gif</file>
+		<file>gui/ressources/logos_one_line.png</file>
+		<file>gui/ressources/logos_two_lines.png</file>
+		<file>gui/ressources/StrokeSeg2.ico</file>
+		<file>gui/ressources/StrokeSeg2.png</file>
+		<file>gui/ressources/StrokeSeg2_HD.png</file>
+	</qresource>
 </RCC>
