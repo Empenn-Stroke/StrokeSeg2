@@ -138,6 +138,9 @@ namespace preprocessing {
         out.data = Eigen::Tensor<float, 4, Eigen::ColMajor>(src.dimension(0), new_shape.x(),
                                                             new_shape.y(), new_shape.z());
 
+        qDebug() << "Allocating output volume:" << new_shape.x() << "x" << new_shape.y() << "x"
+                 << new_shape.z();
+
         auto [do_sep, axis] = determine_separate_axis(in.spacing, new_spacing);
 
         if (!do_sep) {

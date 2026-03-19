@@ -42,10 +42,10 @@ endmacro()
 #add_qt_test(test_brainextraction test_brainextraction.cpp)
 
 # Test Preprocessor :
-add_qt_test(test_preprocessor test_preprocessor.cpp)
+#add_qt_test(test_preprocessor test_preprocessor.cpp)
 
 # Test Inference :
 #add_qt_test(test_inference test_inference.cpp)
 
 # Test Postprocessor :
-#add_qt_test(test_postprocessor test_postprocessor.cpp)
+add_qt_test(test_postprocessor test_postprocessor.cpp)

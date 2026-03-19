@@ -4,7 +4,7 @@
 #include "utils/niftiVolume.h"
 
 #include "preprocessing/preprocVolume.h"
-#include "preprocessing/resampling.h" // TODO: move this file to utils/?
+#include "preprocessing/resampling.h"
 
 namespace postprocessing {
 
@@ -28,8 +28,6 @@ namespace postprocessing {
          * - Register to reference only if the inverse transformation was applied during
          *   preprocessing
          */
-        void postprocess(const PreprocessedVolume &volume);
-
         void postprocess(const NiftiVolume::Tensor4f &data,
                          const PreprocessedVolume &preproc_volume,
                          const std::array<std::array<int, 2>, 3> &bbox,

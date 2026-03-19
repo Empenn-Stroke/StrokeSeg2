@@ -181,20 +181,37 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
     // --- Step 3: Uncrop ---
     printAction("Uncrop");
     segmentation = uncrop_from_bbox(segmentation, bbox, preproc_volume.original_shape);
+
+    NiftiVolume segmentation_as_nifti = segmentation_to_nifti_volume(segmentation, debug_spacing);
     
     // DEBUG SAVE 3
-    save_img(dir, segmentation_to_nifti_volume(segmentation, debug_spacing).data, "debug_03", "after_uncrop");
+    save_img(dir, segmentation_as_nifti.data, "debug_03", "after_uncrop");
 
     // --- Step 4: Resample ---
     printAction("Resample");
-    Eigen::Vector3f target_spacing{1, 1, 1}; // Spacing final souhaité
+    Eigen::Vector3f target_spacing{1, 1, 1};
+
+    Eigen::Tensor<float, 4, Eigen::ColMajor> temp_shuffled =
+        segmentation_as_nifti.data.shuffle(Eigen::array<int, 4>{3, 0, 1, 2});
+
+    // Resample takes C;X;Y;Z but we have X;Y;Z;C, so we need to shuffle the axes
+    // before resampling, and then shuffle back after resampling
+    // TODO : update resampler to work in X;Y;Z;C order to avoid these shuffles
+
+    segmentation_as_nifti.data = temp_shuffled;
+
+    try {
+        segmentation_as_nifti = resampler.resample(segmentation_as_nifti, target_spacing);
+    } catch (const std::bad_alloc &e) {
+        spdlog::error("Resampling failed: Out of memory. Check dimensions!");
+        throw;
+    }
+
+    Eigen::Tensor<float, 4, Eigen::ColMajor> temp_back =
+        segmentation_as_nifti.data.shuffle(Eigen::array<int, 4>{1, 2, 3, 0});
     
-    NiftiVolume segmentation_as_nifti = segmentation_to_nifti_volume(segmentation, debug_spacing);
-    
-    // Attention : on s'assure que resample retourne bien le volume
-    segmentation_as_nifti = resampler.resample(segmentation_as_nifti, target_spacing);
-    
-    // On met à jour le tenseur 3D après resampling si nécessaire pour la suite
+    segmentation_as_nifti.data = temp_back;
+
     segmentation.seg = nifti_volume_to_tensor3f(segmentation_as_nifti);
 
     // --- Step 5: Save final image ---
@@ -202,8 +219,6 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
     QString final_file = save_img(dir, segmentation_as_nifti.data, "result", "final");
     
     if (save_pmap && segmentation.pmap.has_value()) {
-        // Optionnel : Sauvegarder aussi la pmap finale si elle a été resamplée (nécessiterait un resampling de la pmap)
-        // Pour l'instant on sauve la seg
         spdlog::info("Final output saved to: {}", final_file.toStdString());
     }
     // TODO:
