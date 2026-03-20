@@ -48,4 +48,7 @@ endmacro()
 #add_qt_test(test_inference test_inference.cpp)
 
 # Test Postprocessor :
-add_qt_test(test_postprocessor test_postprocessor.cpp)
+#add_qt_test(test_postprocessor test_postprocessor.cpp)
+
+# Test FullPipeline :
+add_qt_test(test_full_pipeline test_full_pipeline.cpp)

@@ -231,6 +231,8 @@ namespace preprocessing {
                      b[0][1], b[1][0], b[1][1], b[2][0], b[2][1], b[0][1] - b[0][0],
                      b[1][1] - b[1][0], b[2][1] - b[2][0]);
 
+        result.bbox = local_bbox;
+
         // Debug: Après crop
         NiftiVolume::saveNifti(debug_prefix + "_2_cropped.nii.gz", cropped);
 

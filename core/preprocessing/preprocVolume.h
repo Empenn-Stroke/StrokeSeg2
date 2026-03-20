@@ -44,6 +44,12 @@ struct PreprocessedVolume {
     std::array<std::array<int, 2>, 3> padding{{{0, 0}, {0, 0}, {0, 0}}};
 
     /**
+    * @brief Bounding box of the brain in the original image: {{x0, x1}, {y0, y1}, {z0, z1}}
+    * This is used for cropping the post-processed segmentation back to the original space.
+    */
+    std::array<std::array<int, 2>, 3> bbox{{{0, 0}, {0, 0}, {0, 0}}};
+
+    /**
      * @brief Reference MNI image used for registration
      */
     QString MNI_base_image;
