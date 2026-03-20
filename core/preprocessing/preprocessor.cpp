@@ -194,6 +194,10 @@ namespace preprocessing {
         PreprocessedVolume result;
         QString path = modality_path;
 
+        result.original_t1_path = modality_path;
+
+        qDebug() << "Preprocessing modality:" << modality_path;
+
         QString debug_prefix = QFileInfo(modality_path).absolutePath() + "/debug_" +
                                QFileInfo(modality_path).baseName();
 
@@ -206,6 +210,8 @@ namespace preprocessing {
             auto [reg_path, trsf] = registerToReference(path, atlasImage, prefix, "MNI");
             path = reg_path;
             result.trsf_path = trsf;
+
+            qDebug() << "trsf path:" << trsf;
         }
 
         printAction("loading NIFTI volume");
@@ -218,6 +224,12 @@ namespace preprocessing {
 
         if (bbox_ptr && (*bbox_ptr)[0][0] == -1)
             *bbox_ptr = local_bbox;
+
+        // --- LOG DE LA BBOX ---
+        auto &b = bbox_ptr ? *bbox_ptr : local_bbox;
+        spdlog::info("[BBOX] X: [{}, {}], Y: [{}, {}], Z: [{}, {}] (Size: {}x{}x{})", b[0][0],
+                     b[0][1], b[1][0], b[1][1], b[2][0], b[2][1], b[0][1] - b[0][0],
+                     b[1][1] - b[1][0], b[2][1] - b[2][0]);
 
         // Debug: Après crop
         NiftiVolume::saveNifti(debug_prefix + "_2_cropped.nii.gz", cropped);
@@ -236,6 +248,12 @@ namespace preprocessing {
 
         printAction("padding to target size (128)");
         auto [padded, p_info] = padVolume(res, 128);
+
+        spdlog::info("[PADDING] X: [low:{}, high:{}], Y: [low:{}, high:{}], Z: [low:{}, high:{}]",
+                     p_info[0][0], p_info[0][1], p_info[1][0], p_info[1][1], p_info[2][0],
+                     p_info[2][1]);
+        spdlog::info("[FINAL SHAPE] {}x{}x{}", padded.data.dimension(0), padded.data.dimension(1),
+                     padded.data.dimension(2));
 
         // Debug: Volume final avant inference
         NiftiVolume::saveNifti(debug_prefix + "_5_final_padded.nii.gz", padded);

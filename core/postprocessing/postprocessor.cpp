@@ -20,11 +20,15 @@ namespace {
     /// @param base_name Base name of the image without extension
     /// @param suffix filename suffix. Note however that this is not the extension
     /// @return Path to the saved file
-    QString save_img(QString dir, const NiftiVolume::Tensor4f &data, QString base_name,
-                     QString suffix) {
+    QString save_img(QString dir, const Eigen::Vector3f &spacing,
+                     const NiftiVolume::Tensor4f &data,
+                     QString base_name,
+                     QString suffix) 
+    {
         QString output_path = dir + "/" + base_name + "_" + suffix + ".nii.gz";
         NiftiVolume output;
         output.data = data;
+        output.spacing = spacing;
         NiftiVolume::saveNifti(output_path, output);
         return output_path;
     }
@@ -109,6 +113,7 @@ namespace {
                                   original_shape[0], original_shape[1], original_shape[2]))
                         : std::nullopt,
         };
+
         full_volume.seg.setZero();
         if (full_volume.pmap.has_value()) {
             full_volume.pmap->setZero();
@@ -155,6 +160,55 @@ namespace {
         return volume.data.chip<3>(0);
     }
 
+    QString applyInverseRegistration(AnimaWrapper *wrapper, const QString &input_mni_path,
+                                     const QString &trsf_txt_path,
+                                     const QString &patient_ref_path) {
+
+        QString xml_path = trsf_txt_path;
+        if (xml_path.endsWith(".txt")) {
+            xml_path.replace(".txt", ".xml");
+        } else {
+            xml_path += ".xml";
+        }
+
+        qDebug() << "Input MNI path: " << input_mni_path;
+        qDebug() << "Transformation TXT path: " << trsf_txt_path;
+
+        // --- Étape A : animaTransformSerieXmlGenerator ---
+        // Convertit le log de registration (.txt) en série de transformations (.xml)
+        QStringList xmlArgs;
+        xmlArgs << "animaTransformSerieXmlGenerator"
+                << "-i" << trsf_txt_path << "-o" << xml_path;
+
+        printAction("Generating XML transformation serie");
+        if (wrapper->run(xmlArgs) != 0) {
+            throw std::runtime_error("XML Generation failed: " +
+                                     wrapper->lastStderr().toStdString());
+        }
+
+        // --- Étape B : animaApplyTransformSerie ---
+        // Applique la transformation inverse (-I)
+        QString output_patient_path = input_mni_path;
+        output_patient_path.replace(".nii.gz", "_to_patient.nii.gz");
+
+        QStringList applyArgs;
+        applyArgs << "animaApplyTransformSerie"
+                  << "-i" << input_mni_path // Image en MNI
+                  << "-t" << xml_path       // Transformation XML
+                  << "-o" << output_patient_path 
+                  << "-g" << patient_ref_path // L'image T1 native du patient (la grille cible)
+                  << "-I";             // INVERSE : Très important pour MNI -> Patient
+                  //<< "-n" << "0";
+
+        printAction("Applying inverse registration to patient space");
+        if (wrapper->run(applyArgs) != 0) {
+            throw std::runtime_error("Inverse registration failed: " +
+                                     wrapper->lastStderr().toStdString());
+        }
+
+        return output_patient_path;
+    }
+
 }; // namespace
 
 void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &data,
@@ -162,6 +216,7 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
                                                 const std::array<std::array<int, 2>, 3> &bbox,
                                                 float segmentation_threshold, bool save_pmap,
                                                 QString dir, QString trsf_path) {
+
     Eigen::Vector3f debug_spacing = preproc_volume.spacing;
 
     // --- Step 1: Convert to segmentation ---
@@ -169,14 +224,16 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
     Segmentation segmentation = convert_to_segmentation(data, segmentation_threshold, save_pmap);
     
     // DEBUG SAVE 1
-    save_img(dir, segmentation_to_nifti_volume(segmentation, debug_spacing).data, "debug_01", "after_convert");
+    save_img(dir, debug_spacing, segmentation_to_nifti_volume(segmentation, debug_spacing).data,
+             "debug_01", "after_convert");
 
     // --- Step 2: Remove padding ---
     printAction("Remove padding");
     segmentation = remove_padding(segmentation, preproc_volume.padding);
     
     // DEBUG SAVE 2
-    save_img(dir, segmentation_to_nifti_volume(segmentation, debug_spacing).data, "debug_02", "after_unpad");
+    save_img(dir, debug_spacing, segmentation_to_nifti_volume(segmentation, debug_spacing).data,
+             "debug_02", "after_unpad");
 
     // --- Step 3: Uncrop ---
     printAction("Uncrop");
@@ -185,7 +242,7 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
     NiftiVolume segmentation_as_nifti = segmentation_to_nifti_volume(segmentation, debug_spacing);
     
     // DEBUG SAVE 3
-    save_img(dir, segmentation_as_nifti.data, "debug_03", "after_uncrop");
+    save_img(dir, debug_spacing, segmentation_as_nifti.data, "debug_03", "after_uncrop");
 
     // --- Step 4: Resample ---
     printAction("Resample");
@@ -214,12 +271,39 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
 
     segmentation.seg = nifti_volume_to_tensor3f(segmentation_as_nifti);
 
-    // --- Step 5: Save final image ---
+    // DEBUG SAVE 4
+    save_img(dir, debug_spacing, segmentation_as_nifti.data, "debug_04", "after_resampling");
+    QString resample_path = dir + "/" + "debug_04" + "_" + "after_resampling" + ".nii.gz";
+
+    QString tmp_mni_path = dir + "/tmp_reconstructed_mni.nii.gz";
+
+    // Copy save the data of the segmentation in MNI space, using the reference T1 header to ensure
+    // correct orientation and spacing metadata.
+    NiftiVolume::saveNiftiWithReference(tmp_mni_path, segmentation_as_nifti, atlas_dir + "/Reference_T1.nii.gz");
+
+    // --- Step 5 : Apply inverse registration to patient space ---
+
+    QString patient_ref_path = preproc_volume.original_t1_path;
+
+    QString final_patient_path;
+    try {
+        printAction("Applying inverse registration (Anima)");
+        final_patient_path =
+            applyInverseRegistration(wrapper, tmp_mni_path, trsf_path, patient_ref_path);
+    } catch (const std::exception &e) {
+        spdlog::error("Critical error during inverse registration: {}", e.what());
+        return;
+    }
+
+    // --- Step 6: Save final image ---
+    qDebug() << "Final segmentation spacing: " << segmentation_as_nifti.spacing[0] << " x "
+             << segmentation_as_nifti.spacing[1] << " x " << segmentation_as_nifti.spacing[2];
     printAction("Saving final image to nii");
-    QString final_file = save_img(dir, segmentation_as_nifti.data, "result", "final");
+    QString final_file =
+        save_img(dir, target_spacing, segmentation_as_nifti.data, "result", "final");
     
     if (save_pmap && segmentation.pmap.has_value()) {
         spdlog::info("Final output saved to: {}", final_file.toStdString());
     }
-    // TODO:
+    // TODO: Ajouter le recalage MNI -> patient space en utilisant trsf_path
 }

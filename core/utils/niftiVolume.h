@@ -73,6 +73,9 @@ struct NiftiVolume {
      */
     static bool saveNifti(const QString &path, const NiftiVolume &vol);
 
+    static bool saveNiftiWithReference(const QString &path, const NiftiVolume &vol,
+                                const QString &refPath);
+
     /**
      * @brief Vectorizes the volume tensor into a contiguous 1D array.
      *

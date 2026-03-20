@@ -103,11 +103,66 @@ bool NiftiVolume::saveNifti(const QString &path, const NiftiVolume &vol) {
     // --- RELECTURE DEBUG ---
     nifti_image *check = nifti_image_read(path.toStdString().c_str(), 0);
     if (check) {
-        qDebug() << "[SAVE CHECK]" << path << "Dims:" << check->nx << check->ny << check->nz
-                 << check->nt;
+        qDebug() << "[SAVE CHECK] Saving NIfTI to" << path << "with dimensions:" << nx << ny << nz
+                 << nt << "and spacing:" << nim->pixdim[1] << nim->pixdim[2] << nim->pixdim[3];
         nifti_image_free(check);
     }
 
+    return true;
+}
+
+bool NiftiVolume::saveNiftiWithReference(const QString &path, const NiftiVolume &vol,
+                                         const QString &refPath) {
+    // 1. Charger le header de référence sans charger les données (0)
+    nifti_image *nim = nifti_image_read(refPath.toStdString().c_str(), 0);
+    if (!nim) {
+        qDebug() << "Could not read reference NIfTI header from" << refPath.toStdString();
+        return false;
+    }
+
+    // 2. Mettre à jour les dimensions si elles diffèrent (cas du crop/unpad)
+    const int nx = vol.data.dimension(0);
+    const int ny = vol.data.dimension(1);
+    const int nz = vol.data.dimension(2);
+    const int nt = vol.data.dimension(3);
+
+    nim->dim[1] = nx;
+    nim->nx = nx;
+    nim->dim[2] = ny;
+    nim->ny = ny;
+    nim->dim[3] = nz;
+    nim->nz = nz;
+    nim->dim[4] = nt;
+    nim->nt = nt;
+    nim->nvox = static_cast<size_t>(nx) * ny * nz * nt;
+
+    // 3. Forcer le type en FLOAT32 pour la segmentation
+    nim->datatype = NIFTI_TYPE_FLOAT32;
+    nim->nbyper = sizeof(float);
+
+    // 4. Allouer et copier les données
+    nim->data = std::malloc(nim->nvox * nim->nbyper);
+    if (!nim->data) {
+        nifti_image_free(nim);
+        return false;
+    }
+    std::memcpy(nim->data, vol.data.data(), nim->nvox * sizeof(float));
+
+    // 5. Configurer les noms de fichiers et écrire
+    nifti_set_filenames(nim, path.toStdString().c_str(), 0, 1);
+    nifti_image_write(nim);
+
+    // --- RELECTURE DEBUG ---
+    nifti_image *check = nifti_image_read(path.toStdString().c_str(), 0);
+    if (check) {
+        qDebug() << "[SAVE CHECK] Saving NIfTI to" << path << "with dimensions:" << nx << ny << nz
+                 << nt << "and spacing:" << nim->pixdim[1] << nim->pixdim[2] << nim->pixdim[3];
+        nifti_image_free(check);
+    }
+
+    
+    // Nettoyage
+    nifti_image_free(nim);
     return true;
 }
 

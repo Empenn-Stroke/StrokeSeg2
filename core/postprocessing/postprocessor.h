@@ -14,7 +14,7 @@ namespace postprocessing {
      */
     class Postprocessor {
       public:
-        Postprocessor() = default;
+        Postprocessor(AnimaWrapper *wr) : wrapper(wr) {}
         ~Postprocessor() = default;
 
         /**
@@ -36,7 +36,7 @@ namespace postprocessing {
 
       private:
         ConfigManager &config = ConfigManager::instance();
-        AnimaWrapper wrapper;
+        AnimaWrapper *wrapper;
         preprocessing::Resampling resampler;
     };
 

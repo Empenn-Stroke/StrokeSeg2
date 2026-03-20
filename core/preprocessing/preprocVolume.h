@@ -24,6 +24,11 @@ struct PreprocessedVolume {
     Eigen::Vector3i original_shape;
 
     /**
+     * @brief Path to the original T1 image (before any preprocessing)
+     */
+    QString original_t1_path;
+
+    /**
      * @brief Path to the deformation / transformation file
      */
     QString trsf_path;
