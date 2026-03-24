@@ -150,6 +150,7 @@ NiftiVolume InferenceEngine::run(const QString &modelPath, const QString &imageP
                                  const QString &outputName) {
 
     if (!QFile::exists(modelPath) || !QFile::exists(imagePath)) {
+        qDebug() << modelPath;
         qDebug() << "Image or model not found !";
         return {};
     }

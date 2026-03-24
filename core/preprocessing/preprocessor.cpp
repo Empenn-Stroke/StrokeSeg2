@@ -10,15 +10,15 @@ namespace preprocessing {
 
     void Preprocessor::zScoreNormalize(NiftiVolume &vol, const NiftiVolume *seg) {
         auto &tensor = vol.data;
-        // Calcul de la moyenne
+        // mean calculation
         Eigen::Tensor<float, 0, Eigen::ColMajor> meanTensor = tensor.mean();
         float mean = meanTensor(0);
 
-        // Calcul de l'écart-type
+        // standard deviation calculation
         Eigen::Tensor<float, 0, Eigen::ColMajor> varTensor = (tensor - mean).square().mean();
         float std_dev = std::sqrt(std::max(varTensor(0), 1e-8f));
 
-        // Assignation explicite
+        // explicit assignment
         tensor = (tensor - mean) / std_dev;
     }
 
@@ -28,19 +28,25 @@ namespace preprocessing {
         const int Y = (int)data.dimension(1);
         const int Z = (int)data.dimension(2);
 
-        float maxv = -1e9f;
-        for (int x = 0; x < X; x++)
-            for (int y = 0; y < Y; y++)
-                for (int z = 0; z < Z; z++)
-                    maxv = std::max(maxv, data(x, y, z, 0));
+        //float maxv = -1e9f;
+        //for (int x = 0; x < X; x++)
+        //    for (int y = 0; y < Y; y++)
+        //        for (int z = 0; z < Z; z++)
+        //            maxv = std::max(maxv, data(x, y, z, 0));
+
+        //float thr = 0.01f * maxv;
+        //Eigen::Tensor<uint8_t, 3, Eigen::ColMajor> mask(X, Y, Z);
+
+        //for (int z = 0; z < Z; z++)
+        //    for (int y = 0; y < Y; y++)
+        //        for (int x = 0; x < X; x++)
+        //            mask(x, y, z) = (data(x, y, z, 0) > thr) ? (uint8_t)1 : (uint8_t)0;
+
+        Eigen::Tensor<float, 0> maxAsTensor = data.maximum();
+        float maxv = maxAsTensor(0);
 
         float thr = 0.01f * maxv;
-        Eigen::Tensor<uint8_t, 3, Eigen::ColMajor> mask(X, Y, Z);
-
-        for (int z = 0; z < Z; z++)
-            for (int y = 0; y < Y; y++)
-                for (int x = 0; x < X; x++)
-                    mask(x, y, z) = (data(x, y, z, 0) > thr) ? (uint8_t)1 : (uint8_t)0;
+        Eigen::Tensor<uint8_t, 3, Eigen::ColMajor>  mask = (data.chip(0, 3) > thr).cast<uint8_t>();
 
         return mask;
     }
@@ -90,8 +96,10 @@ namespace preprocessing {
         Eigen::array<Eigen::Index, 4> offsets = {x0, y0, z0, 0};
         Eigen::array<Eigen::Index, 4> extents = {nX, nY, nZ, C};
 
-        Eigen::Tensor<float, 4, Eigen::ColMajor> temp = vol.data.slice(offsets, extents);
-        cropped.data = temp;
+        //Eigen::Tensor<float, 4, Eigen::ColMajor> temp = vol.data.slice(offsets, extents);
+        //cropped.data = temp;
+
+        cropped.data = vol.data.slice(offsets, extents);
 
         return {cropped, cropped};
     }
@@ -130,7 +138,7 @@ namespace preprocessing {
         padded.data.slice(offsets, extents) = vol.data;
 
         std::vector<std::array<int, 2>> p_info = {
-            {pX, tX - X - pX}, {pY, tY - Y - pY}, {pZ, tZ - Z - pZ}};
+            {pX, X + pX}, {pY, Y + pY}, {pZ, Z + pZ}};
 
         return {padded, p_info};
     }
@@ -198,7 +206,8 @@ namespace preprocessing {
 
         qDebug() << "Preprocessing modality:" << modality_path;
 
-        QString debug_prefix = QFileInfo(modality_path).absolutePath() + "/debug_" +
+        QString debug_prefix =
+            QFileInfo(modality_path).absolutePath() + "/" +
                                QFileInfo(modality_path).baseName();
 
         if (!is_MNI) {
@@ -216,7 +225,11 @@ namespace preprocessing {
 
         printAction("loading NIFTI volume");
         NiftiVolume vol = NiftiVolume::loadNifti(path);
-        NiftiVolume::saveNifti(debug_prefix + "_1_loaded.nii.gz", vol);
+
+        if (save_intermediary_steps)
+            NiftiVolume::saveNifti(debug_prefix + "_loaded.nii.gz", vol);
+
+        result.original_shape = Eigen::Vector3i((int)vol.data.dimension(0), (int)vol.data.dimension(1), (int)vol.data.dimension(2));
 
         printAction("cropping to non-zero content");
         std::array<std::array<int, 2>, 3> local_bbox = {{{-1, -1}, {-1, -1}, {-1, -1}}};
@@ -234,19 +247,22 @@ namespace preprocessing {
         result.bbox = local_bbox;
 
         // Debug: Après crop
-        NiftiVolume::saveNifti(debug_prefix + "_2_cropped.nii.gz", cropped);
+        if (save_intermediary_steps) 
+            NiftiVolume::saveNifti(debug_prefix + "_cropped.nii.gz", cropped);
 
         printAction("resampling to 1.0mm iso");
         NiftiVolume res = resampler.resample(cropped, Eigen::Vector3f(1.0f, 1.0f, 1.0f), false);
 
         // Debug: Après resampling
-        NiftiVolume::saveNifti(debug_prefix + "_3_resampled.nii.gz", res);
+        if (save_intermediary_steps)
+            NiftiVolume::saveNifti(debug_prefix + "_resampled.nii.gz", res);
 
         printAction("z-score normalization");
         zScoreNormalize(res);
 
         // Debug: Après normalization
-        NiftiVolume::saveNifti(debug_prefix + "_4_normalized.nii.gz", res);
+        if (save_intermediary_steps)
+            NiftiVolume::saveNifti(debug_prefix + "_normalized.nii.gz", res);
 
         printAction("padding to target size (128)");
         auto [padded, p_info] = padVolume(res, 128);
@@ -258,7 +274,8 @@ namespace preprocessing {
                      padded.data.dimension(2));
 
         // Debug: Volume final avant inference
-        NiftiVolume::saveNifti(debug_prefix + "_5_final_padded.nii.gz", padded);
+        if (save_intermediary_steps)
+            NiftiVolume::saveNifti(debug_prefix + "_padded.nii.gz", padded);
 
         result.data = padded.data;
         result.spacing = padded.spacing;
@@ -271,7 +288,7 @@ namespace preprocessing {
                                                 const QString &temp_dir, bool bet_only) {
         QString bet_t1 = t1_path;
         if (!t1_path.contains("BET") && !t1_path.contains("MNI")) {
-            bet_t1 = brainExtraction->run(t1_path, temp_dir + "/t1");
+            bet_t1 = brainExtraction->run(t1_path, temp_dir + "/" + QFileInfo(t1_path).baseName());
         }
 
         PreprocessedVolume t1_res = preprocessModality(bet_t1, t1_path.contains("MNI"));

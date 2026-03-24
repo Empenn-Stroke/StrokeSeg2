@@ -86,6 +86,8 @@ private:
     int realToSliderValue(double realValue);
     QString formatThreshold(double v);
 
+    void setInputsEnabled(bool enabled);
+
     void openGuide();
     void openAbout();
     void openModelManager();
@@ -96,6 +98,8 @@ private:
     void loadSettings();
 
     void closeEvent(QCloseEvent *event) override;
+
+    void onPipelineFinished(bool success, QString message, QString finalPath);
 
   public slots:
     void refreshModelsList();

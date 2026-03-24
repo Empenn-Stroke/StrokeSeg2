@@ -23,30 +23,33 @@ namespace preprocessing {
 
     /**
      * @class Preprocessor
-     * @brief Gère le pipeline complet de prétraitement des volumes 4D.
+     * @brief Manage the complet pipeline for 4D volume preprocessing.
      *
-     * Cette classe orchestre les étapes critiques de préparation des données d'imagerie médicale
-     * (IRM) avant leur analyse ou leur passage dans un modèle d'inférence. Elle s'appuie sur
-     * les classes Resampling et BrainExtraction pour manipuler des objets NiftiVolume.
+     * This class centralise the main preprocessing steps applied to the input volumes before inference. 
+     * It is designed to be modular and extensible, allowing for easy integration of
+     * additional steps or alternative algorithms as needed. The pipeline is optimized for typical
+     * neuroimaging workflows, particularly in the context of stroke lesion segmentation, but can be
+     * adapted for other applications with similar requirements.
      *
-     * Fonctionnalités :
-     * - Correction de biais d'inhomogénéité (Bias Correction).
-     * - Réorientation vers l'espace standard RAS.
-     * - Recalage (Registration) vers un atlas de référence (MNI).
-     * - Extraction du cerveau (Brain Extraction / Skull Stripping).
-     * - Normalisation statistique (Z-Score) basée ou non sur un masque.
-     * - Opérations géométriques : Recadrage (Cropping) et Padding (Remplissage).
+     * Utility :
+     * - Biais correction to correct for intensity inhomogeneities.
+     * - Registration to a reference atlas (MNI).
+     * - Skull stripping.
+     * - Statistic normalization (z-score).
+     * - Cropping and padding to fit inference input dimension.
      */
     class Preprocessor {
       public:
         /**
-         * @brief Constructeur initialisant les dépendances nécessaires au pipeline.
-         * @param res Pointeur vers l'instance de Resampling pour les changements de résolution.
-         * @param br Pointeur vers l'outil d'extraction du cerveau.
-         * @param wr Pointeur vers le wrapper Anima pour les outils de traitement externes.
+         * @brief Builder for the Preprocessor class.
+         * @param res Pointer to instance of the Resampling class.
+         * @param br Pointer to instance of the BrainExtraction class.
+         * @param wr Pointer to instance of the AnimaWrapper class for executing Anima commands.
+         * @param save Indicates if intermediary results should be saved for
+         * debugging purposes.
          */
-        Preprocessor(Resampling *res, BrainExtraction *br, AnimaWrapper *wr)
-            : resampler(*res), brainExtraction(br), wrapper(wr) {}
+        Preprocessor(Resampling *res, BrainExtraction *br, AnimaWrapper *wr, bool save)
+            : resampler(*res), brainExtraction(br), wrapper(wr), save_intermediary_steps(save) {}
 
         ~Preprocessor() = default;
 
@@ -65,6 +68,7 @@ namespace preprocessing {
         Resampling resampler;
         BrainExtraction *brainExtraction;
         AnimaWrapper *wrapper;
+        bool save_intermediary_steps;
         ConfigManager &config = ConfigManager::instance();
         QString atlasImage = atlas_dir + "/Reference_T1.nrrd";
 

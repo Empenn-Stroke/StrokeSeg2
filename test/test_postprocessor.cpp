@@ -39,7 +39,7 @@ private slots:
         
         // Padding appliqué lors du pré-traitement (exemple: 4 pixels de chaque côté)
         preproc.padding = {
-            std::array<int, 2>{11, 149}, // X: on garde de l'index 4 à 124 (sur 128)
+            std::array<int, 2>{11, 149}, // X
             std::array<int, 2>{9, 183}, // Y
             std::array<int, 2>{10, 149}  // Z
         };

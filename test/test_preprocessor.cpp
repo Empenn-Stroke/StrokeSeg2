@@ -187,7 +187,7 @@ class TestPreprocessor : public QObject {
         AnimaWrapper *realWrapper = new AnimaWrapper(this);
         QString atlasImage = atlas_dir + "/Reference_T1.nrrd";
         BrainExtraction brainExtractor(realWrapper, atlasImage);
-        Preprocessor preproc(&resampler, &brainExtractor, realWrapper);
+        Preprocessor preproc(&resampler, &brainExtractor, realWrapper, true);
 
         // 3. Exécution
         qDebug() << "Lancement du pipeline d'integration sur :" << inputPath;

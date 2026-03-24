@@ -40,6 +40,21 @@ int AnimaWrapper::run(const QStringList &args) {
     process.setProgram(program_path);
     process.setArguments(arguments);
     process.setProcessChannelMode(QProcess::SeparateChannels);
+
+    connect(&process, &QProcess::readyReadStandardOutput, this, [this]() {
+        QByteArray data = process.readAllStandardOutput();
+        QString log = QString::fromUtf8(data).trimmed();
+        if (!log.isEmpty()) {
+            emit logAvailable(log);
+        }
+    });
+
+    connect(&process, &QProcess::readyReadStandardError, this, [this]() {
+        QString err = QString::fromUtf8(process.readAllStandardError()).trimmed();
+        if (!err.isEmpty())
+            emit logAvailable("ERREUR : " + err);
+    });
+
     process.start();
 
     // Wait for start.
@@ -52,18 +67,6 @@ int AnimaWrapper::run(const QStringList &args) {
 
     // Wait for end.
     process.waitForFinished(-1);
-
-    // Read outputs.
-    const QByteArray out = process.readAllStandardOutput();
-    const QByteArray err = process.readAllStandardError();
-    m_stdout = QString::fromUtf8(out);
-    m_stderr = QString::fromUtf8(err);
-
-    if (process.exitCode() != 0) {
-        qDebug() << "--- ANIMA CRASH LOG ---";
-        qDebug() << "STDOUT:" << m_stdout;
-        qDebug() << "STDERR:" << m_stderr;
-    }
 
     // Check if process abnormally stopped.
     if (process.exitStatus() == QProcess::CrashExit) {

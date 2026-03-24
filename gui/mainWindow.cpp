@@ -11,8 +11,10 @@
 #include <QtConcurrent>
 #include <QMovie>
 #include <QDesktopServices>
+#include <QMessageBox>
 
-#include <../core/inference/inferenceengine.h>
+#include <inference/inferenceengine.h>
+#include <pipelineWorker.h>
 
 #include <utils/path.h>
 
@@ -172,7 +174,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     // Model
     m_model = new QComboBox(formParameters);
-    QDir modelsDir = QDir("C:/ProgramData/StrokeSeg/Models");
+    QDir modelsDir = model_dir;
     QStringList entries = modelsDir.entryList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
 
     for (const QString &entry : entries) {
@@ -606,12 +608,30 @@ QString MainWindow::formatThreshold(double v) {
     return QString::number(v, 'f', 2);
 }
 
+void MainWindow::setInputsEnabled(bool enabled) {
+    m_suffix->setEnabled(enabled);
+    m_destination->setEnabled(enabled);
+    m_destinationButton->setEnabled(enabled);
+    m_model->setEnabled(enabled);
+    m_toggleView->setEnabled(enabled);
+    m_toggleOpenFolder->setEnabled(enabled);
+    m_toggleOutput->setEnabled(enabled);
+    m_skipBrainExtract->setEnabled(enabled);
+    m_savePMap->setEnabled(enabled);
+    m_savePreprocessing->setEnabled(enabled);
+    m_mode->setEnabled(enabled);
+    m_thresholdSlider->setEnabled(enabled);
+    m_threshold->setEnabled(enabled);
+    m_runButton->setEnabled(enabled);
+    m_fileButton->setEnabled(enabled);
+}
+
 void MainWindow::Process() {
 
     if (*m_fileChosen == "Choose File")
         return;
 
-    if (m_destination->text() == "") {
+    if (m_destination->text().isEmpty()) {
         m_consoleLabel->setText("Please select an output folder.");
         return;
     }
@@ -619,54 +639,61 @@ void MainWindow::Process() {
     m_stackedArea->setCurrentIndex(1);
 
     m_runButton->setEnabled(false);
-    m_consoleLabel->setText("Running inference...");
 
-    QString modelPath = "C:/ProgramData/StrokeSeg/Models/" + m_model->currentText() + ".onnx";
-    QString imagePath = *m_fileChosen;
-    QString destinationPath =
-        m_destination->text() + "/" + QFileInfo(*m_fileChosen).fileName() + m_suffix->text();
+    PipelineParams params;
+    params.t1Path = *m_fileChosen;
+    params.outputDir = m_destination->text();
+    params.modelPath = model_dir + m_model->currentText() + ".onnx";
+    params.suffix = m_suffix->text();
+    params.savePMap = m_savePMap->isChecked();
+    params.savePreproc = m_savePreprocessing->isChecked();
+    params.skipBrainExtract = m_skipBrainExtract->isChecked();
 
-    // Start the computation in another thread
-    QFuture<std::vector<float>> worker = QtConcurrent::run([modelPath, imagePath,destinationPath]() {
-        InferenceEngine engine;
-        return engine.RunInference(modelPath, imagePath, destinationPath);
-    });
+    params.threshold = m_threshold->text().replace(" ", "").toFloat();
 
-    // Watch for the end of the computation
-    auto watcher = new QFutureWatcher<std::vector<float>>();
-    connect(watcher, &QFutureWatcher<std::vector<float>>::finished, this, [this, watcher,destinationPath]() {
-        auto output = watcher->result();
-        if (output.empty()) {
-            m_consoleLabel->setText("Failure : no data out");
-        } else {
-            m_consoleLabel->setText(QString("Success! Output size = %1").arg(output.size()));
+    setInputsEnabled(false);
+    m_stackedArea->setCurrentIndex(1);
+    m_consoleLabel->setText("Starting pipeline...");
 
-            if (m_toggleOpenFolder->isChecked()) {
-                QDesktopServices::openUrl(QUrl::fromLocalFile(m_destination->text()));
-            }
+    QThread *thread = new QThread;
+    PipelineWorker *worker = new PipelineWorker(params);
+    worker->moveToThread(thread);
 
-            // ITK
-            if (m_toggleView->isChecked()) {
-                QStringList arguments;
-                arguments << "-g" << destinationPath;
+    connect(thread, &QThread::started, worker, &PipelineWorker::process);
 
-                bool started = QProcess::startDetached("itksnap", arguments);
+    connect(worker, &PipelineWorker::statusChanged, this,
+            [this](QString msg) { m_consoleLabel->setText(msg); });
 
-                if (!started) {
-                    QString commonPath = "C:/Program Files/ITK-SNAP 4.4/bin/ITK-SNAP.exe";
-                    if (!QProcess::startDetached(commonPath, arguments)) {
-                        m_consoleLabel->setText("Success, but ITK-SNAP not found.");
-                    }
-                }
-            }
+    connect(worker, &PipelineWorker::finished, this, &MainWindow::onPipelineFinished);
 
+    connect(worker, &QObject::destroyed, thread, &QThread::quit);
+    connect(thread, &QThread::finished, thread, &QObject::deleteLater);
+
+    thread->start();
+}
+
+void MainWindow::onPipelineFinished(bool success, QString message, QString finalPath) {
+    setInputsEnabled(true);
+    m_stackedArea->setCurrentIndex(0);
+    m_consoleLabel->setText(message);
+
+    sender()->deleteLater();
+
+    if (success) {
+        if (m_toggleOpenFolder->isChecked()) {
+            QDesktopServices::openUrl(QUrl::fromLocalFile(m_destination->text()));
         }
 
-        m_stackedArea->setCurrentIndex(0);
-        m_runButton->setEnabled(true);
-        watcher->deleteLater();
-    });
-    watcher->setFuture(worker);
+        if (m_toggleView->isChecked() && !finalPath.isEmpty()) {
+            QStringList args;
+            args << "-g" << finalPath;
+            if (!QProcess::startDetached("itksnap", args)) {
+                QProcess::startDetached("C:/Program Files/ITK-SNAP 4.4/bin/ITK-SNAP.exe", args);
+            }
+        }
+    } else {
+        QMessageBox::critical(this, "Pipeline Error", message);
+    }
 }
 
 void MainWindow::saveSettings() {

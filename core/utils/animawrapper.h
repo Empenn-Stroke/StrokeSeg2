@@ -23,6 +23,11 @@ class AnimaWrapper : public QObject {
     QProcess process;
     QString m_stdout;
     QString m_stderr;
+
+    signals:
+    // Le signal que tu vas émettre
+        void logAvailable(const QString &message);
+        void errorOccurred(const QString &error);
 };
 
 

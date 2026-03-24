@@ -193,12 +193,12 @@ namespace {
 
         QStringList applyArgs;
         applyArgs << "animaApplyTransformSerie"
-                  << "-i" << input_mni_path // Image en MNI
-                  << "-t" << xml_path       // Transformation XML
+                  << "-i" << input_mni_path      // Image en MNI
+                  << "-t" << xml_path            // Transformation XML
                   << "-o" << output_patient_path 
-                  << "-g" << patient_ref_path // L'image T1 native du patient (la grille cible)
-                  << "-I";             // INVERSE : Très important pour MNI -> Patient
-                  //<< "-n" << "0";
+                  << "-g" << patient_ref_path    // L'image T1 native du patient (la grille cible)
+                  << "-I"                        // INVERSE : Très important pour MNI -> Patient
+                  << "-n" << "nearest";          // Permet d'avoir le masque binaire
 
         printAction("Applying inverse registration to patient space");
         if (wrapper->run(applyArgs) != 0) {
@@ -225,7 +225,7 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
     
     // DEBUG SAVE 1
     save_img(dir, debug_spacing, segmentation_to_nifti_volume(segmentation, debug_spacing).data,
-             "debug_01", "after_convert");
+             QFileInfo(preproc_volume.original_t1_path).baseName(), "after_convert");
 
     // --- Step 2: Remove padding ---
     printAction("Remove padding");
@@ -233,7 +233,7 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
     
     // DEBUG SAVE 2
     save_img(dir, debug_spacing, segmentation_to_nifti_volume(segmentation, debug_spacing).data,
-             "debug_02", "after_unpad");
+             QFileInfo(preproc_volume.original_t1_path).baseName(), "after_unpad");
 
     // --- Step 3: Uncrop ---
     printAction("Uncrop");
@@ -242,7 +242,8 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
     NiftiVolume segmentation_as_nifti = segmentation_to_nifti_volume(segmentation, debug_spacing);
     
     // DEBUG SAVE 3
-    save_img(dir, debug_spacing, segmentation_as_nifti.data, "debug_03", "after_uncrop");
+    save_img(dir, debug_spacing, segmentation_as_nifti.data,
+             QFileInfo(preproc_volume.original_t1_path).baseName(), "after_uncrop");
 
     // --- Step 4: Resample ---
     printAction("Resample");
@@ -272,10 +273,12 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
     segmentation.seg = nifti_volume_to_tensor3f(segmentation_as_nifti);
 
     // DEBUG SAVE 4
-    save_img(dir, debug_spacing, segmentation_as_nifti.data, "debug_04", "after_resampling");
-    QString resample_path = dir + "/" + "debug_04" + "_" + "after_resampling" + ".nii.gz";
+    save_img(dir, debug_spacing, segmentation_as_nifti.data,
+             QFileInfo(preproc_volume.original_t1_path).baseName(), "after_resampling");
+    QString resample_path = dir + "/" + QFileInfo(preproc_volume.original_t1_path).baseName() +
+                            "_" + "after_resampling" + ".nii.gz";
 
-    QString tmp_mni_path = dir + "/tmp_reconstructed_mni.nii.gz";
+    QString tmp_mni_path = dir + "/" + QFileInfo(preproc_volume.original_t1_path).baseName() + "_reconstructed_mni.nii.gz";
 
     // Copy save the data of the segmentation in MNI space, using the reference T1 header to ensure
     // correct orientation and spacing metadata.
@@ -293,17 +296,6 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
     } catch (const std::exception &e) {
         spdlog::error("Critical error during inverse registration: {}", e.what());
         return;
-    }
-
-    // --- Step 6: Save final image ---
-    qDebug() << "Final segmentation spacing: " << segmentation_as_nifti.spacing[0] << " x "
-             << segmentation_as_nifti.spacing[1] << " x " << segmentation_as_nifti.spacing[2];
-    printAction("Saving final image to nii");
-    QString final_file =
-        save_img(dir, target_spacing, segmentation_as_nifti.data, "result", "final");
-    
-    if (save_pmap && segmentation.pmap.has_value()) {
-        spdlog::info("Final output saved to: {}", final_file.toStdString());
     }
     // TODO: Ajouter le recalage MNI -> patient space en utilisant trsf_path
 }
