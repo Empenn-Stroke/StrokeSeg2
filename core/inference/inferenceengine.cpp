@@ -313,7 +313,18 @@ void InferenceEngine::initSession(const QString &modelPath) {
 
 
 #elif defined(Q_OS_MAC)
-
+    if (std::find(providers.begin(), providers.end(), "CoreMLExecutionProvider") !=
+        providers.end()) {
+        try {
+            uint32_t coreml_flags = 0;
+            Ort::ThrowOnError(
+                OrtSessionOptionsAppendExecutionProvider_CoreML(sessionOptions, coreml_flags));
+            qDebug() << "Priority 1: Apple Neural Engine (CoreML) attached.";
+            deviceFound = true;
+        } catch (const std::exception &e) {
+            qDebug() << "CoreML failed, using CPU.";
+        }
+    }
 #endif
 
     if (!deviceFound) {
