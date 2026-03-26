@@ -1,17 +1,17 @@
 #include "mainWindow.h"
 
-#include <QIcon>
 #include <algorithm>
-#include <QSettings>
-#include <QStandardPaths>
+#include <QDebug>
+#include <QDesktopServices>
 #include <QDragEnterEvent>
 #include <QDropEvent>
-#include <QMimeData>
-#include <QDebug>
-#include <QtConcurrent>
-#include <QMovie>
-#include <QDesktopServices>
+#include <QIcon>
 #include <QMessageBox>
+#include <QMimeData>
+#include <QMovie>
+#include <QSettings>
+#include <QStandardPaths>
+#include <QtConcurrent>
 
 #include <inference/inferenceengine.h>
 #include <pipelineWorker.h>

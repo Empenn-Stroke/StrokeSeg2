@@ -4,6 +4,7 @@
 void PipelineWorker::process() {
     try {
         QElapsedTimer total_timer;
+        QElapsedTimer step_timer;
         total_timer.start();
 
         emit statusChanged("Initialisation des composants...");
@@ -18,7 +19,8 @@ void PipelineWorker::process() {
         InferenceEngine engine;
         postprocessing::Postprocessor postproc(&wrapper);
 
-        // 2. PREPROCESSING
+        // 1. PREPROCESSING
+        step_timer.start();
         emit statusChanged("Step 1/3 : Preprocessing...");
 
         auto preprocResult =
@@ -32,7 +34,12 @@ void PipelineWorker::process() {
             NiftiVolume::saveNifti(preprocSavePath, volPre);
         }
 
-        // 3. INFERENCE
+        qDebug() << "------------------------------------------";
+        qDebug() << "[TIMER] PREPROCESSING :" << step_timer.elapsed() / 1000 << "s";
+        qDebug() << "------------------------------------------";
+
+        // 2. INFERENCE
+        step_timer.restart();
         emit statusChanged("Step 2/3 : Inference...");
 
         QString tmpInput = m_p.outputDir + "/tmp_inference_input.nii.gz";
@@ -42,7 +49,12 @@ void PipelineWorker::process() {
         auto inferenceResult =
             engine.run(m_p.modelPath, tmpInput, rawInferencePath, "input", "output");
 
-        // 4. POSTPROCESSING
+        qDebug() << "------------------------------------------";
+        qDebug() << "[TIMER] INFERENCE :" << step_timer.elapsed() / 1000 << "s";
+        qDebug() << "------------------------------------------";
+
+        // 3. POSTPROCESSING
+        step_timer.restart();
         emit statusChanged("Step 3/3 : Postprocessing...");
 
         QString fileName = QFileInfo(m_p.t1Path).baseName() + m_p.suffix + ".nii.gz";
@@ -60,7 +72,11 @@ void PipelineWorker::process() {
         emit finished(true, "analysis performed with success !", finalPath);
 
         qDebug() << "------------------------------------------";
-        qDebug() << "[TIMER] TOTAL PROCESS:" << total_timer.elapsed() / 1000 << "s";
+        qDebug() << "[TIMER] POSTPROCESSING :" << step_timer.elapsed() / 1000 << "s";
+        qDebug() << "------------------------------------------";
+
+        qDebug() << "------------------------------------------";
+        qDebug() << "[TIMER] TOTAL PROCESS :" << total_timer.elapsed() / 1000 << "s";
         qDebug() << "------------------------------------------";
 
     } catch (const std::exception &e) {

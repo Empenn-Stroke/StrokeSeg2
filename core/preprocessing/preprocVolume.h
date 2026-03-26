@@ -7,7 +7,8 @@
 #include <string>
 #include <vector>
 
-struct PreprocessedVolume {
+struct PreprocessedVolume 
+{
     /**
      * @brief Volume data (C, X, Y, Z)
      */

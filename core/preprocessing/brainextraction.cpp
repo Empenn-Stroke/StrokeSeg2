@@ -1,18 +1,32 @@
 #include "brainextraction.h"
 
-
 #include <stdexcept>
 
+/**
+ * @brief Constructor of the brain extraction class
+ * @param wrapper(AnimaWrapper): A wrapper to simplify the use of anima executables atlasImage
+ * @param atlasImage(Qstring): Path of the atlas image used for the registration. The atlas
+ * image should be in the same space as the input image (e.g. MNI space). It will be used as a
+ * reference for the registration and the brain mask creation. The atlas image should be a 3D
+ * image with a brain mask (e.g. BrainMask.nrrd) in the same directory.
+ *
+ */
 BrainExtraction::BrainExtraction(AnimaWrapper *wrapper, const QString &atlasImage, QObject *parent)
     : QObject(parent), m_wrapper(wrapper), m_atlasImage(atlasImage),
       m_iccImage(QDir(atlas_dir).filePath("BrainMask.nrrd")),
       m_pyramidOption({"-p", "4", "-l", "1"}) {}
 
-void BrainExtraction::requestCancel() {
+void BrainExtraction::requestCancel() 
+{
     m_cancelRequested = true;
 }
 
-void BrainExtraction::runCommand(const QStringList &command) {
+/**
+ * @brief Runs the command and make an exception if the user cancelled the action.
+ * @param command(QStringList): A specific command
+ */
+void BrainExtraction::runCommand(const QStringList &command) 
+{
     if (m_cancelRequested) {
         throw std::runtime_error("Brain extraction cancelled by user");
     }
@@ -27,7 +41,16 @@ void BrainExtraction::runCommand(const QStringList &command) {
     }
 }
 
-QString BrainExtraction::run(const QString &imgPath, const QString &prefix) {
+/**
+ * @brief Performs the brain extraction on 3D image. Composed by a sequence of anima commands. Store
+ * all intermediate results in the temporary directory
+ * @param imgPath(QString): Input path
+ * @param prefix(QString): Composed of the temporary folder path and the input file’s base name
+ * without its extension
+ * @return (QString): Path of the brain extracted image
+ */
+QString BrainExtraction::run(const QString &imgPath, const QString &prefix) 
+{
     try {
         emit progress(0.0f, "Starting brain extraction");
 

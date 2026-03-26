@@ -25,7 +25,6 @@ class AnimaWrapper : public QObject {
     QString m_stderr;
 
     signals:
-    // Le signal que tu vas émettre
         void logAvailable(const QString &message);
         void errorOccurred(const QString &error);
 };

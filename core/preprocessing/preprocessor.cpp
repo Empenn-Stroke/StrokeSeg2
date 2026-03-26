@@ -1,14 +1,25 @@
 ﻿#include "preprocessor.h"
-#include <QtDebug>
 #include <cassert>
 #include <cmath>
 #include <cstring>
 #include <nifti1_io.h>
+#include <qelapsedtimer.h>
+#include <QtDebug>
 #include <spdlog/spdlog.h>
 
 namespace preprocessing {
-
-    void Preprocessor::zScoreNormalize(NiftiVolume &vol, const NiftiVolume *seg) {
+    
+    /**
+     * @brief Applies z-score normalization to the input volume.
+     * Compute mean and standard deviation to transform intensities : 
+     * $z = \frac{x - \mu}{\sigma}$.
+     * @param vol Volume to normalize. The operation is performed in-place.
+     * @param seg Optional segmentation mask. If provided, only voxels corresponding to the
+     * specified label (nonzero_label) will be considered for mean and standard deviation
+     * calculation.
+     */
+    void Preprocessor::zScoreNormalize(NiftiVolume &vol, const NiftiVolume *seg) 
+    {
         auto &tensor = vol.data;
         // mean calculation
         Eigen::Tensor<float, 0, Eigen::ColMajor> meanTensor = tensor.mean();
@@ -22,25 +33,19 @@ namespace preprocessing {
         tensor = (tensor - mean) / std_dev;
     }
 
+    /**
+     * @brief Identifies non-zero voxels in the input volume to create a binary mask of active
+     * regions.
+     * @param vol Input volume
+     * @return output binary mask where voxels with intensity above a certain threshold (1% of the
+     * maximum
+     */
     Eigen::Tensor<uint8_t, 3, Eigen::ColMajor>
-    buildMask(const Eigen::Tensor<float, 4, Eigen::ColMajor> &data) {
+    Preprocessor::buildMask(const Eigen::Tensor<float, 4, Eigen::ColMajor> &data) 
+    {
         const int X = (int)data.dimension(0);
         const int Y = (int)data.dimension(1);
         const int Z = (int)data.dimension(2);
-
-        //float maxv = -1e9f;
-        //for (int x = 0; x < X; x++)
-        //    for (int y = 0; y < Y; y++)
-        //        for (int z = 0; z < Z; z++)
-        //            maxv = std::max(maxv, data(x, y, z, 0));
-
-        //float thr = 0.01f * maxv;
-        //Eigen::Tensor<uint8_t, 3, Eigen::ColMajor> mask(X, Y, Z);
-
-        //for (int z = 0; z < Z; z++)
-        //    for (int y = 0; y < Y; y++)
-        //        for (int x = 0; x < X; x++)
-        //            mask(x, y, z) = (data(x, y, z, 0) > thr) ? (uint8_t)1 : (uint8_t)0;
 
         Eigen::Tensor<float, 0> maxAsTensor = data.maximum();
         float maxv = maxAsTensor(0);
@@ -51,35 +56,59 @@ namespace preprocessing {
         return mask;
     }
 
+    /*
+     * @brief Compute the bounding box of the non-zero region in the binary mask.
+     * @param mask Binary mask indicating active regions (non-zero voxels).
+     * @return Array of pairs representing the minimum and maximum indices along each dimension (X,
+     * Y, Z)
+    */
     std::array<std::array<int, 2>, 3>
-    computeBBox(const Eigen::Tensor<uint8_t, 3, Eigen::ColMajor> &mask) {
-        int X = (int)mask.dimension(0);
-        int Y = (int)mask.dimension(1);
-        int Z = (int)mask.dimension(2);
+    Preprocessor::computeBBox(const Eigen::Tensor<uint8_t, 3, Eigen::ColMajor> &mask) 
+    {
+        auto x_any = mask.any(Eigen::array<int, 2>{1, 2});
+        auto y_any = mask.any(Eigen::array<int, 2>{0, 2});
+        auto z_any = mask.any(Eigen::array<int, 2>{0, 1});
 
-        int xmin = X, xmax = -1, ymin = Y, ymax = -1, zmin = Z, zmax = -1;
+        auto get_range = [](const Eigen::Tensor<bool, 1, Eigen::ColMajor> &any_tensor,
+                            int size) -> std::array<int, 2> 
+        {
+            int min_idx = 0;
+            int max_idx = size - 1;
+            while (min_idx < size && !any_tensor(min_idx))
+                min_idx++;
+            while (max_idx >= 0 && !any_tensor(max_idx))
+                max_idx--;
+            if (min_idx > max_idx)
+                return {0, 0};
 
-        for (int z = 0; z < Z; z++)
-            for (int y = 0; y < Y; y++)
-                for (int x = 0; x < X; x++) {
-                    if (mask(x, y, z)) {
-                        xmin = std::min(xmin, x);
-                        xmax = std::max(xmax, x);
-                        ymin = std::min(ymin, y);
-                        ymax = std::max(ymax, y);
-                        zmin = std::min(zmin, z);
-                        zmax = std::max(zmax, z);
-                    }
-                }
+            return {min_idx, max_idx + 1};
+        };
 
-        if (xmax < xmin)
+        auto rx = get_range(x_any, (int)mask.dimension(0));
+        auto ry = get_range(y_any, (int)mask.dimension(1));
+        auto rz = get_range(z_any, (int)mask.dimension(2));
+
+        if (rx[1] == 0)
             throw std::runtime_error("Empty mask");
-        return {{{xmin, xmax + 1}, {ymin, ymax + 1}, {zmin, zmax + 1}}};
+        return {rx, ry, rz};
     }
 
+    /**
+     * @brief Reduce the volume to the bounding box of non-zero voxels, effectively cropping out
+     * irrelevant background.
+     * @param vol Source volume to crop. The operation is performed in-place.
+     * @param seg Segmentation volume corresponding to the input volume. If provided, it will be
+     * cropped
+     * @param nonzero_label Label in the segmentation to consider as "non-zero" for cropping. Only
+     * voxels with this label
+     * @param bbox_out Optional output parameter to receive the bounding box coordinates used for
+     * cropping.
+     * @return Pair containing the cropped volume and the corresponding cropped segmentation
+     */
     std::pair<NiftiVolume, NiftiVolume>
     Preprocessor::cropToNonZero(const NiftiVolume &vol, const NiftiVolume *seg, int nonzero_label,
-                                std::array<std::array<int, 2>, 3> *bbox_out) {
+                                std::array<std::array<int, 2>, 3> *bbox_out) 
+    {
         auto mask = buildMask(vol.data);
         auto bbox = computeBBox(mask);
         if (bbox_out)
@@ -96,16 +125,21 @@ namespace preprocessing {
         Eigen::array<Eigen::Index, 4> offsets = {x0, y0, z0, 0};
         Eigen::array<Eigen::Index, 4> extents = {nX, nY, nZ, C};
 
-        //Eigen::Tensor<float, 4, Eigen::ColMajor> temp = vol.data.slice(offsets, extents);
-        //cropped.data = temp;
-
         cropped.data = vol.data.slice(offsets, extents);
 
         return {cropped, cropped};
     }
 
+    /**
+     * @brief Adds padding to the volume to fit a minimum size and a multiple, requirements of the inference.
+     * @param vol Input volume.
+     * @param min_size Minimal size required for inference.
+     * @param div Divisibility factor required for inference.
+     * @return Pair containing padded volume and padding offsets.
+     */
     std::pair<NiftiVolume, std::vector<std::array<int, 2>>>
-    Preprocessor::padVolume(const NiftiVolume &vol, int min_size = 128, int div = 32) {
+    Preprocessor::padVolume(const NiftiVolume &vol, int min_size = 128, int div = 32) 
+    {
         const int X = (int)vol.data.dimension(0);
         const int Y = (int)vol.data.dimension(1);
         const int Z = (int)vol.data.dimension(2);
@@ -143,7 +177,14 @@ namespace preprocessing {
         return {padded, p_info};
     }
 
-    QString Preprocessor::biasCorrect(const QString &input_path, const QString &prefix) {
+    /**
+     * @brief Correct inhomogeneity luminance fields in the volume.
+     * @param input_path input volume file path.
+     * @param prefix output volume file prefix.
+     * @return Output volume file path.
+     */
+    QString Preprocessor::biasCorrect(const QString &input_path, const QString &prefix) 
+    {
         QString outDir = QFileInfo(input_path).absolutePath();
         QString cleanPrefix = QFileInfo(prefix).fileName();
         QString output_path = outDir + "/" + cleanPrefix + "_N4.nii.gz";
@@ -151,9 +192,9 @@ namespace preprocessing {
         QStringList args;
         args << "animaN4BiasCorrection" << "-i" << input_path << "-o" << output_path;
 
-        int ret = wrapper->run(args);
+        int ret = m_wrapper->run(args);
         if (ret != 0) {
-            std::string err_msg = wrapper->lastStderr().toStdString();
+            std::string err_msg = m_wrapper->lastStderr().toStdString();
             if (err_msg.empty())
                 err_msg = "Unknown error in AnimaWrapper";
             throw std::runtime_error("Bias correction failed: " + err_msg);
@@ -162,16 +203,25 @@ namespace preprocessing {
         return output_path;
     }
 
+    /**
+     * @brief Spatially aligns volume over a reference atlas (MNI)
+     * @param input_path Volume path to register.
+     * @param mni_image_path reference target (atlas).
+     * @param base_path_prefix Workspace directory.
+     * @param prefix_label Label to identify output file.
+     * @return Pair including [Path to registered image, Path to transformation matrix].
+     */
     std::pair<QString, QString> Preprocessor::registerToReference(const QString &input_path,
                                                                   const QString &ref_path,
-                                                                  const QString &prefix_label,
-                                                                  const QString &base_path_prefix) {
+                                                                  const QString &base_path_prefix,
+                                                                  const QString &prefix_label) 
+    {
 
 
-        QString cleanSuffix = QFileInfo(prefix_label).fileName();
+        QString cleanSuffix = QFileInfo(base_path_prefix).fileName();
 
         QString outDir = QFileInfo(input_path).absolutePath();
-        const QString output_path = outDir + "/" + base_path_prefix + "_" + cleanSuffix + ".nii.gz";
+        const QString output_path = outDir + "/" + prefix_label + "_" + cleanSuffix + ".nii.gz";
 
         QString trsf_base = output_path;
         if (trsf_base.endsWith(".nii.gz"))
@@ -185,9 +235,9 @@ namespace preprocessing {
              << "-o" << output_path 
              << "-O" << trsf_path;
 
-        int ret = wrapper->run(args);
+        int ret = m_wrapper->run(args);
         if (ret != 0) {
-            std::string err_msg = wrapper->lastStderr().toStdString();
+            std::string err_msg = m_wrapper->lastStderr().toStdString();
             if (err_msg.empty())
                 err_msg = "Unknown error in AnimaWrapper";
             throw std::runtime_error("Bias correction failed: " + err_msg);
@@ -196,9 +246,17 @@ namespace preprocessing {
         return std::pair<QString, QString>(output_path, trsf_path);
     }
 
+    /**
+     * @brief .
+     * @param modality_path Chemin du fichier de la modalité.
+     * @param is_MNI Définit si l'image doit être traitée en espace MNI ou natif.
+     * @param bbox_ptr Coordonnées de recadrage à appliquer/récupérer.
+     * @return PreprocessedVolume partiel pour cette modalité.
+     */
     PreprocessedVolume
     Preprocessor::preprocessModality(const QString &modality_path, bool is_MNI,
-                                     std::array<std::array<int, 2>, 3> *bbox_ptr) {
+                                     std::array<std::array<int, 2>, 3> *bbox_ptr) 
+    {
         PreprocessedVolume result;
         QString path = modality_path;
 
@@ -216,7 +274,7 @@ namespace preprocessing {
             path = biasCorrect(path, prefix);
 
             printAction("registration to MNI atlas");
-            auto [reg_path, trsf] = registerToReference(path, atlasImage, prefix, "MNI");
+            auto [reg_path, trsf] = registerToReference(path, m_atlasImage, prefix, "MNI");
             path = reg_path;
             result.trsf_path = trsf;
 
@@ -226,8 +284,9 @@ namespace preprocessing {
         printAction("loading NIFTI volume");
         NiftiVolume vol = NiftiVolume::loadNifti(path);
 
-        if (save_intermediary_steps)
+        if (m_save_intermediary_steps) {
             NiftiVolume::saveNifti(debug_prefix + "_loaded.nii.gz", vol);
+        }
 
         result.original_shape = Eigen::Vector3i((int)vol.data.dimension(0), (int)vol.data.dimension(1), (int)vol.data.dimension(2));
 
@@ -247,22 +306,25 @@ namespace preprocessing {
         result.bbox = local_bbox;
 
         // Debug: Après crop
-        if (save_intermediary_steps) 
+        if (m_save_intermediary_steps) {
             NiftiVolume::saveNifti(debug_prefix + "_cropped.nii.gz", cropped);
+        }
 
         printAction("resampling to 1.0mm iso");
-        NiftiVolume res = resampler.resample(cropped, Eigen::Vector3f(1.0f, 1.0f, 1.0f), false);
+        NiftiVolume res = m_resampler.resample(cropped, Eigen::Vector3f(1.0f, 1.0f, 1.0f), false);
 
         // Debug: Après resampling
-        if (save_intermediary_steps)
+        if (m_save_intermediary_steps) {
             NiftiVolume::saveNifti(debug_prefix + "_resampled.nii.gz", res);
+        }
 
         printAction("z-score normalization");
         zScoreNormalize(res);
 
         // Debug: Après normalization
-        if (save_intermediary_steps)
+        if (m_save_intermediary_steps) {
             NiftiVolume::saveNifti(debug_prefix + "_normalized.nii.gz", res);
+        }
 
         printAction("padding to target size (128)");
         auto [padded, p_info] = padVolume(res, 128);
@@ -274,8 +336,9 @@ namespace preprocessing {
                      padded.data.dimension(2));
 
         // Debug: Volume final avant inference
-        if (save_intermediary_steps)
+        if (m_save_intermediary_steps) {
             NiftiVolume::saveNifti(debug_prefix + "_padded.nii.gz", padded);
+        }
 
         result.data = padded.data;
         result.spacing = padded.spacing;
@@ -284,18 +347,31 @@ namespace preprocessing {
         return result;
     }
 
+    /**
+     * @brief Exécute le pipeline complet sur une paire de modalités (T1 et FLAIR).
+     * @param t1_path Chemin vers l'image T1.
+     * @param flair_path Chemin vers l'image FLAIR.
+     * @param temp_dir Répertoire temporaire pour les fichiers intermédiaires.
+     * @param bet_only Si vrai, arrête le traitement après l'extraction du cerveau.
+     * @return PreprocessedVolume Objet contenant les volumes finaux et leurs métadonnées.
+     */
     PreprocessedVolume Preprocessor::preprocess(const QString &t1_path, const QString &flair_path,
-                                                const QString &temp_dir, bool bet_only) {
+                                                const QString &temp_dir, bool bet_only) 
+    {
+        QElapsedTimer bet_timer;
+        bet_timer.start();
         QString bet_t1 = t1_path;
         if (!t1_path.contains("BET") && !t1_path.contains("MNI")) {
-            bet_t1 = brainExtraction->run(t1_path, temp_dir + "/" + QFileInfo(t1_path).baseName());
+            bet_t1 = m_brainExtraction->run(t1_path, temp_dir + "/" + QFileInfo(t1_path).baseName());
         }
+
+        qDebug() << "Brain extraction took" << bet_timer.elapsed() / 1000 << "s";
 
         PreprocessedVolume t1_res = preprocessModality(bet_t1, t1_path.contains("MNI"));
 
         if (!flair_path.isEmpty()) {
             auto [fReg, _] = registerToReference(flair_path, t1_path, temp_dir + "/flair", "T1");
-            QString fBet = brainExtraction->run(fReg, temp_dir + "/flair_bet");
+            QString fBet = m_brainExtraction->run(fReg, temp_dir + "/flair_bet");
             PreprocessedVolume f_res = preprocessModality(fBet, false, &t1_res.padding);
 
             auto d = t1_res.data.dimensions();
@@ -319,12 +395,22 @@ namespace preprocessing {
         return t1_res;
     }
 
-    
-    void Preprocessor::printAction(const QString &actionName) {
+    /**
+     * @brief Utilitaire de log pour afficher l'étape en cours.
+     * @param actionName Nom de l'action de prétraitement.
+     */
+    void Preprocessor::printAction(const QString &actionName) 
+    {
         spdlog::info("Starting {}...", actionName.toStdString());
     }
 
-    QString Preprocessor::moveToOutput(const QString &img_path) {
+    /**
+     * @brief Déplace le fichier final vers le répertoire de sortie définitif.
+     * @param img_path Chemin actuel du fichier.
+     * @return Nouveau chemin du fichier.
+     */
+    QString Preprocessor::moveToOutput(const QString &img_path) 
+    {
         if (img_path.isEmpty() || !QFile::exists(img_path)) {
             return img_path;
         }
@@ -370,5 +456,4 @@ namespace preprocessing {
 
         return dst;
     }
-    
 } // namespace preprocessing

@@ -4,7 +4,8 @@
 #include <QProcess>
 #include <QDebug>
 
-QString Viewer::itkSnapExe() const {
+QString Viewer::itkSnapExe() const 
+{
     #ifdef _WIN32
         return "itk-snap";
     #else
@@ -13,8 +14,8 @@ QString Viewer::itkSnapExe() const {
 
 }
 
-Viewer::Viewer() : m_viewers(m_config.get("viewers", "").split(',')) {
-
+Viewer::Viewer() : m_viewers(m_config.get("viewers", "").split(',')) 
+{
     const QString defaultViewer = m_config.get("viewer", "");
 
 	if (defaultViewer.isEmpty()) {
@@ -47,7 +48,8 @@ Viewer::Viewer() : m_viewers(m_config.get("viewers", "").split(',')) {
     }
 }
 
-void Viewer::CheckViewers(const QString &viewer) {
+void Viewer::CheckViewers(const QString &viewer) 
+{
     m_viewers = m_config.get("viewers", "").split(',');
     for (const QString &v : m_viewers) {
         m_viewers.append(v);
@@ -76,7 +78,8 @@ void Viewer::CheckViewers(const QString &viewer) {
     m_config.save();
 }
 
-void Viewer::UpdatePath() {
+void Viewer::UpdatePath() 
+{
     bool exist = false;
     for (const QString &v : m_viewers) {
         if (v == "itksnap") {
@@ -96,7 +99,8 @@ void Viewer::UpdatePath() {
     m_config.save();
 } 
 
-void Viewer::Run(const QString &imgPath, const QString &segPath) {
+void Viewer::Run(const QString &imgPath, const QString &segPath) 
+{
 
     const QString defaultViewer = m_config.get("viewer", "");
     QString path = m_config.get(viewer, "");

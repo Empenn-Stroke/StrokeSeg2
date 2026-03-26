@@ -12,6 +12,11 @@ AnimaWrapper::AnimaWrapper(QObject *parent)
     process.setProcessChannelMode(QProcess::SeparateChannels);
 }
 
+/*
+ * @brief Runs the specified command synchronously and captures its output.
+ * @param args The command to run, where the first element is the program and the rest are
+ * arguments.
+ */
 int AnimaWrapper::run(const QStringList &args) {
     m_stdout.clear();
     m_stderr.clear();

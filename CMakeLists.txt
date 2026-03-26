@@ -10,9 +10,18 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 
+if(MSVC)
+    string(REPLACE "/ZI" "/Zi" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    string(REPLACE "/ZI" "/Zi" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+    string(REPLACE "/ZI" "/Zi" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+
+    add_compile_options(/Zm200 /bigobj)
+
+    add_compile_options(/O2 /arch:AVX2 /Oi /Ot /GL)
+    add_link_options(/LTCG)
+endif()
+
 if(CMAKE_GENERATOR MATCHES "^Visual Studio")
-    # To prevent builds (including try_compile) from picking up top-level 'Directory.Build.*' files,
-    # write versions specific to the CMake builds at the root of the CMake build.
     file(WRITE "${CMAKE_BINARY_DIR}/Directory.Build.rsp" "-m -graphBuild:true -p:UseMultiToolTask=true -nodeReuse:false -terminalLogger:auto")
     file(WRITE "${CMAKE_BINARY_DIR}/Directory.Build.props" "<Project></Project>")
     file(WRITE "${CMAKE_BINARY_DIR}/Directory.Build.targets" "<Project></Project>")
@@ -113,13 +122,12 @@ FetchContent_MakeAvailable(NuGetCMakePackage)
 add_nuget_packages(
     PACKAGES
         Microsoft.Windows.CppWinRT 2.0.250303.1
-        Microsoft.ML.OnnxRuntime.DirectML 1.17.1
+        Microsoft.ML.OnnxRuntime.DirectML 1.24.4
         Microsoft.Windows.ImplementationLibrary 1.0.250325.1
         Microsoft.WindowsAppSDK.Foundation 1.8.251104000
         Microsoft.WindowsAppSDK.InteractiveExperiences 1.8.251104001
         Microsoft.WindowsAppSDK.ML 1.8.2109
         Microsoft.WindowsAppSDK.Runtime 1.8.251106002
-        
 )
 
 set(CPPWINRT_VERSION "2.0.250303.1" CACHE STRING "Version of CppWinRT")

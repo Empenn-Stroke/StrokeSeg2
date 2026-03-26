@@ -6,28 +6,24 @@
 #include "preprocessing/preprocVolume.h"
 #include "preprocessing/resampling.h"
 
-namespace postprocessing {
+namespace postprocessing 
+{
 
     /**
      * @class Postprocessor
-     * @brief TODO:
+     * @brief Class responsible for applying the postprocessing pipeline to the output of the
+     * inference step. The postprocessing pipeline includes the following steps:
+     * - Convert the pmap to segmentation data. The pmap can also be returned as is.
+     * - Remove padding.
+     * - Uncrop.
+     * - Resample to the original spacing.
      */
-    class Postprocessor {
+    class Postprocessor 
+    {
       public:
-        Postprocessor(AnimaWrapper *wr) : wrapper(wr) {}
+        Postprocessor(AnimaWrapper *wr) : m_wrapper(wr) {}
         ~Postprocessor() = default;
 
-        /**
-         * @brief Apply postprocessing pipeline on the data produced by the inference step:
-         *
-         * - Convert the pmap to segmentation data. The pmap can also be returned as is
-         * - Remove padding
-         * - Uncrop
-         * - Resample to the original spacing
-         * - Save image
-         * - Register to reference only if the inverse transformation was applied during
-         *   preprocessing
-         */
         void postprocess(const NiftiVolume::Tensor4f &data,
                          const PreprocessedVolume &preproc_volume,
                          const std::array<std::array<int, 2>, 3> &bbox,
@@ -35,9 +31,10 @@ namespace postprocessing {
                          QString trsf_path);
 
       private:
-        ConfigManager &config = ConfigManager::instance();
-        AnimaWrapper *wrapper;
-        preprocessing::Resampling resampler;
+        ConfigManager &m_config = ConfigManager::instance();
+        AnimaWrapper *m_wrapper;
+        preprocessing::Resampling m_resampler;
+        bool m_save_intermediary_steps = m_config.get("save_intermediary_steps", false).toBool();
     };
 
 } // namespace postprocessing

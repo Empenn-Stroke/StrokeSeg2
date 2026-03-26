@@ -6,10 +6,12 @@
 
 #include "utils/log.h"
 
-namespace {
+namespace 
+{
     using namespace postprocessing;
 
-    struct Segmentation {
+    struct Segmentation 
+    {
         Eigen::Tensor<float, 3, Eigen::ColMajor> seg;
         std::optional<Eigen::Tensor<float, 3, Eigen::ColMajor>> pmap;
     };
@@ -45,7 +47,8 @@ namespace {
     /// @param save_pmap If true, save probability map alongside the segmentation
     /// @return Segmentation struct
     Segmentation convert_to_segmentation(NiftiVolume::Tensor4f data, float threshold,
-                                         bool save_pmap) {
+                                         bool save_pmap) 
+    {
         // extract lesion
         Eigen::Tensor<float, 3, Eigen::ColMajor> lesion = data.chip<3>(0);
 
@@ -75,7 +78,8 @@ namespace {
     /// @param segmentation Segmentation data. This will be modified.
     /// @param padding Padding to use
     Segmentation remove_padding(const Segmentation &segmentation,
-                                const std::array<std::array<int, 2>, 3> &padding) {
+                                const std::array<std::array<int, 2>, 3> &padding) 
+    {
         // calculate offsets and extents (offset and length of slices)
         std::array<int, 3> offsets{};
         std::array<int, 3> extents{};
@@ -102,7 +106,8 @@ namespace {
     /// @param original_shape Original shape of the image before preprocessing
     Segmentation uncrop_from_bbox(const Segmentation &segmentation,
                                   const std::array<std::array<int, 2>, 3> &bbox,
-                                  const Eigen::Vector3i &original_shape) {
+                                  const Eigen::Vector3i &original_shape) 
+    {
         // create full volume
         Segmentation full_volume{
             .seg = Eigen::Tensor<float, 3, Eigen::ColMajor>(original_shape[0], original_shape[1],
@@ -141,7 +146,8 @@ namespace {
     /// @param spacing
     /// @return NiftiVolume instance
     NiftiVolume segmentation_to_nifti_volume(const Segmentation &segmentation,
-                                             Eigen::Vector3f spacing) {
+                                             Eigen::Vector3f spacing) 
+    {
         auto &seg = segmentation.seg;
         Eigen::array<Eigen::Index, 4> new_shape{seg.dimension(0), seg.dimension(1),
                                                 seg.dimension(2), 1};
@@ -156,13 +162,16 @@ namespace {
     /// @brief Get data from NiftiVolume as a Tensor3f
     /// @param volume NiftiVolume instance
     /// @return data as Tensor3f
-    Eigen::Tensor<float, 3, Eigen::ColMajor> nifti_volume_to_tensor3f(const NiftiVolume &volume) {
+    Eigen::Tensor<float, 3, Eigen::ColMajor> nifti_volume_to_tensor3f(const NiftiVolume &volume) 
+    {
         return volume.data.chip<3>(0);
     }
 
-    QString applyInverseRegistration(AnimaWrapper *wrapper, const QString &input_mni_path,
+    QString applyInverseRegistration(AnimaWrapper* wrapper,
+                                     const QString &input_mni_path,
                                      const QString &trsf_txt_path,
-                                     const QString &patient_ref_path) {
+                                     const QString &patient_ref_path) 
+    {
 
         QString xml_path = trsf_txt_path;
         if (xml_path.endsWith(".txt")) {
@@ -211,11 +220,24 @@ namespace {
 
 }; // namespace
 
+
+/**
+ * @brief Apply postprocessing pipeline on the data produced by the inference step:
+ *
+ * - Convert the pmap to segmentation data. The pmap can also be returned as is
+ * - Remove padding
+ * - Uncrop
+ * - Resample to the original spacing
+ * - Save image
+ * - Register to reference only if the inverse transformation was applied during
+ *   preprocessing
+ */
 void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &data,
                                                 const PreprocessedVolume &preproc_volume,
                                                 const std::array<std::array<int, 2>, 3> &bbox,
                                                 float segmentation_threshold, bool save_pmap,
-                                                QString dir, QString trsf_path) {
+                                                QString dir, QString trsf_path) 
+{
 
     Eigen::Vector3f debug_spacing = preproc_volume.spacing;
 
@@ -224,16 +246,20 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
     Segmentation segmentation = convert_to_segmentation(data, segmentation_threshold, save_pmap);
     
     // DEBUG SAVE 1
-    save_img(dir, debug_spacing, segmentation_to_nifti_volume(segmentation, debug_spacing).data,
-             QFileInfo(preproc_volume.original_t1_path).baseName(), "after_convert");
+    if (m_save_intermediary_steps) {
+        save_img(dir, debug_spacing, segmentation_to_nifti_volume(segmentation, debug_spacing).data,
+                 QFileInfo(preproc_volume.original_t1_path).baseName(), "after_convert");
+    }
 
     // --- Step 2: Remove padding ---
     printAction("Remove padding");
     segmentation = remove_padding(segmentation, preproc_volume.padding);
     
     // DEBUG SAVE 2
-    save_img(dir, debug_spacing, segmentation_to_nifti_volume(segmentation, debug_spacing).data,
-             QFileInfo(preproc_volume.original_t1_path).baseName(), "after_unpad");
+    if (m_save_intermediary_steps) {
+        save_img(dir, debug_spacing, segmentation_to_nifti_volume(segmentation, debug_spacing).data,
+                 QFileInfo(preproc_volume.original_t1_path).baseName(), "after_unpad");
+    }
 
     // --- Step 3: Uncrop ---
     printAction("Uncrop");
@@ -242,8 +268,10 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
     NiftiVolume segmentation_as_nifti = segmentation_to_nifti_volume(segmentation, debug_spacing);
     
     // DEBUG SAVE 3
-    save_img(dir, debug_spacing, segmentation_as_nifti.data,
-             QFileInfo(preproc_volume.original_t1_path).baseName(), "after_uncrop");
+    if (m_save_intermediary_steps) {
+        save_img(dir, debug_spacing, segmentation_as_nifti.data,
+                 QFileInfo(preproc_volume.original_t1_path).baseName(), "after_uncrop");
+    }
 
     // --- Step 4: Resample ---
     printAction("Resample");
@@ -259,7 +287,7 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
     segmentation_as_nifti.data = temp_shuffled;
 
     try {
-        segmentation_as_nifti = resampler.resample(segmentation_as_nifti, target_spacing);
+        segmentation_as_nifti = m_resampler.resample(segmentation_as_nifti, target_spacing);
     } catch (const std::bad_alloc &e) {
         spdlog::error("Resampling failed: Out of memory. Check dimensions!");
         throw;
@@ -273,10 +301,10 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
     segmentation.seg = nifti_volume_to_tensor3f(segmentation_as_nifti);
 
     // DEBUG SAVE 4
-    save_img(dir, debug_spacing, segmentation_as_nifti.data,
-             QFileInfo(preproc_volume.original_t1_path).baseName(), "after_resampling");
-    QString resample_path = dir + "/" + QFileInfo(preproc_volume.original_t1_path).baseName() +
-                            "_" + "after_resampling" + ".nii.gz";
+    if (m_save_intermediary_steps) {
+        save_img(dir, debug_spacing, segmentation_as_nifti.data,
+                 QFileInfo(preproc_volume.original_t1_path).baseName(), "after_resampling");
+    }
 
     QString tmp_mni_path = dir + "/" + QFileInfo(preproc_volume.original_t1_path).baseName() + "_reconstructed_mni.nii.gz";
 
@@ -292,10 +320,9 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
     try {
         printAction("Applying inverse registration (Anima)");
         final_patient_path =
-            applyInverseRegistration(wrapper, tmp_mni_path, trsf_path, patient_ref_path);
+            applyInverseRegistration(m_wrapper, tmp_mni_path, trsf_path, patient_ref_path);
     } catch (const std::exception &e) {
         spdlog::error("Critical error during inverse registration: {}", e.what());
         return;
     }
-    // TODO: Ajouter le recalage MNI -> patient space en utilisant trsf_path
 }

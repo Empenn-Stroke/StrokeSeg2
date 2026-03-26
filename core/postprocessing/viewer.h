@@ -12,7 +12,8 @@ class ConfigManager
 * @class Viewer
 * @brief This class handle viewers : updating path, checking availability and running it
 */
-class Viewer {
+class Viewer 
+{
   public:
     /**
      * @brief Initialize the viewer class
