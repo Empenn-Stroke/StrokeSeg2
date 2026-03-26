@@ -24,7 +24,6 @@ private:
     std::unique_ptr<Ort::Session> m_session;
 
 private:
-    bool isDiscreteGPUPresent();
 
     QStringList getAvailableModels();
     

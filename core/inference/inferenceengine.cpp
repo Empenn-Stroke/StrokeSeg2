@@ -142,12 +142,15 @@ void InferenceEngine::initSession(const QString &modelPath) {
     Ort::SessionOptions sessionOptions;
     bool deviceFound = false;
 
+    auto providers = Ort::GetAvailableProviders();
+    
 #if defined(Q_OS_WIN)
+    bool hasDML = std::find(providers.begin(), providers.end(), "DmlExecutionProvider") != providers.end();
     Microsoft::WRL::ComPtr<IDXGIFactory6> factory;
     // First, we look for an NPU (Neural Processing Unit) if available, as it can provide better
     // performance for AI workloads. Intel refers to their NPU as "AI Boost" or "NPU" in the adapter
     // description, so we use a heuristic to identify it.
-    if (SUCCEEDED(CreateDXGIFactory1(__uuidof(IDXGIFactory6), (void **)factory.GetAddressOf()))) {
+    if (hasDML && SUCCEEDED(CreateDXGIFactory1(__uuidof(IDXGIFactory6), (void **)factory.GetAddressOf()))) {
         Microsoft::WRL::ComPtr<IDXGIAdapter1> adapter;
         // We use EnumAdapterByGpuPreference with DXGI_GPU_PREFERENCE_MINIMUM_POWER to prioritize
         // low-power devices like NPUs. This allows us to find the NPU even if a discrete GPU is
@@ -161,6 +164,8 @@ void InferenceEngine::initSession(const QString &modelPath) {
             adapter->GetDesc1(&desc);
             QString name = QString::fromWCharArray(desc.Description);
 
+            qDebug() << "Checking adapter:" << name;
+
             // Heuristic for NPU: Intel refers to it as "AI Boost" or "NPU"
             if (name.contains("NPU") || name.contains("AI Boost")) {
                 qDebug() << "Priority 1: NPU detected and selected:" << name;
@@ -173,7 +178,7 @@ void InferenceEngine::initSession(const QString &modelPath) {
         // If no NPU was found, we look for a discrete GPU as a fallback. We use the same heuristic
         // as in isDiscreteGPUPresent() to identify discrete GPUs based on their flags and dedicated
         // video memory.
-        if (!deviceFound) {
+        if (hasDML && !deviceFound) {
             for (UINT i = 0; factory->EnumAdapterByGpuPreference(
                                  i, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, __uuidof(IDXGIAdapter1),
                                  (void **)adapter.GetAddressOf()) != DXGI_ERROR_NOT_FOUND;
@@ -192,14 +197,130 @@ void InferenceEngine::initSession(const QString &modelPath) {
                 }
             }
         }
+    }
+#elif defined(Q_OS_LINUX)
+    // TO BE TESTED
+    auto availableProviders = Ort::GetAvailableProviders();
 
-        if (!deviceFound) {
-            qDebug() << "No NPU or discrete GPU found. Using CPU execution provider.";
-            sessionOptions.SetIntraOpNumThreads(std::thread::hardware_concurrency());
-            sessionOptions.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+    // --- 1. Attempt Intel NPU (OpenVINO) ---
+    if (!deviceFound && std::find(availableProviders.begin(), availableProviders.end(),
+                                  "OpenVINOExecutionProvider") != availableProviders.end()) {
+        try {
+            OrtOpenVINOProviderOptions options;
+            options.device_type = "NPU"; // Target specifically the NPU
+            // The following call will throw or fail if the NPU is not physically present or drivers
+            // are missing
+            sessionOptions.AppendExecutionProvider_OpenVINO(options);
+
+            // Validate by trying to create a dummy session or checking internal API
+            qDebug() << "Priority 1: OpenVINO NPU successfully attached.";
+            deviceFound = true;
+        } catch (const std::exception &e) {
+            qDebug() << "OpenVINO NPU requested but not available on this system:" << e.what();
         }
     }
+
+    // --- 2. Attempt AMD NPU (VitisAI) ---
+    if (!deviceFound && std::find(availableProviders.begin(), availableProviders.end(),
+                                  "VitisAIExecutionProvider") != availableProviders.end()) {
+        try {
+            std::unordered_map<std::string, std::string> vitis_options;
+            vitis_options["config_file"] = "/etc/vaip_config.json";
+
+            sessionOptions.AppendExecutionProvider_VitisAI(vitis_options);
+            qDebug() << "Priority 2: VitisAI NPU successfully attached.";
+            deviceFound = true;
+        } catch (const std::exception &e) {
+            qDebug() << "VitisAI NPU requested but not available:" << e.what();
+        }
+    }
+
+    // --- 3. Attempt discrete GPU TensorRT RTX ---
+    if (!deviceFound && std::find(availableProviders.begin(), availableProviders.end(),
+                                  "TensorrtExecutionProvider") != availableProviders.end()) {
+        try {
+            OrtTensorRTProviderOptions trt_options{};
+            trt_options.device_id = 0;
+            trt_options.trt_fp16_enable = 1; // Critical for RTX performance
+            trt_options.trt_engine_cache_enable = 1;
+            trt_options.trt_engine_cache_path = "/tmp/trt_cache";
+
+            sessionOptions.AppendExecutionProvider_TensorRT_V2(trt_options);
+
+            // TensorRT requires CUDA as a fallback/helper
+            OrtCUDAProviderOptions cuda_options{};
+            sessionOptions.AppendExecutionProvider_CUDA(cuda_options);
+
+            qDebug() << "Priority 3: Nvidia RTX (TensorRT) attached.";
+            deviceFound = true;
+        } catch (const std::exception &e) {
+            qDebug() << "TensorRT failed:" << e.what();
+        }
+    }
+
+    // --- 4. Attempt discrete GPU via CUDA (for older GPUs) ---
+    if (!deviceFound && std::find(availableProviders.begin(), availableProviders.end(),
+                                  "CUDAExecutionProvider") != availableProviders.end()) {
+        try {
+            OrtCUDAProviderOptions cuda_options{};
+            sessionOptions.AppendExecutionProvider_CUDA(cuda_options);
+            qDebug() << "Priority 3: Nvidia GPU detected and CUDA Provider attached.";
+            deviceFound = true;
+        } catch (const std::exception &e) {
+            qDebug() << "CUDA initialization failed:" << e.what();
+        }
+    }
+
+    // --- 5. Attempt discrete GPU via MIGraphX (for AMD GPUs) ---
+    if (!deviceFound && std::find(availableProviders.begin(), availableProviders.end(),
+                                  "MIGraphXExecutionProvider") != availableProviders.end()) {
+        try {
+            OrtMIGraphXProviderOptions mig_options{};
+            sessionOptions.AppendExecutionProvider_MIGraphX(mig_options);
+            qDebug() << "Priority 3: AMD GPU detected and MIGraphX Provider attached.";
+            deviceFound = true;
+        } catch (const std::exception &e) {
+            qDebug() << "MIGraphX initialization failed:" << e.what();
+        }
+    }
+
+    // --- 6. Attempt discrete GPU via Rocm (for AMD GPUs) ---
+    if (!deviceFound && std::find(availableProviders.begin(), availableProviders.end(),
+                                  "RocmExecutionProvider") != availableProviders.end()) {
+        try {
+            OrtRocmProviderOptions roc_options{};
+            sessionOptions.AppendExecutionProvider_Rocm(roc_options);
+            qDebug() << "Priority 3: AMD GPU detected and Rocm Provider attached.";
+            deviceFound = true;
+        } catch (const std::exception &e) {
+            qDebug() << "Rocm initialization failed:" << e.what();
+        }
+    }
+
+    // --- 7. Attempt discrete GPU via OpenVINO (for Intel GPUs) ---
+    if (!deviceFound && std::find(availableProviders.begin(), availableProviders.end(),
+                                  "OpenVINOExecutionProvider") != availableProviders.end()) {
+        try {
+            OrtOpenVINOProviderOptions options;
+            options.device_type = "GPU"; // Target discrete GPU if NPU not found
+            sessionOptions.AppendExecutionProvider_OpenVINO(options);
+            qDebug() << "Priority 4: OpenVINO GPU successfully attached.";
+            deviceFound = true;
+        } catch (const std::exception &e) {
+            qDebug() << "OpenVINO GPU initialization failed:" << e.what();
+        }
+    }
+
+
+#elif defined(Q_OS_MAC)
+
 #endif
+
+    if (!deviceFound) {
+        qDebug() << "No NPU or discrete GPU found. Using default CPU execution provider.";
+        sessionOptions.SetIntraOpNumThreads(std::thread::hardware_concurrency());
+        sessionOptions.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+    }
 
     sessionOptions.AddConfigEntry("session.set_denorm_as_zero", "1");
 
