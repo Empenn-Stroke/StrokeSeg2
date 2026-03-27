@@ -117,29 +117,57 @@ FetchContent_Declare(
   GIT_TAG b13e013481605d134f498fd9fc3a123c416da197
 )
 
-FetchContent_MakeAvailable(NuGetCMakePackage)
 
-add_nuget_packages(
-    PACKAGES
-        Microsoft.Windows.CppWinRT 2.0.250303.1
-        Microsoft.ML.OnnxRuntime.DirectML 1.24.4
-        Microsoft.Windows.ImplementationLibrary 1.0.250325.1
-        Microsoft.WindowsAppSDK.Foundation 1.8.251104000
-        Microsoft.WindowsAppSDK.InteractiveExperiences 1.8.251104001
-        Microsoft.WindowsAppSDK.ML 1.8.2109
-        Microsoft.WindowsAppSDK.Runtime 1.8.251106002
-)
+# Adding specific dependencies depending on the operating system
+if(WIN32)
+    FetchContent_MakeAvailable(NuGetCMakePackage)
 
-set(CPPWINRT_VERSION "2.0.250303.1" CACHE STRING "Version of CppWinRT")
-set(CPPWINRT_SYSTEM_VERSION ${CPPWINRT_VERSION} CACHE STRING "System version of CppWinRT")
-set(CPP_WINRT_VERSION ${CPPWINRT_VERSION})
-set(WIN_APP_SDK_VERSION "1.8.251106002")
+    add_nuget_packages(
+        PACKAGES
+            Microsoft.Windows.CppWinRT 2.0.250303.1
+            Microsoft.ML.OnnxRuntime.DirectML 1.24.4
+            Microsoft.Windows.ImplementationLibrary 1.0.250325.1
+            Microsoft.WindowsAppSDK.Foundation 1.8.251104000
+            Microsoft.WindowsAppSDK.InteractiveExperiences 1.8.251104001
+            Microsoft.WindowsAppSDK.ML 1.8.2109
+            Microsoft.WindowsAppSDK.Runtime 1.8.251106002
+    )
 
-set(NUGET_PACKAGES_DIR "${CMAKE_BINARY_DIR}/packages")
-file(MAKE_DIRECTORY "${NUGET_PACKAGES_DIR}")
+    set(CPPWINRT_VERSION "2.0.250303.1" CACHE STRING "Version of CppWinRT")
+    set(CPPWINRT_SYSTEM_VERSION ${CPPWINRT_VERSION} CACHE STRING "System version of CppWinRT")
+    set(CPP_WINRT_VERSION ${CPPWINRT_VERSION})
+    set(WIN_APP_SDK_VERSION "1.8.251106002")
 
-find_package(Microsoft.Windows.ImplementationLibrary CONFIG REQUIRED)
-find_package(Microsoft.WindowsAppSDK.ML CONFIG REQUIRED)
+    set(NUGET_PACKAGES_DIR "${CMAKE_BINARY_DIR}/packages")
+    file(MAKE_DIRECTORY "${NUGET_PACKAGES_DIR}")
+
+    find_package(Microsoft.Windows.ImplementationLibrary CONFIG REQUIRED)
+    find_package(Microsoft.WindowsAppSDK.ML CONFIG REQUIRED)
+else()
+    if(APPLE)
+        set(ONNX_URL "https://github.com/microsoft/onnxruntime/releases/download/v1.24.4/onnxruntime-osx-arm64-1.24.4.tgz")
+    else()
+        set(ONNX_URL "https://github.com/microsoft/onnxruntime/releases/download/v1.24.4/onnxruntime-linux-x64-gpu-1.24.4.tgz")
+    endif()
+
+    FetchContent_Declare(
+        onnxruntime
+        URL ${ONNX_URL}
+    )
+
+    FetchContent_MakeAvailable(onnxruntime)
+
+    include_directories(${onnxruntime_SOURCE_DIR}/include)
+    
+    add_library(onnxruntime_lib SHARED IMPORTED)
+    if(APPLE)
+        set_target_properties(onnxruntime_lib PROPERTIES 
+            IMPORTED_LOCATION "${onnxruntime_SOURCE_DIR}/lib/libonnxruntime.dylib")
+    else()
+        set_target_properties(onnxruntime_lib PROPERTIES 
+            IMPORTED_LOCATION "${onnxruntime_SOURCE_DIR}/lib/libonnxruntime.so")
+    endif()
+endif()
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set_property(DIRECTORY APPEND PROPERTY VS_SOLUTION_ITEMS

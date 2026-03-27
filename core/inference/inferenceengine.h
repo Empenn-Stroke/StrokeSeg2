@@ -1,5 +1,4 @@
 #pragma once
-#include <dml_provider_factory.h>
 #include <onnxruntime_cxx_api.h>
 #include <QDir>
 #include <QString>

@@ -7,77 +7,9 @@
 #include <vector>
 
 #ifdef Q_OS_WIN
-#include <dml_provider_factory.h>
-#include <d3d11.h>
-#include <dxgi1_6.h>
-#include <wrl/client.h>
-#pragma comment(lib, "dxgi.lib")
+    #define ENABLE_NPU_ADAPTER_ENUMERATION
+    #include <dml_provider_factory.h>
 #endif
-
-/* @brief Check if a discrete GPU is present on the system by enumerating the available graphics
- * adapters using DirectX Graphics Infrastructure (DXGI) on Windows. The function looks for adapters
- * that are not flagged as software (i.e., not WARP) and have a dedicated video memory greater
- * than 1.5 GB, which is a common threshold for considering an adapter as a discrete GPU. If such an
- * adapter is found, the function returns true; otherwise, it returns false. This check is used to
- * determine whether to use GPU acceleration for ONNX Runtime inference.
- */
-bool isDiscreteGPUPresent() {
-#if defined(Q_OS_WIN)
-    Microsoft::WRL::ComPtr<IDXGIFactory1> factory;
-    if (FAILED(CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void **)factory.GetAddressOf())))
-        return false;
-
-    Microsoft::WRL::ComPtr<IDXGIAdapter1> adapter;
-    for (UINT i = 0; factory->EnumAdapters1(i, adapter.GetAddressOf()) != DXGI_ERROR_NOT_FOUND;
-         ++i) {
-        DXGI_ADAPTER_DESC1 desc;
-        adapter->GetDesc1(&desc);
-
-        // Ignore software adapters
-        if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
-            continue;
-
-        // If GPU has more than 1.5G of VRAM, we use the GPU
-        if (desc.DedicatedVideoMemory > 1500 * 1024 * 1024) {
-            qDebug() << "GPU Dédié détecté :" << QString::fromWCharArray(desc.Description);
-            return true;
-        }
-    }
-#elif defined(Q_OS_LINUX)
-    //TO BE TESTED
-    QProcess process;
-    process.start("lspci", {"-v"});
-    if (!process.waitForFinished())
-        return false;
-
-    QString output = process.readAllStandardOutput();
-
-    // We look for common discrete GPU identifiers in the lspci output. This is a heuristic and may
-    // not be perfect.
-    if (output.contains("NVIDIA") || output.contains("Radeon") || output.contains("Navi")) {
-        // Check if the GPU has dedicated VRAM (not shared with system memory). This is a heuristic
-        // based on the presence of "VRAM" or "memory" in the lspci output for the GPU. It is not a
-        // perfect check, but it can help distinguish discrete GPUs from integrated ones.
-        if (output.contains("VRAM") || output.contains("memory")) {
-            return true;
-        }
-    }
-elif defined(Q_OS_MAC)
-    //TO BE TESTED
-    // macOS typically uses integrated GPUs, but some models have discrete GPUs. We can check for
-    // the presence of a discrete GPU using the system_profiler command and looking for "Discrete
-    // GPU" in the output. This is a heuristic and may not be perfect.
-    QProcess process;
-    process.start("system_profiler", {"SPDisplaysDataType"});
-    if (!process.waitForFinished())
-        return false;
-    QString output = process.readAllStandardOutput();
-    if (output.contains("Discrete GPU")) {
-        return true;
-    }
-#endif 
-    return false;
-}
 
 using OrtFloat16 = Ort::Float16_t;
 
@@ -139,65 +71,68 @@ void InferenceEngine::initSession(const QString &modelPath) {
         m_env = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "Inference");
     }
 
+    const OrtDmlApi *dmlApi = nullptr;
+
     Ort::SessionOptions sessionOptions;
     bool deviceFound = false;
 
     auto providers = Ort::GetAvailableProviders();
+
+    qDebug() << "--------------------------------------------------";
+    qDebug() << "Available ONNX Runtime Execution Providers (" << providers.size() << "):";
+
+    for (const auto &provider : providers) {
+        qDebug() << "  [+]" << QString::fromStdString(provider);
+    }
+
+    qDebug() << "--------------------------------------------------";
     
 #if defined(Q_OS_WIN)
     bool hasDML = std::find(providers.begin(), providers.end(), "DmlExecutionProvider") != providers.end();
-    Microsoft::WRL::ComPtr<IDXGIFactory6> factory;
-    // First, we look for an NPU (Neural Processing Unit) if available, as it can provide better
-    // performance for AI workloads. Intel refers to their NPU as "AI Boost" or "NPU" in the adapter
-    // description, so we use a heuristic to identify it.
-    if (hasDML && SUCCEEDED(CreateDXGIFactory1(__uuidof(IDXGIFactory6), (void **)factory.GetAddressOf()))) {
-        Microsoft::WRL::ComPtr<IDXGIAdapter1> adapter;
-        // We use EnumAdapterByGpuPreference with DXGI_GPU_PREFERENCE_MINIMUM_POWER to prioritize
-        // low-power devices like NPUs. This allows us to find the NPU even if a discrete GPU is
-        // present, as the NPU will typically be listed with a lower power preference than the
-        // discrete GPU.
-        for (UINT i = 0; factory->EnumAdapterByGpuPreference(
-                             i, DXGI_GPU_PREFERENCE_MINIMUM_POWER, __uuidof(IDXGIAdapter1),
-                             (void **)adapter.GetAddressOf()) != DXGI_ERROR_NOT_FOUND;
-             ++i) {
-            DXGI_ADAPTER_DESC1 desc;
-            adapter->GetDesc1(&desc);
-            QString name = QString::fromWCharArray(desc.Description);
 
-            qDebug() << "Checking adapter:" << name;
+    if (hasDML) {
+        Ort::ThrowOnError(Ort::GetApi().GetExecutionProviderApi(
+            "DML", ORT_API_VERSION, reinterpret_cast<const void **>(&dmlApi)));
+    }
 
-            // Heuristic for NPU: Intel refers to it as "AI Boost" or "NPU"
-            if (name.contains("NPU") || name.contains("AI Boost")) {
-                qDebug() << "Priority 1: NPU detected and selected:" << name;
-                Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_DML(sessionOptions, i));
-                deviceFound = true;
-                break;
-            }
+    if (dmlApi) {
+        // --- 1. NPU ---
+        OrtDmlDeviceOptions npuOptions;
+        npuOptions.Filter = OrtDmlDeviceFilter::Npu;
+        npuOptions.Preference = OrtDmlPerformancePreference::MinimumPower;
+
+        // This call will succeed if the NPU is present and properly supported by the DML provider.
+        // If the NPU is not present or not supported, it will return a non-null status indicating
+        // an error, which we can catch to attempt the fallback GPU.
+        OrtStatus *status = dmlApi->SessionOptionsAppendExecutionProvider_DML2(
+            static_cast<OrtSessionOptions *>(sessionOptions), &npuOptions);
+
+        if (status == nullptr) { // nullptr status means success
+            qDebug() << "Priority 1: NPU targeted successfully via DML2 API.";
+            deviceFound = true;
+        } else {
+            qDebug() << "NPU not found or not supported, trying Discrete GPU...";
         }
 
-        // If no NPU was found, we look for a discrete GPU as a fallback. We use the same heuristic
-        // as in isDiscreteGPUPresent() to identify discrete GPUs based on their flags and dedicated
-        // video memory.
-        if (hasDML && !deviceFound) {
-            for (UINT i = 0; factory->EnumAdapterByGpuPreference(
-                                 i, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, __uuidof(IDXGIAdapter1),
-                                 (void **)adapter.GetAddressOf()) != DXGI_ERROR_NOT_FOUND;
-                 ++i) {
-                DXGI_ADAPTER_DESC1 desc;
-                adapter->GetDesc1(&desc);
+        // --- 2. DISCRETE GPU ---
+        if (!deviceFound) {
+            OrtDmlDeviceOptions gpuOptions;
+            gpuOptions.Filter = OrtDmlDeviceFilter::Gpu;
+            gpuOptions.Preference = OrtDmlPerformancePreference::HighPerformance;
 
-                if (!(desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) &&
-                    desc.DedicatedVideoMemory > 1500 * 1024 * 1024) {
-                    qDebug() << "Priority 2: Discrete GPU detected and selected:"
-                             << QString::fromWCharArray(desc.Description);
-                    Ort::ThrowOnError(
-                        OrtSessionOptionsAppendExecutionProvider_DML(sessionOptions, i));
-                    deviceFound = true;
-                    break;
-                }
+            status = dmlApi->SessionOptionsAppendExecutionProvider_DML2(
+                static_cast<OrtSessionOptions *>(sessionOptions), &gpuOptions);
+
+            if (status == nullptr) {
+                qDebug() << "Priority 2: Discrete GPU targeted successfully via DML2 API.";
+                deviceFound = true;
+            } else {
+                qDebug()
+                    << "Discrete GPU not found or not supported via DML2 API, falling back to CPU.";
             }
         }
     }
+
 #elif defined(Q_OS_LINUX)
     // TO BE TESTED
     auto availableProviders = Ort::GetAvailableProviders();
