@@ -7,7 +7,9 @@
 #include <vector>
 
 #ifdef Q_OS_WIN
-    #define ENABLE_NPU_ADAPTER_ENUMERATION
+#define ENABLE_NPU_ADAPTER_ENUMERATION // This macro enables the enumeration of NPU adapters in the
+                                       // DML provider factory, allowing us to attempt targeting
+                                       // NPUs directly without needing to use DXGI APIs manually.
     #include <dml_provider_factory.h>
 #endif
 
@@ -465,6 +467,8 @@ NiftiVolume InferenceEngine::run(const QString &modelPath, const QString &imageP
         initSession(modelPath);
     }
 
+    Ort::IoBinding io_binding(*m_session);
+
     Eigen::Tensor<OrtFloat16, 4, Eigen::ColMajor> full_volume_f16 = nv.data.cast<OrtFloat16>();
     nv.data = Eigen::Tensor<float, 4, Eigen::ColMajor>();
 
@@ -488,6 +492,24 @@ NiftiVolume InferenceEngine::run(const QString &modelPath, const QString &imageP
     // --- Prepare memory info once outside the loop ---
     Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
 
+    // Pre allocating memory to avoid 
+    const int64_t patch_elements = 128 * 128 * 128 * C;
+    std::vector<OrtFloat16> input_buffer(patch_elements);
+
+    const int64_t output_elements = 128 * 128 * 128 * num_classes;
+    std::vector<OrtFloat16> output_buffer(output_elements);
+
+    std::vector<int64_t> input_shape = {1, C, 128, 128, 128};
+    std::vector<int64_t> output_shape = {1, num_classes, 128, 128, 128};
+
+    Ort::Value input_tensor = Ort::Value::CreateTensor<OrtFloat16>(
+        mem_info, input_buffer.data(), input_buffer.size(), input_shape.data(), input_shape.size());
+    Ort::Value output_tensor =
+        Ort::Value::CreateTensor<OrtFloat16>(mem_info, output_buffer.data(), output_buffer.size(),
+                                             output_shape.data(), output_shape.size());
+
+    io_binding.BindOutput(outputNameStr.c_str(), output_tensor);
+
     qDebug() << "Running inference on patches...";
 
     int patch_cpt = 0;
@@ -503,38 +525,34 @@ NiftiVolume InferenceEngine::run(const QString &modelPath, const QString &imageP
                 qDebug() << "Processing patch (" << patch_cpt << "/" << total_patches
                          << ") at (X:" << x << ", Y:" << y << ", Z:" << z << ")";
 
+                Eigen::TensorMap<Eigen::Tensor<OrtFloat16, 4, Eigen::ColMajor>> input_map(
+                    input_buffer.data(), 128, 128, 128, C);
+
                 // --- Extract patch and prepare input tensor ---
                 Eigen::array<int, 4> offset = {x, y, z, 0};
                 Eigen::array<int, 4> extent = {128, 128, 128, C};
 
-                Eigen::Tensor<OrtFloat16, 4, Eigen::ColMajor> patch_col =
-                    full_volume_f16.slice(offset, extent);
-                Eigen::Tensor<OrtFloat16, 4, Eigen::ColMajor> patch_onnx_ready =
-                    patch_col.cast<OrtFloat16>();
+                input_map = full_volume_f16.slice(offset, extent);
 
                 // --- Create input tensor for ONNX Runtime ---
                 std::vector<int64_t> patch_shape = {1, C, 128, 128, 128};
 
-                Ort::Value input_tensor = Ort::Value::CreateTensor<OrtFloat16>(
-                    mem_info, patch_onnx_ready.data(), patch_onnx_ready.size(), patch_shape.data(),
-                    patch_shape.size());
+                io_binding.BindInput(inputNameStr.c_str(), input_tensor);
 
                 // --- Run inference ---
-                auto output_tensors = m_session->Run(Ort::RunOptions{nullptr}, inputNames,
-                                                     &input_tensor, 1, outputNames, 1);
+                //auto output_tensors = m_session->Run(Ort::RunOptions{nullptr}, inputNames,
+                //                                     &input_tensor, 1, outputNames, 1);
 
-                // --- Process output tensor ---
-                OrtFloat16 *raw_data = output_tensors[0].GetTensorMutableData<OrtFloat16>();
+                m_session->Run(Ort::RunOptions{nullptr}, io_binding);
 
-                Eigen::TensorMap<Eigen::Tensor<OrtFloat16, 4, Eigen::ColMajor>> output_map(
-                    raw_data, 128, 128, 128, num_classes);
 
-                Eigen::Tensor<float, 4, Eigen::ColMajor> pred_col = output_map.cast<float>();
+                Eigen::TensorMap<Eigen::Tensor<OrtFloat16, 4, Eigen::ColMajor>> output_map_res(
+                    output_buffer.data(), 128, 128, 128, num_classes);
 
                 // --- Accumulate results ---
                 output_accum.slice(Eigen::array<int, 4>{x, y, z, 0},
                                    Eigen::array<int, 4>{128, 128, 128, num_classes}) +=
-                    pred_col * g_out;
+                    output_map_res.cast<float>() * g_out;
 
                 norm_map.slice(Eigen::array<int, 4>{x, y, z, 0},
                                Eigen::array<int, 4>{128, 128, 128, 1}) += g_norm;

@@ -18,8 +18,8 @@ target_compile_features(${CORE} PUBLIC cxx_std_20)
 set(ML_PACKAGE_ROOT "${CMAKE_BINARY_DIR}/__nuget/Microsoft.WindowsAppSDK.ML.1.8.2109")
 set(ML_LIB_PATH "${ML_PACKAGE_ROOT}/lib/native/x64")
 
-set(ONNX_PATH "${CMAKE_BINARY_DIR}/__nuget/Microsoft.ML.OnnxRuntime.DirectML.1.17.1")
-set(DML_PATH  "${CMAKE_BINARY_DIR}/__nuget/Microsoft.AI.DirectML.1.13.1")
+set(ONNX_PATH "${CMAKE_BINARY_DIR}/__nuget/Microsoft.ML.OnnxRuntime.DirectML.1.24.4")
+set(DML_PATH  "${CMAKE_BINARY_DIR}/__nuget/Microsoft.AI.DirectML.1.15.4")
 
 set(ONNX_INCLUDE_DIR "${ONNX_PATH}/build/native/include")
 set(DML_INCLUDE_DIR  "${DML_PATH}/include")
@@ -50,7 +50,7 @@ add_custom_command(TARGET ${CORE} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
     "${ONNX_LIB_DIR}/onnxruntime.dll"
     "${DML_LIB_DIR}/DirectML.dll"
-    $<TARGET_FILE_DIR:${CORE}>
+    $<TARGET_FILE_DIR:strokeseg2-app>
 )
 
 add_dependencies(${CORE} zlib)

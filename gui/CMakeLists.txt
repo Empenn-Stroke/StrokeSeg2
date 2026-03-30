@@ -49,4 +49,6 @@ if(WIN32)
             --no-system-d3d-compiler
             \"$<TARGET_FILE:${PROJECT_NAME}>\"
     )
+
+    post_build_runtime_dll_copy(strokeseg2-app)
 endif()

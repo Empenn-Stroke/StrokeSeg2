@@ -43,6 +43,16 @@ project(strokeseg2-app
 
 include(FetchContent)
 
+
+macro(post_build_runtime_dll_copy target_name)
+    if(WIN32)
+        add_custom_command(TARGET ${target_name} POST_BUILD
+            COMMAND "${CMAKE_COMMAND};-E;$<IF:$<BOOL:$<TARGET_RUNTIME_DLLS:${target_name}>>,copy;$<TARGET_RUNTIME_DLLS:${target_name}>;$<TARGET_FILE_DIR:${target_name}>,true>"
+            COMMAND_EXPAND_LISTS
+        )
+    endif()
+endmacro()
+
 # VARS #############################################################################################
 
 set(CORE "core")
@@ -186,12 +196,3 @@ include(./Configuration.cmake)
 add_subdirectory(${CMAKE_SOURCE_DIR}/${CORE})
 add_subdirectory(${CMAKE_SOURCE_DIR}/${GUI})
 add_subdirectory(${CMAKE_SOURCE_DIR}/test)
-
-macro(post_build_runtime_dll_copy target_name)
-    if(WIN32)
-        add_custom_command(TARGET ${target_name} POST_BUILD
-            COMMAND "${CMAKE_COMMAND};-E;$<IF:$<BOOL:$<TARGET_RUNTIME_DLLS:${target_name}>>,copy;$<TARGET_RUNTIME_DLLS:${target_name}>;$<TARGET_FILE_DIR:${target_name}>,true>"
-            COMMAND_EXPAND_LISTS
-        )
-    endif()
-endmacro()
