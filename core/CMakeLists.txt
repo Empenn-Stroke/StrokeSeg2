@@ -11,7 +11,7 @@ add_library(${CORE}
     "postprocessing/postprocessor.h"    "postprocessing/postprocessor.cpp"
     "managers/configmanager.h"          "managers/configmanager.cpp"
     "managers/appconfig.h"
-)
+ "inference/inference.h" "inference/Win/inference.cpp" "inference/Mac/inference.cpp" "inference/Linux/inference.cpp")
 
 target_compile_features(${CORE} PUBLIC cxx_std_20)
 

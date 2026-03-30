@@ -59,13 +59,17 @@ set(CORE "core")
 set(GUI "gui")
 set(COMMON "common")
 
-set(ANIMA_ROOT_PATH ./anima
-    CACHE PATH "path to root of anima installation"
-)
+#set(ANIMA_ROOT_PATH ./anima
+#    CACHE PATH "path to root of anima installation"
+#)
+#
+##add_compile_definitions(ANIMA_ROOT_PATH=${CMAKE_INSTALL_PREFIX}/${ANIMA_ROOT_PATH})
+#add_compile_definitions(ANIMA_ROOT_PATH=${CMAKE_BINARY_DIR}/${ANIMA_ROOT_PATH})
+#message(${ANIMA_ROOT_PATH})
 
-#add_compile_definitions(ANIMA_ROOT_PATH=${CMAKE_INSTALL_PREFIX}/${ANIMA_ROOT_PATH})
-add_compile_definitions(ANIMA_ROOT_PATH=${CMAKE_BINARY_DIR}/${ANIMA_ROOT_PATH})
-message(${ANIMA_ROOT_PATH})
+set(ANIMA_REL_PATH "anima")
+
+add_compile_definitions(ANIMA_RELATIVE_PATH="${ANIMA_REL_PATH}")
 
 # DEPENDENCIES #####################################################################################
 

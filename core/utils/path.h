@@ -22,7 +22,7 @@ static inline const QString base_dir =
     QDir(QFileInfo(__FILE__).absolutePath() + "../../..").canonicalPath();
 static inline const QString config_file = QDir(roaming).filePath(app_name + "/config.ini");
 static inline const QString anima_root_path =
-    QCoreApplication::applicationDirPath() + QT_STRINGIFY(ANIMA_ROOT_PATH);
+    QDir(QCoreApplication::applicationDirPath()).filePath(ANIMA_RELATIVE_PATH);
 
 static inline const QString model_dir = QDir(programData).filePath(app_name + "/Model/");
 static inline const QString atlas_dir = QDir(programData).filePath(app_name + "/Atlas/");

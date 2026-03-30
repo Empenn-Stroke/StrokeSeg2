@@ -13,7 +13,7 @@ void PipelineWorker::process() {
         preprocessing::Resampling resampler;
 
         BrainExtraction brainExtractor(&wrapper,
-                                       "C:/ProgramData/StrokeSeg/Atlas/Reference_T1.nii.gz");
+                                       "C:/ProgramData/StrokeSeg/Atlas/Reference_T1.nrrd");
 
         preprocessing::Preprocessor preproc(&resampler, &brainExtractor, &wrapper, false);
         InferenceEngine engine;

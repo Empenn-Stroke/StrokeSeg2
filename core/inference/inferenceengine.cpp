@@ -5,6 +5,8 @@
 #include <QElapsedTimer>
 #include <QFile>
 #include <vector>
+#include <dxgi1_6.h>
+#include <wrl.h>
 
 #ifdef Q_OS_WIN
 #define ENABLE_NPU_ADAPTER_ENUMERATION // This macro enables the enumeration of NPU adapters in the
@@ -69,6 +71,20 @@ bool InferenceEngine::loadModel(const QString &modelName)
  *         the ONNX Runtime session.
  */
 void InferenceEngine::initSession(const QString &modelPath) {
+
+    Microsoft::WRL::ComPtr<IDXGIFactory6> factory;
+    if (SUCCEEDED(CreateDXGIFactory1(IID_PPV_ARGS(&factory)))) {
+        Microsoft::WRL::ComPtr<IDXGIAdapter1> adapter;
+        for (UINT i = 0;
+             factory->EnumAdapterByGpuPreference(i, DXGI_GPU_PREFERENCE_UNSPECIFIED,
+                                                 IID_PPV_ARGS(&adapter)) != DXGI_ERROR_NOT_FOUND;
+             ++i) {
+            DXGI_ADAPTER_DESC1 desc;
+            adapter->GetDesc1(&desc);
+            qDebug() << "Adapter found:" << QString::fromWCharArray(desc.Description);
+        }
+    }
+
     if (!m_env) {
         m_env = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "Inference");
     }
@@ -101,7 +117,7 @@ void InferenceEngine::initSession(const QString &modelPath) {
         // --- 1. NPU ---
         OrtDmlDeviceOptions npuOptions;
         npuOptions.Filter = OrtDmlDeviceFilter::Npu;
-        npuOptions.Preference = OrtDmlPerformancePreference::MinimumPower;
+        //npuOptions.Preference = OrtDmlPerformancePreference::MinimumPower;
 
         // This call will succeed if the NPU is present and properly supported by the DML provider.
         // If the NPU is not present or not supported, it will return a non-null status indicating
