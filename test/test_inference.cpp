@@ -14,9 +14,10 @@ class TestInference : public QObject {
     void testInference() {
         InferenceEngine engine;
 
-        QString modelPath = model_dir + "/model_mono_fp32.onnx";
-        QString inputPath = QDir(base_dir).filePath("test/test_data/final_processed_result.nii.gz");
-        QString outputPath = QDir(base_dir).filePath("test/test_data/inference_output.nii.gz");
+        QString modelPath = Paths::modelDir() + "/model_mono_fp32.onnx";
+        QString inputPath = QDir(Paths::baseDir()).filePath("test/test_data/final_processed_result.nii.gz");
+        QString outputPath =
+            QDir(Paths::baseDir()).filePath("test/test_data/inference_output.nii.gz");
 
         qDebug() << "Demarrage du test d'inference...";
         qDebug() << "Input :" << inputPath;

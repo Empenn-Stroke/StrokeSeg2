@@ -1,5 +1,6 @@
 #pragma once
 #include <onnxruntime_cxx_api.h>
+//#include <onnxruntime_cxx_inline.h>
 #include <QDir>
 #include <QString>
 #include <QStringList>
@@ -37,5 +38,5 @@ private:
                                                               float sigma_scale = 0.125f,
                                                               float value_scaling_factor = 10.0f);
 
-    static QString getModelsPath() { return model_dir; }
+    static QString getModelsPath() { return Paths::modelDir(); }
 };

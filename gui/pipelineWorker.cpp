@@ -1,4 +1,5 @@
 #include "pipelineWorker.h"
+#include <inference/inference.h>
 #include <QElapsedTimer>
 
 void PipelineWorker::process() {
@@ -16,7 +17,7 @@ void PipelineWorker::process() {
                                        "C:/ProgramData/StrokeSeg/Atlas/Reference_T1.nrrd");
 
         preprocessing::Preprocessor preproc(&resampler, &brainExtractor, &wrapper, false);
-        InferenceEngine engine;
+        Inference engine;
         postprocessing::Postprocessor postproc(&wrapper);
 
         // 1. PREPROCESSING

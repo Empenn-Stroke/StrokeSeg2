@@ -176,16 +176,17 @@ class TestPreprocessor : public QObject {
 
     void testIntegrationT1Pipeline() {
         // 1. Chemins
-        QString inputPath = QDir(base_dir).filePath("test/test_data/sub-r001s002-T1w.nii.gz");
+        QString inputPath =
+            QDir(Paths::baseDir()).filePath("test/test_data/sub-r001s002-T1w.nii.gz");
         QString referencePath =
-            QDir(base_dir).filePath("test/test_data/sub-r001s002_T1w_ss_N4_MNI.nii.gz");
+            QDir(Paths::baseDir()).filePath("test/test_data/sub-r001s002_T1w_ss_N4_MNI.nii.gz");
         QString outputDir = QCoreApplication::applicationDirPath() + "/output_data";
         QDir().mkpath(outputDir);
 
         // 2. Initialisation
         Resampling resampler;
         AnimaWrapper *realWrapper = new AnimaWrapper(this);
-        QString atlasImage = atlas_dir + "/Reference_T1.nrrd";
+        QString atlasImage = Paths::atlasDir() + "/Reference_T1.nrrd";
         BrainExtraction brainExtractor(realWrapper, atlasImage);
         Preprocessor preproc(&resampler, &brainExtractor, realWrapper, true);
 

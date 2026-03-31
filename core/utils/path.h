@@ -9,26 +9,39 @@
 #include <QCoreApplication>
 #include "str.h"
 
+namespace Paths {
 
-static inline QString roaming = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
-static inline QString local = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
+    inline QString roaming() {
+        return QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+    }
 
-static inline const QString programData = []() {
-    QString path = qEnvironmentVariable("ProgramData");
-    return path.isEmpty() ? "C:/ProgramData" : path;
-}();
+    inline QString local() {
+        return QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
+    }
 
-static inline const QString base_dir =
-    QDir(QFileInfo(__FILE__).absolutePath() + "../../..").canonicalPath();
-static inline const QString config_file = QDir(roaming).filePath(app_name + "/config.ini");
-static inline const QString anima_root_path =
-    QDir(QCoreApplication::applicationDirPath()).filePath(ANIMA_RELATIVE_PATH);
+    inline QString programData() {
+        QString path = qEnvironmentVariable("ProgramData");
+        return path.isEmpty() ? "C:/ProgramData" : path;
+    }
 
-static inline const QString model_dir = QDir(programData).filePath(app_name + "/Model/");
-static inline const QString atlas_dir = QDir(programData).filePath(app_name + "/Atlas/");
-static inline const QString logo_inria = QDir(base_dir).filePath("assets/INRIA.png");
-static inline const QString logo_institutions =
-    QDir(base_dir).filePath("assets/LOGO_INSTITUTIONS.png");
-static inline const QString logo = QDir(base_dir).filePath("assets/StrokeSeg.png");
-static inline const QString log_dir = QDir(local).filePath(app_name + "strokeseg.log");
-static inline const QString USER_GUIDE = QDir(base_dir).filePath("USER_GUIDE.md");
+    inline QString baseDir() {
+        return QDir(QFileInfo(__FILE__).absolutePath()).filePath("../../..");
+    }
+
+    inline QString animaRootPath() {
+        return QDir(QCoreApplication::applicationDirPath()).filePath(ANIMA_RELATIVE_PATH);
+    }
+
+    inline QString modelDir() {
+        return QDir(programData()).filePath(app_name + "/Models/");
+    }
+
+    inline QString atlasDir() {
+        return QDir(programData()).filePath(app_name + "/Atlas/");
+    }
+
+    inline QString configPath() {
+        return QDir(roaming()).filePath(app_name + "/config.ini");
+    }
+
+} // namespace Paths

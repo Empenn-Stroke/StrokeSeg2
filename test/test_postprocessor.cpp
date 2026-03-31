@@ -13,10 +13,12 @@ class TestPostprocessor : public QObject {
 private slots:
     void testIntegrationPostprocessing() {
         // 1. Chemins
-        QString t1_base_path = QDir(base_dir).filePath("test/test_data/sub-r001s002-T1w.nii.gz");
+        QString t1_base_path =
+            QDir(Paths::baseDir()).filePath("test/test_data/sub-r001s002-T1w.nii.gz");
 
-        QString inputPath = QDir(base_dir).filePath("test/test_data/inference_output.nii.gz");
-        QString outputDir = QDir(base_dir).filePath("out/build/x64-Debug/output_data");
+        QString inputPath =
+            QDir(Paths::baseDir()).filePath("test/test_data/inference_output.nii.gz");
+        QString outputDir = QDir(Paths::baseDir()).filePath("out/build/x64-Debug/output_data");
         QString trsf_path = QDir(outputDir).filePath("MNI_t1_BET.txt");
         QDir().mkpath(outputDir);
 

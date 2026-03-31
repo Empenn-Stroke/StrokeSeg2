@@ -5,8 +5,8 @@ ConfigManager &ConfigManager::instance() {
     return instance;
 }
 
-ConfigManager::ConfigManager() : settings(config_file, QSettings::IniFormat) {
-    QDir().mkpath(QFileInfo(config_file).absolutePath());
+ConfigManager::ConfigManager() : settings(Paths::configPath(), QSettings::IniFormat) {
+    QDir().mkpath(QFileInfo(Paths::configPath()).absolutePath());
 }
 
 

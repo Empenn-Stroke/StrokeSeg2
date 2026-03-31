@@ -310,7 +310,7 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
 
     // Copy save the data of the segmentation in MNI space, using the reference T1 header to ensure
     // correct orientation and spacing metadata.
-    NiftiVolume::saveNiftiWithReference(tmp_mni_path, segmentation_as_nifti, atlas_dir + "/Reference_T1.nii.gz");
+    NiftiVolume::saveNiftiWithReference(tmp_mni_path, segmentation_as_nifti, Paths::atlasDir() + "/Reference_T1.nii.gz");
 
     // --- Step 5 : Apply inverse registration to patient space ---
 

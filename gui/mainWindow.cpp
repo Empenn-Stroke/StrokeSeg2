@@ -174,7 +174,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     // Model
     m_model = new QComboBox(formParameters);
-    QDir modelsDir = model_dir;
+    QDir modelsDir = Paths::modelDir();
     QStringList entries = modelsDir.entryList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
 
     for (const QString &entry : entries) {
@@ -643,7 +643,7 @@ void MainWindow::Process() {
     PipelineParams params;
     params.t1Path = *m_fileChosen;
     params.outputDir = m_destination->text();
-    params.modelPath = model_dir + m_model->currentText() + ".onnx";
+    params.modelPath = Paths::modelDir() + m_model->currentText() + ".onnx";
     params.suffix = m_suffix->text();
     params.savePMap = m_savePMap->isChecked();
     params.savePreproc = m_savePreprocessing->isChecked();

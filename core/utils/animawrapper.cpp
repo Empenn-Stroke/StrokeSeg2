@@ -36,7 +36,7 @@ int AnimaWrapper::run(const QStringList &args) {
     }
 
     // Configure and start process.
-    QString program_path = QDir(anima_root_path).filePath(program);
+    QString program_path = QDir(Paths::animaRootPath()).filePath(program);
 
     std::cout << "Starting process: " << program_path.toStdString()
               << " "

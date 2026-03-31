@@ -22,7 +22,7 @@ class TestFullPipeline : public QObject {
 
 private slots:
     void testEndToEndInference() {
-        QString inputT1 = QDir(base_dir).filePath("test/test_data/sub-r001s002-T1w.nii.gz");
+        QString inputT1 = QDir(Paths::baseDir()).filePath("test/test_data/sub-r001s002-T1w.nii.gz");
         QString outputDir = QCoreApplication::applicationDirPath() + "/full_pipeline_test";
         QDir().mkpath(outputDir);
 
@@ -33,7 +33,7 @@ private slots:
         // ---------------------------------------------------------
         qDebug() << "--- [STEP 1] Preprocessing ---";
         Resampling resampler;
-        QString atlasPath = atlas_dir + "/Reference_T1.nrrd";
+        QString atlasPath = Paths::atlasDir() + "/Reference_T1.nrrd";
         BrainExtraction brainExtractor(wrapper, atlasPath);
         Preprocessor preproc(&resampler, &brainExtractor, wrapper);
 
@@ -55,7 +55,7 @@ private slots:
         // ---------------------------------------------------------
         qDebug() << "--- [STEP 2] Inference ---";
         InferenceEngine engine;
-        QString modelPath = model_dir + "/Monomodal.onnx";
+        QString modelPath = Paths::modelDir() + "/Monomodal.onnx";
         QString inferenceOut = outputDir + "/inference_raw_output.nii.gz";
 
         NiftiVolume inferenceResult;

@@ -44,28 +44,20 @@ project(strokeseg2-app
 include(FetchContent)
 
 
-macro(post_build_runtime_dll_copy target_name)
-    if(WIN32)
-        add_custom_command(TARGET ${target_name} POST_BUILD
-            COMMAND "${CMAKE_COMMAND};-E;$<IF:$<BOOL:$<TARGET_RUNTIME_DLLS:${target_name}>>,copy;$<TARGET_RUNTIME_DLLS:${target_name}>;$<TARGET_FILE_DIR:${target_name}>,true>"
-            COMMAND_EXPAND_LISTS
-        )
-    endif()
-endmacro()
+#macro(post_build_runtime_dll_copy target_name)
+#    if(WIN32)
+#        add_custom_command(TARGET ${target_name} POST_BUILD
+#            COMMAND "${CMAKE_COMMAND};-E;$<IF:$<BOOL:$<TARGET_RUNTIME_DLLS:${target_name}>>,copy;$<TARGET_RUNTIME_DLLS:${target_name}>;$<TARGET_FILE_DIR:${target_name}>,true>"
+#            COMMAND_EXPAND_LISTS
+#        )
+#    endif()
+#endmacro()
 
 # VARS #############################################################################################
 
 set(CORE "core")
 set(GUI "gui")
 set(COMMON "common")
-
-#set(ANIMA_ROOT_PATH ./anima
-#    CACHE PATH "path to root of anima installation"
-#)
-#
-##add_compile_definitions(ANIMA_ROOT_PATH=${CMAKE_INSTALL_PREFIX}/${ANIMA_ROOT_PATH})
-#add_compile_definitions(ANIMA_ROOT_PATH=${CMAKE_BINARY_DIR}/${ANIMA_ROOT_PATH})
-#message(${ANIMA_ROOT_PATH})
 
 set(ANIMA_REL_PATH "anima")
 
@@ -139,12 +131,13 @@ if(WIN32)
     add_nuget_packages(
         PACKAGES
             Microsoft.Windows.CppWinRT 2.0.250303.1
-            Microsoft.ML.OnnxRuntime.DirectML 1.24.4
+            #Microsoft.ML.OnnxRuntime.DirectML 1.24.4
             Microsoft.Windows.ImplementationLibrary 1.0.250325.1
-            Microsoft.WindowsAppSDK.Foundation 1.8.251104000
-            Microsoft.WindowsAppSDK.InteractiveExperiences 1.8.251104001
-            Microsoft.WindowsAppSDK.ML 1.8.2109
-            Microsoft.WindowsAppSDK.Runtime 1.8.251106002
+            Microsoft.WindowsAppSDK 1.8.260317003
+            #Microsoft.WindowsAppSDK.Foundation 1.8.251104000
+            #Microsoft.WindowsAppSDK.InteractiveExperiences 1.8.251104001
+            #Microsoft.WindowsAppSDK.ML 1.8.2141
+            #Microsoft.WindowsAppSDK.Runtime 1.8.251106002
     )
 
     set(CPPWINRT_VERSION "2.0.250303.1" CACHE STRING "Version of CppWinRT")
@@ -155,6 +148,10 @@ if(WIN32)
     set(NUGET_PACKAGES_DIR "${CMAKE_BINARY_DIR}/packages")
     file(MAKE_DIRECTORY "${NUGET_PACKAGES_DIR}")
 
+    set(WindowsAppSDK_ML_DIR "${CMAKE_BINARY_DIR}/__nuget/Microsoft.WindowsAppSDK.ML.1.8.2141/build/cmake")
+    list(APPEND CMAKE_PREFIX_PATH "${WindowsAppSDK_ML_DIR}")
+
+    find_package(microsoft.windows.ai.machinelearning CONFIG REQUIRED)
     find_package(Microsoft.Windows.ImplementationLibrary CONFIG REQUIRED)
     find_package(Microsoft.WindowsAppSDK.ML CONFIG REQUIRED)
 else()

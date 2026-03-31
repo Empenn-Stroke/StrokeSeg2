@@ -63,7 +63,7 @@ namespace preprocessing {
         AnimaWrapper *m_wrapper;
         bool m_save_intermediary_steps;
         ConfigManager &m_config = ConfigManager::instance();
-        QString m_atlasImage = atlas_dir + "/Reference_T1.nrrd";
+        QString m_atlasImage = Paths::atlasDir() + "/Reference_T1.nrrd";
 
       private:
         

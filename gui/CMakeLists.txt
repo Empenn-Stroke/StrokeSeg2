@@ -50,5 +50,5 @@ if(WIN32)
             \"$<TARGET_FILE:${PROJECT_NAME}>\"
     )
 
-    post_build_runtime_dll_copy(strokeseg2-app)
+    #post_build_runtime_dll_copy(strokeseg2-app)
 endif()
