@@ -8,7 +8,7 @@
 
 class DMLEpHandler {
   public:
-    static void registerAvailableProviders(Ort::Env &env, bool userWantsToDownload = false);
+    static void registerAvailableProviders(Ort::Env &env, bool userWantsToDownload = true);
 
   private:
     struct Context {
@@ -17,7 +17,8 @@ class DMLEpHandler {
         Ort::Env *env;
     };
 
-    static BOOL CALLBACK CheckCallback(WinMLEpHandle ep, const WinMLEpInfo *info, void *context);
+    static void CALLBACK OnProgress(WinMLAsyncBlock *async, double progress);
+    static void CALLBACK OnComplete(WinMLAsyncBlock *async);
     static BOOL CALLBACK ProcessCallback(WinMLEpHandle ep, const WinMLEpInfo *info, void *context);
     static bool IsTargetProvider(const char *name);
 };

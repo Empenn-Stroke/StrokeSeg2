@@ -1,4 +1,5 @@
 #include "dml_ep_handler.h"
+#include <WinMLAsync.h>
 #include <QDebug>
 #include <filesystem>
 
@@ -28,8 +29,7 @@ bool DMLEpHandler::IsTargetProvider(const char *name) {
 
 void DMLEpHandler::registerAvailableProviders(Ort::Env &env, bool userWantsToDownload) {
     WinMLEpCatalogHandle catalog = nullptr;
-    if (FAILED(WinMLEpCatalogCreate(&catalog)))
-        return;
+
     qDebug() << "--- Starting WinML EP Catalog Enumeration ---";
 
     if (FAILED(WinMLEpCatalogCreate(&catalog))) {
@@ -48,16 +48,24 @@ void DMLEpHandler::registerAvailableProviders(Ort::Env &env, bool userWantsToDow
     WinMLEpCatalogRelease(catalog);
 }
 
-//BOOL CALLBACK DMLEpHandler::CheckCallback(WinMLEpHandle ep, const WinMLEpInfo *info,
-//                                          void *context) {
-//    if (!info || !info->name)
-//        return TRUE;
-//    auto *ctx = static_cast<Context *>(context);
-//    if (IsTargetProvider(info->name) && info->readyState == WinMLEpReadyState_NotPresent) {
-//        ctx->needsDownload = true;
-//    }
-//    return TRUE;
-//}
+void CALLBACK DMLEpHandler::OnProgress(WinMLAsyncBlock *async, double progress) {
+    // progress is out of 100, convert to 0-1 range
+    double normalizedProgress = progress / 100.0;
+
+    // Display the progress to the user
+    qDebug() << std::format("Progress: {:.0f}%\n", normalizedProgress * 100);
+}
+
+void CALLBACK DMLEpHandler::OnComplete(WinMLAsyncBlock *async) {
+    HRESULT hr = WinMLAsyncGetStatus(async, FALSE);
+    if (SUCCEEDED(hr)) {
+        qDebug() << "Download complete!\n";
+    } else {
+        qDebug() << std::format("Download failed: 0x{:08X}\n", static_cast<uint32_t>(hr));
+    }
+}
+
+
 
 BOOL CALLBACK DMLEpHandler::ProcessCallback(WinMLEpHandle ep, const WinMLEpInfo *info,
                                             void *context) {
@@ -76,8 +84,24 @@ BOOL CALLBACK DMLEpHandler::ProcessCallback(WinMLEpHandle ep, const WinMLEpInfo 
     if (IsTargetProvider(info->name)) {
         if (ctx->userWantsToDownload && state == WinMLEpReadyState_NotPresent) {
             qDebug() << "  -> Attempting WinMLEpEnsureReady for:" << info->name;
-            WinMLEpEnsureReady(ep);
-            WinMLEpGetReadyState(ep, &state);
+
+            WinMLAsyncBlock async = {};
+            async.callback = OnComplete;
+            async.progress = OnProgress;
+
+            HRESULT hr = WinMLEpEnsureReadyAsync(ep, &async);
+
+            if (SUCCEEDED(hr)) {
+                WinMLAsyncGetStatus(&async, TRUE);
+                WinMLAsyncClose(&async);
+                WinMLEpGetReadyState(ep, &state);
+            } else {
+                qDebug() << "WinMLEpEnsureReadyAsync failed: 0x"
+                         << QString::number(static_cast<uint32_t>(hr), 16);
+                // passer au provider suivant sans bloquer ni provoquer d'exception WinRT
+            }
+
+
         }
 
         if (state == WinMLEpReadyState_Ready) {

@@ -4,6 +4,7 @@
 
 void PipelineWorker::process() {
     try {
+
         QElapsedTimer total_timer;
         QElapsedTimer step_timer;
         total_timer.start();
@@ -12,35 +13,58 @@ void PipelineWorker::process() {
 
         AnimaWrapper wrapper(this);
         preprocessing::Resampling resampler;
-
-        BrainExtraction brainExtractor(&wrapper,
-                                       "C:/ProgramData/StrokeSeg/Atlas/Reference_T1.nrrd");
-
+        BrainExtraction brainExtractor(&wrapper, Paths::atlasDir() + "Reference_T1.nrrd");
         preprocessing::Preprocessor preproc(&resampler, &brainExtractor, &wrapper, false);
-        Inference engine;
-        postprocessing::Postprocessor postproc(&wrapper);
+        PreprocessedVolume preprocResult;
+
+        QString baseName = QFileInfo(m_p.t1Path).baseName();
+        QString betPath = m_p.outputDir + "/MNI_" + baseName + "_BET.nii.gz";
+        QString metaPath = m_p.outputDir + "/MNI_" + baseName + "_metadata.json";
+
+        bool bypassed = false;
 
         // 1. PREPROCESSING
+
         step_timer.start();
-        emit statusChanged("Step 1/3 : Preprocessing...");
 
-        auto preprocResult =
-            preproc.preprocess(m_p.t1Path, "", m_p.outputDir, m_p.skipBrainExtract);
+        if (QFile::exists(betPath) && QFile::exists(metaPath)) {
+            emit statusChanged("Cache detected, preprocessed volume loading...");
+            qDebug() << "[BYPASS] Loading existing preprocessed file:" << betPath;
+            // On charge le volume existant
+            NiftiVolume existingVol = NiftiVolume::loadNifti(betPath);
 
-        if (m_p.savePreproc) {
-            QString preprocSavePath = m_p.outputDir + "/debug_preprocessed.nii.gz";
-            NiftiVolume volPre;
-            volPre.data = preprocResult.data;
-            volPre.spacing = preprocResult.spacing;
-            NiftiVolume::saveNifti(preprocSavePath, volPre);
+            // On remplit l'objet preprocResult manuellement
+            preprocResult.data = existingVol.data;
+            preprocResult.spacing = existingVol.spacing;
+
+            if (preprocResult.loadMetadata(metaPath)) {
+                bypassed = true;
+                qDebug() << "[BYPASS] Preprocessing skipped. Using cached files.";
+            }
         }
 
-        qDebug() << "------------------------------------------";
-        qDebug() << "[TIMER] PREPROCESSING :" << step_timer.elapsed() / 1000 << "s";
-        qDebug() << "------------------------------------------";
+        if (!bypassed) {
+            emit statusChanged("Step 1/3 : Preprocessing...");
+            preprocessing::Preprocessor preproc(&resampler, &brainExtractor, &wrapper, false);
+            preprocResult = preproc.preprocess(m_p.t1Path, "", m_p.outputDir, m_p.skipBrainExtract);
+            preprocResult.saveMetadata(metaPath);
+
+            if (m_p.savePreproc) {
+                QString preprocSavePath = m_p.outputDir + "/debug_preprocessed.nii.gz";
+                NiftiVolume volPre;
+                volPre.data = preprocResult.data;
+                volPre.spacing = preprocResult.spacing;
+                NiftiVolume::saveNifti(preprocSavePath, volPre);
+            }
+
+            qDebug() << "------------------------------------------";
+            qDebug() << "[TIMER] PREPROCESSING :" << step_timer.elapsed() / 1000 << "s";
+            qDebug() << "------------------------------------------";
+        }
 
         // 2. INFERENCE
         step_timer.restart();
+        Inference engine;
         emit statusChanged("Step 2/3 : Inference...");
 
         QString tmpInput = m_p.outputDir + "/tmp_inference_input.nii.gz";
@@ -57,6 +81,8 @@ void PipelineWorker::process() {
         // 3. POSTPROCESSING
         step_timer.restart();
         emit statusChanged("Step 3/3 : Postprocessing...");
+
+        postprocessing::Postprocessor postproc(&wrapper);
 
         QString fileName = QFileInfo(m_p.t1Path).baseName() + m_p.suffix + ".nii.gz";
         QString finalPath = m_p.outputDir + "/" + fileName;
@@ -81,7 +107,7 @@ void PipelineWorker::process() {
         qDebug() << "------------------------------------------";
 
     } catch (const std::exception &e) {
-        emit finished(false, QString("Erreur fatale : %1").arg(e.what()), "");
+        emit finished(false, QString("Fatal Error : %1").arg(e.what()), "");
     } catch (...) {
         emit finished(false, "Unknown error occured during pipeline.", "");
     }
