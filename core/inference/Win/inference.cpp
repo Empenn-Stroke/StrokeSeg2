@@ -33,7 +33,17 @@ class Inference::Impl {
         DMLEpHandler::registerAvailableProviders(*m_env);
 
         Ort::SessionOptions options;
-        bool deviceFound = attemptDML(options);
+        OrtOpenVINOProviderOptions v_options;
+        v_options.device_type = "NPU";
+
+        try {
+            options.AppendExecutionProvider_OpenVINO(v_options);
+            qDebug() << "[SUCCESS] OpenVINO (NPU) added to session options.";
+        } catch (const std::exception &e) {
+            qDebug() << "[FALLBACK] OpenVINO failed, trying DirectML..." << e.what();
+
+            bool deviceFound = attemptDML(options);
+        }
 
         options.AddConfigEntry("session.set_denorm_as_zero", "1");
 

@@ -53,7 +53,7 @@ void CALLBACK DMLEpHandler::OnProgress(WinMLAsyncBlock *async, double progress) 
     double normalizedProgress = progress / 100.0;
 
     // Display the progress to the user
-    qDebug() << std::format("Progress: {:.0f}%\n", normalizedProgress * 100);
+    qDebug() << std::format("Progress: {:.0f}%", normalizedProgress * 100);
 }
 
 void CALLBACK DMLEpHandler::OnComplete(WinMLAsyncBlock *async) {
@@ -61,7 +61,7 @@ void CALLBACK DMLEpHandler::OnComplete(WinMLAsyncBlock *async) {
     if (SUCCEEDED(hr)) {
         qDebug() << "Download complete!\n";
     } else {
-        qDebug() << std::format("Download failed: 0x{:08X}\n", static_cast<uint32_t>(hr));
+        qDebug() << std::format("Download failed: 0x{:08X}", static_cast<uint32_t>(hr));
     }
 }
 
@@ -82,25 +82,27 @@ BOOL CALLBACK DMLEpHandler::ProcessCallback(WinMLEpHandle ep, const WinMLEpInfo 
                               .arg(stateToString(state));
 
     if (IsTargetProvider(info->name)) {
-        if (ctx->userWantsToDownload && state == WinMLEpReadyState_NotPresent) {
+        if (ctx->userWantsToDownload && state != WinMLEpReadyState_Ready) {
             qDebug() << "  -> Attempting WinMLEpEnsureReady for:" << info->name;
 
-            WinMLAsyncBlock async = {};
-            async.callback = OnComplete;
-            async.progress = OnProgress;
+            WinMLAsyncBlock *async = new WinMLAsyncBlock{};
+            async->callback = [](WinMLAsyncBlock *b) {
+                HRESULT hr = WinMLAsyncGetStatus(b, FALSE);
+                qDebug() << "Async finished with HR:" << std::hex << hr;
+                WinMLAsyncClose(b);
+                delete b;
+            };
 
-            HRESULT hr = WinMLEpEnsureReadyAsync(ep, &async);
-
-            if (SUCCEEDED(hr)) {
-                WinMLAsyncGetStatus(&async, TRUE);
-                WinMLAsyncClose(&async);
-                WinMLEpGetReadyState(ep, &state);
+            HRESULT hr = WinMLEpEnsureReadyAsync(ep, async);
+            if (FAILED(hr)) {
+                delete async;
             } else {
-                qDebug() << "WinMLEpEnsureReadyAsync failed: 0x"
-                         << QString::number(static_cast<uint32_t>(hr), 16);
-                // passer au provider suivant sans bloquer ni provoquer d'exception WinRT
+                qDebug() << "  [INFO] Download started in background.";
             }
 
+            //WinMLAsyncBlock async = {};
+            //async.callback = OnComplete;
+            //async.progress = OnProgress;
 
         }
 
