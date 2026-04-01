@@ -82,7 +82,10 @@ BOOL CALLBACK DMLEpHandler::ProcessCallback(WinMLEpHandle ep, const WinMLEpInfo 
                               .arg(stateToString(state));
 
     if (IsTargetProvider(info->name)) {
-        if (ctx->userWantsToDownload && state == WinMLEpReadyState_NotPresent) {
+        // FIX: Trigger the download/install process for BOTH NotPresent and NotReady states
+        if (ctx->userWantsToDownload &&
+            (state == WinMLEpReadyState_NotPresent || state == WinMLEpReadyState_NotReady)) {
+
             qDebug() << "  -> Attempting WinMLEpEnsureReady for:" << info->name;
 
             WinMLAsyncBlock async = {};
@@ -94,14 +97,11 @@ BOOL CALLBACK DMLEpHandler::ProcessCallback(WinMLEpHandle ep, const WinMLEpInfo 
             if (SUCCEEDED(hr)) {
                 WinMLAsyncGetStatus(&async, TRUE);
                 WinMLAsyncClose(&async);
-                WinMLEpGetReadyState(ep, &state);
+                WinMLEpGetReadyState(ep, &state); // Refresh state after installation
             } else {
                 qDebug() << "WinMLEpEnsureReadyAsync failed: 0x"
                          << QString::number(static_cast<uint32_t>(hr), 16);
-                // passer au provider suivant sans bloquer ni provoquer d'exception WinRT
             }
-
-
         }
 
         if (state == WinMLEpReadyState_Ready) {
