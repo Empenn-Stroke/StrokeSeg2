@@ -143,17 +143,18 @@ if(WIN32)
     set(CPPWINRT_VERSION "2.0.250303.1" CACHE STRING "Version of CppWinRT")
     set(CPPWINRT_SYSTEM_VERSION ${CPPWINRT_VERSION} CACHE STRING "System version of CppWinRT")
     set(CPP_WINRT_VERSION ${CPPWINRT_VERSION})
-    set(WIN_APP_SDK_VERSION "1.8.251106002")
+    set(WIN_APP_SDK_VERSION "1.8.260317003")
 
     set(NUGET_PACKAGES_DIR "${CMAKE_BINARY_DIR}/packages")
     file(MAKE_DIRECTORY "${NUGET_PACKAGES_DIR}")
 
-    set(WindowsAppSDK_ML_DIR "${CMAKE_BINARY_DIR}/__nuget/Microsoft.WindowsAppSDK.ML.1.8.2141/build/cmake")
-    list(APPEND CMAKE_PREFIX_PATH "${WindowsAppSDK_ML_DIR}")
-
+    set(WinAppSDK_ML_CONFIG_DIR "${CMAKE_BINARY_DIR}/__nuget/Microsoft.WindowsAppSDK.ML.1.8.2141/build/cmake")
+    list(APPEND CMAKE_PREFIX_PATH "${WinAppSDK_ML_CONFIG_DIR}")
+    #set(Microsoft.WindowsAppSDK.ML_DIR "${WinAppSDK_ML_CONFIG_DIR}")
+    
     find_package(microsoft.windows.ai.machinelearning CONFIG REQUIRED)
     find_package(Microsoft.Windows.ImplementationLibrary CONFIG REQUIRED)
-    find_package(Microsoft.WindowsAppSDK.ML CONFIG REQUIRED)
+    #find_package(Microsoft.WindowsAppSDK.ML REQUIRED)
 else()
     if(APPLE)
         set(ONNX_URL "https://github.com/microsoft/onnxruntime/releases/download/v1.24.4/onnxruntime-osx-arm64-1.24.4.tgz")
