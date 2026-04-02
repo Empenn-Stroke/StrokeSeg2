@@ -1,5 +1,6 @@
 #include "dml_ep_handler.h"
 #include <WinMLAsync.h>
+#include <thread>
 #include <QDebug>
 #include <filesystem>
 
@@ -43,8 +44,6 @@ void DMLEpHandler::registerAvailableProviders(Ort::Env &env, bool userWantsToDow
 
     qDebug() << "--- End of WinML EP Enumeration ---";
 
-    //WinMLEpCatalogEnumProviders(catalog, ProcessCallback, &ctx);
-
     WinMLEpCatalogRelease(catalog);
 }
 
@@ -65,15 +64,25 @@ void CALLBACK DMLEpHandler::OnComplete(WinMLAsyncBlock *async) {
     }
 }
 
+void CALLBACK OnEnsureReadyComplete(WinMLAsyncBlock *async) {
+    // 1. On récupère le statut (juste pour le log)
+    HRESULT hr = WinMLAsyncGetStatus(async, FALSE);
+    qDebug() << "[WinML-Async] Operation terminated in background. Code : 0x"
+             << QString::number(static_cast<uint32_t>(hr), 16);
 
+    WinMLAsyncClose(async);
+
+    delete async;
+    qDebug() << "[WinML-Async] Memory released, no crash possible.";
+}
 
 BOOL CALLBACK DMLEpHandler::ProcessCallback(WinMLEpHandle ep, const WinMLEpInfo *info,
                                             void *context) {
-    if (!info || !info->name)
+    if (!info || !info->name) {
         return TRUE;
+    }
 
     auto *ctx = static_cast<Context *>(context);
-
     WinMLEpReadyState state;
     WinMLEpGetReadyState(ep, &state);
 
@@ -81,29 +90,53 @@ BOOL CALLBACK DMLEpHandler::ProcessCallback(WinMLEpHandle ep, const WinMLEpInfo 
                               .arg(QString(info->name).leftJustified(32, ' '))
                               .arg(stateToString(state));
 
-    if (IsTargetProvider(info->name)) {
-        if (ctx->userWantsToDownload && state != WinMLEpReadyState_Ready) {
+    if (IsTargetProvider(info->name) && ctx->userWantsToDownload) {
+        if (state == WinMLEpReadyState_NotPresent || state == WinMLEpReadyState_NotReady) {
+
             qDebug() << "  -> Attempting WinMLEpEnsureReady for:" << info->name;
 
             WinMLAsyncBlock *async = new WinMLAsyncBlock{};
-            async->callback = [](WinMLAsyncBlock *b) {
-                HRESULT hr = WinMLAsyncGetStatus(b, FALSE);
-                qDebug() << "Async finished with HR:" << std::hex << hr;
-                WinMLAsyncClose(b);
-                delete b;
-            };
 
+            async->callback = OnEnsureReadyComplete;
+            async->progress = nullptr;
+            
             HRESULT hr = WinMLEpEnsureReadyAsync(ep, async);
+
             if (FAILED(hr)) {
+                qDebug() << "  [ERREUR] Download failed : 0x" << QString::number(hr, 16);
                 delete async;
             } else {
-                qDebug() << "  [INFO] Download started in background.";
+                qDebug() << "  [INFO] Request sent, resuming computation...";
             }
 
-            //WinMLAsyncBlock async = {};
-            //async.callback = OnComplete;
-            //async.progress = OnProgress;
+            //if (SUCCEEDED(hr)) {
+            //    auto start = std::chrono::steady_clock::now();
+            //    bool completed = false;
 
+            //    while (std::chrono::steady_clock::now() - start < std::chrono::seconds(15)) {
+            //        HRESULT status = WinMLAsyncGetStatus(async, FALSE);
+
+            //        if (status != E_PENDING) {
+            //            completed = true;
+            //            if (FAILED(status)) {
+            //                qDebug() << "  [ERROR] Download failed with HRESULT: 0x"
+            //                         << QString::number(static_cast<uint32_t>(status), 16);
+            //            }
+            //            break;
+            //        }
+            //        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            //    }
+
+            //    if (!completed) {
+            //        qDebug() << "  [TIMEOUT] Skipping" << info->name << "after 15s of no response.";
+            //    }
+
+            //    WinMLAsyncClose(async);
+            //    WinMLEpGetReadyState(ep, &state); // Refresh state after installation
+            //} else {
+            //    qDebug() << "WinMLEpEnsureReadyAsync failed: 0x"
+            //             << QString::number(static_cast<uint32_t>(hr), 16);
+            //}
         }
 
         if (state == WinMLEpReadyState_Ready) {

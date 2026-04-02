@@ -18,8 +18,8 @@ void PipelineWorker::process() {
         PreprocessedVolume preprocResult;
 
         QString baseName = QFileInfo(m_p.t1Path).baseName();
-        QString betPath = m_p.outputDir + "/MNI_" + baseName + "_BET.nii.gz";
-        QString metaPath = m_p.outputDir + "/MNI_" + baseName + "_metadata.json";
+        QString preprocPath = m_p.outputDir + "/" + baseName + "_BET_PREPROC.nii.gz";
+        QString metaPath = m_p.outputDir + "/" + baseName + "_PREPROC_metadata.json";
 
         bool bypassed = false;
 
@@ -27,11 +27,11 @@ void PipelineWorker::process() {
 
         step_timer.start();
 
-        if (QFile::exists(betPath) && QFile::exists(metaPath)) {
+        if (QFile::exists(preprocPath) && QFile::exists(metaPath)) {
             emit statusChanged("Cache detected, preprocessed volume loading...");
-            qDebug() << "[BYPASS] Loading existing preprocessed file:" << betPath;
+            qDebug() << "[BYPASS] Loading existing preprocessed file:" << preprocPath;
             // On charge le volume existant
-            NiftiVolume existingVol = NiftiVolume::loadNifti(betPath);
+            NiftiVolume existingVol = NiftiVolume::loadNifti(preprocPath);
 
             // On remplit l'objet preprocResult manuellement
             preprocResult.data = existingVol.data;

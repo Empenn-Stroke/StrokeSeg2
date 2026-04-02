@@ -247,11 +247,15 @@ namespace preprocessing {
     }
 
     /**
-     * @brief .
-     * @param modality_path Chemin du fichier de la modalité.
-     * @param is_MNI Définit si l'image doit être traitée en espace MNI ou natif.
-     * @param bbox_ptr Coordonnées de recadrage à appliquer/récupérer.
-     * @return PreprocessedVolume partiel pour cette modalité.
+     * @brief Performs the complete preprocessing pipeline on a single modality, including bias
+     * correction, registration to MNI space, cropping, resampling, normalization, and padding.
+     * @param modality_path Path to the input image modality (e.g., T1 or FLAIR).
+     * @param is_MNI Defines if the input image is already in MNI space, in which case bias
+     * correction and registration
+     * @param bbox_ptr Coordinates of the bounding box used for cropping. If provided, it will be
+     * filled with the coordinates of the cropping box. If nullptr, the cropping box will be
+     * computed but not returned.
+     * @return PreprocessedVolume for this modality.
      */
     PreprocessedVolume
     Preprocessor::preprocessModality(const QString &modality_path, bool is_MNI,
@@ -335,10 +339,8 @@ namespace preprocessing {
         spdlog::info("[FINAL SHAPE] {}x{}x{}", padded.data.dimension(0), padded.data.dimension(1),
                      padded.data.dimension(2));
 
-        // Debug: Volume final avant inference
-        if (m_save_intermediary_steps) {
-            NiftiVolume::saveNifti(debug_prefix + "_padded.nii.gz", padded);
-        }
+        // Volume final avant inference
+        NiftiVolume::saveNifti(debug_prefix + "_PREPROC.nii.gz", padded);
 
         result.data = padded.data;
         result.spacing = padded.spacing;

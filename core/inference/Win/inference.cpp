@@ -30,25 +30,25 @@ class Inference::Impl {
     void init(const QString &modelPath) {
         m_env = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "InferenceWin");
 
-        DMLEpHandler::registerAvailableProviders(*m_env);
+        // Download/Register missing plugins (like OpenVINO)
+        DMLEpHandler::registerAvailableProviders(*m_env, true);
 
         Ort::SessionOptions options;
-        OrtOpenVINOProviderOptions v_options;
-        v_options.device_type = "NPU";
 
-        try {
-            options.AppendExecutionProvider_OpenVINO(v_options);
-            qDebug() << "[SUCCESS] OpenVINO (NPU) added to session options.";
-        } catch (const std::exception &e) {
-            qDebug() << "[FALLBACK] OpenVINO failed, trying DirectML..." << e.what();
+        // Priority 1: Try OpenVINO
+        bool deviceFound = attemptOpenVINO(options);
 
-            bool deviceFound = attemptDML(options);
+        // Priority 2: Fallback to DirectML
+        if (!deviceFound) {
+            qDebug() << "Falling back to DirectML...";
+            deviceFound = attemptDML(options);
         }
 
         options.AddConfigEntry("session.set_denorm_as_zero", "1");
 
         try {
-            m_session = std::make_unique<Ort::Session>(*m_env, modelPath.toStdWString().c_str(), options);
+            m_session =
+                std::make_unique<Ort::Session>(*m_env, modelPath.toStdWString().c_str(), options);
         } catch (const std::exception &e) {
             qDebug() << "Session Error:" << e.what();
             m_session.reset();
@@ -63,6 +63,46 @@ class Inference::Impl {
      * 
      * @return true if DML was successfully configured as the execution provider, false otherwise.
      */
+    /* @brief Attempt to configure the ONNX Runtime session to use OpenVINO.
+     * @return true if OpenVINO was successfully configured, false otherwise.
+     */
+    bool attemptOpenVINO(Ort::SessionOptions &options) {
+        try {
+            // 1. Enumerate EP devices available in your environment
+            std::vector<Ort::ConstEpDevice> ep_devices = m_env->GetEpDevices();
+            std::vector<Ort::ConstEpDevice> selected_ep_devices;
+
+            // 2. Collect OpenVINO devices (You can optionally filter for NPU specifically here)
+            for (const auto &d : ep_devices) {
+                if (std::string(d.EpName()) == "OpenVINOExecutionProvider") {
+                    // If you ONLY want OpenVINO on the NPU, uncomment the next line:
+                    // if (d.HardwareDevice().Type() == OrtHardwareDeviceType_NPU)
+                    selected_ep_devices.push_back(d);
+                }
+            }
+
+            if (selected_ep_devices.empty()) {
+                qDebug()
+                    << "OpenVINO EP is registered, but no compatible target devices were found.";
+                return false;
+            }
+
+            // 3. Configure provider-specific options and append
+            Ort::KeyValuePairs ep_options;
+            // Note: You can add specific OpenVINO configuration keys here if needed
+            // ep_options.Add("device_type", "NPU");
+
+            options.AppendExecutionProvider_V2(*m_env, {selected_ep_devices.front()}, ep_options);
+
+            qDebug() << "OpenVINO Execution Provider targeted successfully via V2 API.";
+            return true;
+
+        } catch (const std::exception &e) {
+            qDebug() << "Failed to configure OpenVINO:" << e.what();
+            return false;
+        }
+    }
+
     bool attemptDML(Ort::SessionOptions &options) {
         const OrtDmlApi *dmlApi = nullptr;
         if (Ort::GetApi().GetExecutionProviderApi(

@@ -154,7 +154,7 @@ if(WIN32)
     
     find_package(microsoft.windows.ai.machinelearning CONFIG REQUIRED)
     find_package(Microsoft.Windows.ImplementationLibrary CONFIG REQUIRED)
-    #find_package(Microsoft.WindowsAppSDK.ML REQUIRED)
+    #find_package(Microsoft.WindowsAppSDK.ML CONFIG REQUIRED)
 else()
     if(APPLE)
         set(ONNX_URL "https://github.com/microsoft/onnxruntime/releases/download/v1.24.4/onnxruntime-osx-arm64-1.24.4.tgz")
