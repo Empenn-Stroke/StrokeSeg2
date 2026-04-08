@@ -14,7 +14,7 @@ void PipelineWorker::process() {
         AnimaWrapper wrapper(this);
         preprocessing::Resampling resampler;
         BrainExtraction brainExtractor(&wrapper, Paths::atlasDir() + "Reference_T1.nrrd");
-        preprocessing::Preprocessor preproc(&resampler, &brainExtractor, &wrapper, false);
+        preprocessing::Preprocessor preproc(&resampler, &brainExtractor, &wrapper, true);
         PreprocessedVolume preprocResult;
 
         QString baseName = QFileInfo(m_p.t1Path).baseName();
@@ -45,7 +45,8 @@ void PipelineWorker::process() {
 
         if (!bypassed) {
             emit statusChanged("Step 1/3 : Preprocessing...");
-            preprocessing::Preprocessor preproc(&resampler, &brainExtractor, &wrapper, false);
+            preprocessing::Preprocessor preproc(&resampler, &brainExtractor, &wrapper,
+                                                m_p.savePreproc);
             preprocResult = preproc.preprocess(m_p.t1Path, "", m_p.outputDir, m_p.skipBrainExtract);
             preprocResult.saveMetadata(metaPath);
 
@@ -70,9 +71,11 @@ void PipelineWorker::process() {
         QString tmpInput = m_p.outputDir + "/tmp_inference_input.nii.gz";
         NiftiVolume::saveNifti(tmpInput, {preprocResult.data, preprocResult.spacing});
 
+        NiftiVolume inferenceVol = NiftiVolume::loadNifti(tmpInput);
+
         QString rawInferencePath = m_p.outputDir + "/inference_raw.nii.gz";
         auto inferenceResult =
-            engine.run(m_p.modelPath, tmpInput, rawInferencePath, "input", "output");
+            engine.run(m_p.modelPath, inferenceVol, rawInferencePath, "input", "output");
 
         qDebug() << "------------------------------------------";
         qDebug() << "[TIMER] INFERENCE :" << step_timer.elapsed() / 1000 << "s";

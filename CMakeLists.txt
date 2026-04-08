@@ -192,9 +192,32 @@ set_property(DIRECTORY APPEND PROPERTY VS_SOLUTION_ITEMS
 
 include(./Configuration.cmake)
 
+qt_add_executable(
+    ${PROJECT_NAME}
+    resources.qrc
+    main.cpp
+)
 
 # TARGETS ##########################################################################################
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/${CORE})
 add_subdirectory(${CMAKE_SOURCE_DIR}/${GUI})
 add_subdirectory(${CMAKE_SOURCE_DIR}/test)
+
+target_link_libraries(${PROJECT_NAME} PUBLIC
+    ${GUI}
+)
+
+if(WIN32)
+    get_target_property(QT_QMAKE_EXECUTABLE Qt6::qmake IMPORTED_LOCATION)
+    get_filename_component(QT_BIN_DIR "${QT_QMAKE_EXECUTABLE}" DIRECTORY)
+
+    message("QT_BIN_DIR: ${QT_BIN_DIR}")
+
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND "${QT_BIN_DIR}/windeployqt.exe"
+                --no-translations
+                --no-system-d3d-compiler
+                \"$<TARGET_FILE:${PROJECT_NAME}>\"
+    )
+endif()

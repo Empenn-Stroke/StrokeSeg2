@@ -2,7 +2,7 @@
 #include <QFileInfo>
 
 #include <utils/animawrapper.h>
-#include <utils/path.h>
+#include <utils/env_path.h>
 #include <iostream>
 
 class TestAnimaWrapper : public QObject {

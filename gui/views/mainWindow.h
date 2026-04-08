@@ -1,5 +1,6 @@
 #pragma once
 #ifndef MAINWINDOW_H
+#define MAINWINDOW_H
 
 #include <QMainWindow>
 #include <QGraphicsDropShadowEffect>
@@ -25,7 +26,7 @@
 #include <QStackedWidget>
 #include <QPointer>
 
-#include "managers/configmanager.h"
+#include <managers/configmanager.h>
 #include "guideWindow.h"
 #include "aboutWindow.h"
 #include "modelManager.h"

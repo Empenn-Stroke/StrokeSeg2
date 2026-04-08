@@ -33,7 +33,7 @@ namespace Paths {
     }
 
     inline QString modelDir() {
-        return QDir(programData()).filePath(app_name + "/Models/");
+        return QDir(programData()).filePath(app_name + "/Model/");
     }
 
     inline QString atlasDir() {

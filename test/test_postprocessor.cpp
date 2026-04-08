@@ -2,7 +2,7 @@
 #include <QtTest>
 #include <postprocessing/postprocessor.h>
 #include <utils/niftiVolume.h>
-#include <utils/path.h>
+#include <utils/env_path.h>
 #include "test_utils.h"
 
 using namespace postprocessing;

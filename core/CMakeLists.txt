@@ -1,13 +1,12 @@
 set(HEADERS 
     "utils/animawrapper.h" 
-    "utils/path.h" 
+    "utils/env_path.h" 
     "utils/str.h" 
     "utils/NiftiVolume.h" 
     "utils/log.h"
     "preprocessing/preprocessor.h" 
     "preprocessing/resampling.h" 
-    "preprocessing/brainextraction.h" 
-    "inference/inferenceengine.h" 
+    "preprocessing/brainextraction.h"
     "postprocessing/postprocessor.h" 
     "managers/configmanager.h" 
     "managers/appconfig.h"
@@ -19,10 +18,11 @@ set(COMMON_SOURCES
     "utils/log.cpp"
     "preprocessing/preprocessor.cpp" 
     "preprocessing/resampling.cpp" 
-    "preprocessing/brainextraction.cpp" 
-    "inference/inferenceengine.cpp" 
+    "preprocessing/brainextraction.cpp"
     "postprocessing/postprocessor.cpp" 
-    "managers/configmanager.cpp")
+    "managers/configmanager.cpp" 
+    "inference/inference.cpp"
+    "inference/inference_internal.h")
 
 
 if(WIN32)
@@ -34,7 +34,9 @@ else()
     set(OS_SOURCES "inference/Linux/inference.cpp")
 endif()
 
-add_library(${CORE} ${COMMON_SOURCES} ${HEADERS} ${OS_SOURCES} ${OS_HEADERS})
+add_library(${CORE} ${HEADERS} ${OS_HEADERS})
+
+target_sources(${CORE} PRIVATE ${COMMON_SOURCES} ${OS_SOURCES})
 
 target_compile_features(${CORE} PUBLIC cxx_std_20)
 

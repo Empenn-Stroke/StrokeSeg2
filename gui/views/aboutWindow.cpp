@@ -68,7 +68,7 @@ AboutWindow::AboutWindow(QWidget *parent) : QWidget(parent) {
     textArea->setObjectName("aboutContent");
     textArea->setReadOnly(true);
 
-    QFile file(":/gui/ressources/about.html");
+    QFile file(":/gui/resources/about.html");
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QTextStream in(&file);
         textArea->setHtml(in.readAll());

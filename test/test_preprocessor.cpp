@@ -3,7 +3,7 @@
 
 #include <preprocessing/preprocessor.h>
 #include <utils/niftiVolume.h>
-#include <utils/path.h>
+#include <utils/env_path.h>
 
 #include "test_utils.h"
 #include "mockanimawrapper.h"

@@ -3,10 +3,9 @@
 #include <QDir>
 #include <preprocessing/preprocessor.h>
 #include <preprocessing/resampling.h>
-#include <inference/inferenceengine.h>
 #include <postprocessing/postprocessor.h>
 #include <utils/niftiVolume.h>
-#include <utils/path.h>
+#include <utils/env_path.h>
 
 struct PipelineParams {
     QString t1Path;

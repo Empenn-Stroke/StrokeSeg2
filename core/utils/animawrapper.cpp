@@ -1,5 +1,5 @@
 #include "animawrapper.h"
-#include "path.h"
+#include "env_path.h"
 #include <iostream>
 
 AnimaWrapper::AnimaWrapper(QObject *parent)

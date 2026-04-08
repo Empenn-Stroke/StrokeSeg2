@@ -1,6 +1,7 @@
 #include "mainWindow.h"
 
 #include <algorithm>
+
 #include <QDebug>
 #include <QDesktopServices>
 #include <QDragEnterEvent>
@@ -13,10 +14,8 @@
 #include <QStandardPaths>
 #include <QtConcurrent>
 
-#include <inference/inferenceengine.h>
-#include <pipelineWorker.h>
-
-#include <utils/path.h>
+#include <workers/pipelineWorker.h>
+#include <utils/env_path.h>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -25,7 +24,7 @@
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     setWindowTitle("StrokeSeg2");
-    setWindowIcon(QIcon(":/gui/ressources/StrokeSeg2.ico"));
+    setWindowIcon(QIcon(":/gui/resources/StrokeSeg2.ico"));
     resize(1280, 720);
 
     setWindowFlags(Qt::FramelessWindowHint);
@@ -292,7 +291,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     // Icon
     QLabel *iconLabel = new QLabel(m_fileButton);
-    QPixmap pix(":/gui/ressources/files.png");
+    QPixmap pix(":/gui/resources/files.png");
     iconLabel->setPixmap(pix.scaled(80, 80, Qt::KeepAspectRatio, Qt::SmoothTransformation));
     iconLabel->setAlignment(Qt::AlignCenter);
     iconLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
@@ -341,7 +340,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     QWidget *loadingPage = new QWidget();
     QVBoxLayout *loadingLayout = new QVBoxLayout(loadingPage);
     QLabel *spinnerLabel = new QLabel(loadingPage);
-    QMovie *movie = new QMovie(":/gui/ressources/infinite-spinner-optimized.gif");
+    QMovie *movie = new QMovie(":/gui/resources/infinite-spinner-optimized.gif");
     movie->start();
     spinnerLabel->setMovie(movie);
     loadingLayout->addStretch();
@@ -568,7 +567,7 @@ void MainWindow::refreshModelsList() {
     QString currentModel = m_model->currentText();
     m_model->clear();
 
-    QDir modelsDir("C:/ProgramData/StrokeSeg/Models");
+    QDir modelsDir("C:/ProgramData/StrokeSeg/Model");
     QStringList entries = modelsDir.entryList(QDir::Files | QDir::NoDotAndDotDot);
 
     for (const QString &entry : entries) {

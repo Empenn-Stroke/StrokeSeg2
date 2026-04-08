@@ -68,7 +68,7 @@ GuideWindow::GuideWindow(QWidget *parent) : QWidget(parent) {
     textArea->setObjectName("guideContent");
     textArea->setReadOnly(true);
 
-    QFile file(":/gui/ressources/guide.html");
+    QFile file(":/gui/resources/guide.html");
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QTextStream in(&file);
         textArea->setHtml(in.readAll());

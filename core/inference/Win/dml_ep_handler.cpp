@@ -4,8 +4,7 @@
 #include <QDebug>
 #include <filesystem>
 
-const char *targetProviderNames[] = {"VitisAIExecutionProvider", "OpenVINOExecutionProvider",
-                                     "QNNExecutionProvider", "NvTensorRtRtxExecutionProvider"};
+const char *targetProviderNames[] = {"VitisAIExecutionProvider", "OpenVINOExecutionProvider", "NvTensorRtRtxExecutionProvider"};
 
 QString stateToString(WinMLEpReadyState state) {
     switch (state) {

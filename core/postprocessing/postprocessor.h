@@ -34,7 +34,7 @@ namespace postprocessing
         ConfigManager &m_config = ConfigManager::instance();
         AnimaWrapper *m_wrapper;
         preprocessing::Resampling m_resampler;
-        bool m_save_intermediary_steps = m_config.get("save_intermediary_steps", false).toBool();
+        bool m_save_intermediary_steps = m_config.get("save_intermediary_steps", true).toBool();
     };
 
 } // namespace postprocessing

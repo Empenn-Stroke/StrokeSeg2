@@ -71,7 +71,7 @@ ModelManager::ModelManager(QWidget *parent) : QWidget(parent) {
     m_mainAreaLayout->setContentsMargins(12, 13, 12, 12);
     m_mainAreaLayout->setSpacing(8);
 
-    QDir modelsDir = QDir("C:/ProgramData/StrokeSeg/Models");
+    QDir modelsDir = QDir("C:/ProgramData/StrokeSeg/Model");
     QStringList entries = modelsDir.entryList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
 
     for (const QString &entry : entries) {
@@ -92,7 +92,7 @@ ModelManager::ModelManager(QWidget *parent) : QWidget(parent) {
 
         QPushButton *deleteBtn = new QPushButton(modelContainer);
         deleteBtn->setObjectName("deleteBtn");
-        QIcon *icon = new QIcon(":/gui/ressources/delete.svg");
+        QIcon *icon = new QIcon(":/gui/resources/delete.svg");
         deleteBtn->setIcon(*icon);
         deleteBtn->setIconSize(QSize(16, 16));
 
@@ -157,7 +157,7 @@ bool ModelManager::eventFilter(QObject *obj, QEvent *event) {
 
 void ModelManager::importModel() {
     QString filename =
-        QFileDialog::getOpenFileName(this, "Choose file", "C:/ProgramData/StrokeSeg/Models", "ONNX Model (*.onnx);;All files (*)");
+        QFileDialog::getOpenFileName(this, "Choose file", "C:/ProgramData/StrokeSeg/Model", "ONNX Model (*.onnx);;All files (*)");
 
     if (filename.isEmpty())
         return;
@@ -167,7 +167,7 @@ void ModelManager::importModel() {
     if (programDataPath.isEmpty()) {
         programDataPath = "C:/ProgramData"; // Fallback manuel si la variable est vide
     }
-    QDir dir(programDataPath + "/StrokeSeg/Models");
+    QDir dir(programDataPath + "/StrokeSeg/Model");
 
     if (!dir.exists()) {
         if (!dir.mkpath(".")) {
@@ -232,7 +232,7 @@ void ModelManager::importModel() {
 
     QPushButton *deleteBtn = new QPushButton(modelContainer);
     deleteBtn->setObjectName("deleteBtn");
-    QIcon *icon = new QIcon(":/gui/ressources/delete.svg");
+    QIcon *icon = new QIcon(":/gui/resources/delete.svg");
     deleteBtn->setIcon(*icon);
     deleteBtn->setIconSize(QSize(16, 16));
 

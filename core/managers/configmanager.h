@@ -6,7 +6,7 @@
 #include <functional>
 #include <vector>
 
-#include <utils/path.h>
+#include <utils/env_path.h>
 
 #ifndef CORE_MANAGERS_CONFIGMANAGER_H
 #define CORE_MANAGERS_CONFIGMANAGER_H
