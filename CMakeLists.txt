@@ -43,16 +43,6 @@ project(strokeseg2-app
 
 include(FetchContent)
 
-
-#macro(post_build_runtime_dll_copy target_name)
-#    if(WIN32)
-#        add_custom_command(TARGET ${target_name} POST_BUILD
-#            COMMAND "${CMAKE_COMMAND};-E;$<IF:$<BOOL:$<TARGET_RUNTIME_DLLS:${target_name}>>,copy;$<TARGET_RUNTIME_DLLS:${target_name}>;$<TARGET_FILE_DIR:${target_name}>,true>"
-#            COMMAND_EXPAND_LISTS
-#        )
-#    endif()
-#endmacro()
-
 # VARS #############################################################################################
 
 set(CORE "core")
@@ -101,7 +91,7 @@ include_directories(${zlib_SOURCE_DIR})
 include_directories(${zlib_BINARY_DIR})
 
 
-# ---- NIFTI : valeurs NON VIDES ----
+# NIFTI
 set(NIFTI_INSTALL_EXPORT_NAME "NIFTI_SKIP_EXPORT" CACHE STRING "")
 set(NIFTI_INSTALL_LIBRARY_DIR "nifti_skip" CACHE PATH "")
 set(NIFTI_INSTALL_INCLUDE_DIR "nifti_skip" CACHE PATH "")
@@ -116,12 +106,61 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(nifti)
 
-
+# NuGetCMakePackage
 FetchContent_Declare(
   NuGetCMakePackage
   GIT_REPOSITORY https://github.com/mschofie/NuGetCMakePackage
   GIT_TAG b13e013481605d134f498fd9fc3a123c416da197
 )
+
+#Anima
+if(WIN32)
+    set(ANIMA_URL "https://github.com/Inria-Empenn/Anima-Public/releases/download/v4.2/Anima-Windows-4.2.zip")
+elseif(APPLE)
+    set(ANIMA_URL "https://github.com/Inria-Empenn/Anima-Public/releases/download/v4.2/Anima-macOS-4.2.zip")
+else()
+    set(ANIMA_URL "https://github.com/Inria-Empenn/Anima-Public/releases/download/v4.2/Anima-Ubuntu-4.2.zip")
+
+set(ANIMA_REQUIRED_TOOLS 
+    "animaApplyTransformSerie"
+    "animaConvertImage"
+    "animaCreateImage"
+    "animaDenseSVFBMRegistration"
+    "animaMaskImage"
+    "animaN4BiasCorrection"
+    "animaPyramidalBMRegistration"
+    "animaTransformSerieXmlGenerator"
+)
+
+FetchContent_Declare(
+    Anima
+    URL ${ANIMA_URL}
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+
+FetchContent_MakeAvailable(Anima)
+
+set(ANIMA_FILES_TO_COPY "")
+foreach(TOOL ${ANIMA_REQUIRED_TOOLS})
+    if(WIN32)
+        set(BIN_PATH "${anima_SOURCE_DIR}/${TOOL}.exe")
+    else()
+        set(BIN_PATH "${anima_SOURCE_DIR}/${TOOL}")
+    endif()
+    
+    list(APPEND ANIMA_FILES_TO_COPY "${BIN_PATH}")
+endforeach()
+
+set(ANIMA_RUNTIME_DESTINATION "${CMAKE_BINARY_DIR}/${ANIMA_REL_PATH}")
+file(MAKE_DIRECTORY "${ANIMA_RUNTIME_DESTINATION}")
+
+foreach(FILE_PATH ${ANIMA_FILES_TO_COPY})
+    if(EXISTS "${FILE_PATH}")
+        file(COPY "${FILE_PATH}" DESTINATION "${ANIMA_RUNTIME_DESTINATION}")
+    else()
+        message(WARNING "Binaire ANIMA introuvable à l'emplacement : ${FILE_PATH}")
+    endif()
+endforeach()
 
 
 # Adding specific dependencies depending on the operating system
@@ -131,13 +170,8 @@ if(WIN32)
     add_nuget_packages(
         PACKAGES
             Microsoft.Windows.CppWinRT 2.0.250303.1
-            #Microsoft.ML.OnnxRuntime.DirectML 1.24.4
             Microsoft.Windows.ImplementationLibrary 1.0.250325.1
             Microsoft.WindowsAppSDK 1.8.260317003
-            #Microsoft.WindowsAppSDK.Foundation 1.8.251104000
-            #Microsoft.WindowsAppSDK.InteractiveExperiences 1.8.251104001
-            #Microsoft.WindowsAppSDK.ML 1.8.2141
-            #Microsoft.WindowsAppSDK.Runtime 1.8.251106002
     )
 
     set(CPPWINRT_VERSION "2.0.250303.1" CACHE STRING "Version of CppWinRT")
@@ -150,11 +184,9 @@ if(WIN32)
 
     set(WinAppSDK_ML_CONFIG_DIR "${CMAKE_BINARY_DIR}/__nuget/Microsoft.WindowsAppSDK.ML.1.8.2141/build/cmake")
     list(APPEND CMAKE_PREFIX_PATH "${WinAppSDK_ML_CONFIG_DIR}")
-    #set(Microsoft.WindowsAppSDK.ML_DIR "${WinAppSDK_ML_CONFIG_DIR}")
     
     find_package(microsoft.windows.ai.machinelearning CONFIG REQUIRED)
     find_package(Microsoft.Windows.ImplementationLibrary CONFIG REQUIRED)
-    #find_package(Microsoft.WindowsAppSDK.ML CONFIG REQUIRED)
 else()
     if(APPLE)
         set(ONNX_URL "https://github.com/microsoft/onnxruntime/releases/download/v1.24.4/onnxruntime-osx-arm64-1.24.4.tgz")
@@ -211,13 +243,12 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
 if(WIN32)
     get_target_property(QT_QMAKE_EXECUTABLE Qt6::qmake IMPORTED_LOCATION)
     get_filename_component(QT_BIN_DIR "${QT_QMAKE_EXECUTABLE}" DIRECTORY)
-
-    message("QT_BIN_DIR: ${QT_BIN_DIR}")
-
+    
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND "${QT_BIN_DIR}/windeployqt.exe"
+        COMMAND "${QT_BIN_DIR}/windeployqt.exe"
                 --no-translations
                 --no-system-d3d-compiler
-                \"$<TARGET_FILE:${PROJECT_NAME}>\"
+                "$<TARGET_FILE:${PROJECT_NAME}>"
+        VERBATIM
     )
 endif()
