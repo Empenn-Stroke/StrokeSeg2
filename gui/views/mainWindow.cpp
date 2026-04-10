@@ -1,6 +1,7 @@
 #include "mainWindow.h"
 
 #include <algorithm>
+#include <QProgressBar>
 
 #include <QDebug>
 #include <QDesktopServices>
@@ -16,6 +17,7 @@
 
 #include <workers/pipelineWorker.h>
 #include <utils/env_path.h>
+#include <managers/progressManager.h>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -339,13 +341,54 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     QWidget *loadingPage = new QWidget();
     QVBoxLayout *loadingLayout = new QVBoxLayout(loadingPage);
+    QWidget *barContainer = new QWidget(loadingPage);
+    QHBoxLayout *barLayout = new QHBoxLayout(barContainer);
+    barLayout->setContentsMargins(0, 0, 0, 0);
+    barLayout->setSpacing(10);
+
     QLabel *spinnerLabel = new QLabel(loadingPage);
     QMovie *movie = new QMovie(":/gui/resources/infinite-spinner-optimized.gif");
-    movie->start();
     spinnerLabel->setMovie(movie);
-    loadingLayout->addStretch();
-    loadingLayout->addWidget(spinnerLabel, 0, Qt::AlignHCenter);
-    loadingLayout->addStretch();
+    spinnerLabel->setAlignment(Qt::AlignCenter);
+    movie->start();
+
+    QProgressBar *progressBar = new QProgressBar(barContainer);
+    progressBar->setObjectName("progressBar");
+    progressBar->setRange(0, 100);
+    progressBar->setValue(0);
+    progressBar->setFixedSize(350, 3);
+    progressBar->setTextVisible(false);
+
+    QLabel *percentLabel = new QLabel("0%", barContainer);
+    percentLabel->setObjectName("percentLabel");
+    percentLabel->setFixedWidth(45);
+    percentLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+
+    barLayout->addSpacing(45);
+    barLayout->addWidget(progressBar);
+    barLayout->addWidget(percentLabel);
+
+    barContainer->setFixedSize(barLayout->sizeHint().width(), 20);
+
+    QLabel *statusLabel = new QLabel("Initializing...", loadingPage);
+    statusLabel->setObjectName("statusLabel");
+    statusLabel->setFixedWidth(400);
+    statusLabel->setAlignment(Qt::AlignCenter);
+
+    QPushButton *cancelBtn = new QPushButton("Cancel", loadingPage);
+    cancelBtn->setObjectName("cancelBtn");
+    cancelBtn->setFixedWidth(120);
+    cancelBtn->setCursor(Qt::PointingHandCursor);
+
+    loadingLayout->addStretch(2);
+    loadingLayout->addWidget(spinnerLabel, 0, Qt::AlignCenter);
+    loadingLayout->addSpacing(30);
+    loadingLayout->addWidget(barContainer, 0, Qt::AlignCenter);
+    loadingLayout->addSpacing(10);
+    loadingLayout->addWidget(statusLabel, 0, Qt::AlignCenter);
+    loadingLayout->addSpacing(20);
+    loadingLayout->addWidget(cancelBtn, 0, Qt::AlignCenter);
+    loadingLayout->addStretch(3);
 
     // ---------------- MAIN AREA ASSEMBLY ----------------
 
@@ -432,6 +475,19 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     
     connect(m_mode, &QComboBox::currentIndexChanged, this, [this, thresholdLabel](int index) {
         m_formLayout->setRowVisible(thresholdLabel, index != 1);
+    });
+
+    connect(&ProgressManager::instance(), &ProgressManager::progressUpdated, this,
+            [progressBar, percentLabel](int value) {
+                progressBar->setValue(value);
+                percentLabel->setText(QString::number(value) + "%");
+            });
+
+    connect(&ProgressManager::instance(), &ProgressManager::progressStatusChanged, statusLabel,
+            &QLabel::setText);
+
+    connect(cancelBtn, &QPushButton::clicked, this, [this]() {
+        ProgressManager::instance().requestInterruption();
     });
 
     loadSettings();

@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <spdlog/spdlog.h>
+#include <QObject>
 
 #include "brainextraction.h"
 #include "preprocvolume.h"
@@ -16,7 +17,6 @@
 
 #include <utils/animawrapper.h>
 #include <utils/niftiVolume.h>
-
 #include <managers/configmanager.h>
 
 namespace preprocessing {
@@ -38,8 +38,8 @@ namespace preprocessing {
      * - Statistic normalization (z-score).
      * - Cropping and padding to fit inference input dimension.
      */
-    class Preprocessor {
-
+    class Preprocessor : public QObject {
+        Q_OBJECT
       public:
         /**
          * @brief Builder for the Preprocessor class.
@@ -97,6 +97,9 @@ namespace preprocessing {
         static void printAction(const QString &actionName);
 
         QString moveToOutput(const QString &img_path);
+
+        static void checkAbort();
+
     };
 
 } // namespace preprocessing

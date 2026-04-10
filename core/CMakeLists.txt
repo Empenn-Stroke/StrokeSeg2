@@ -10,6 +10,7 @@ set(HEADERS
     "postprocessing/postprocessor.h" 
     "managers/configmanager.h" 
     "managers/appconfig.h"
+    "managers/progressManager.h"
     "inference/inference.h")
 
 set(COMMON_SOURCES 
@@ -21,6 +22,7 @@ set(COMMON_SOURCES
     "preprocessing/brainextraction.cpp"
     "postprocessing/postprocessor.cpp" 
     "managers/configmanager.cpp" 
+    "managers/progressManager.cpp"
     "inference/inference.cpp"
     "inference/inference_internal.h")
 
@@ -34,9 +36,9 @@ else()
     set(OS_SOURCES "inference/Linux/inference.cpp")
 endif()
 
-add_library(${CORE} ${HEADERS} ${OS_HEADERS})
+add_library(${CORE})
 
-target_sources(${CORE} PRIVATE ${COMMON_SOURCES} ${OS_SOURCES})
+target_sources(${CORE} PRIVATE ${HEADERS} ${OS_HEADERS} ${COMMON_SOURCES} ${OS_SOURCES})
 
 target_compile_features(${CORE} PUBLIC cxx_std_20)
 

@@ -1,11 +1,16 @@
 ﻿#include "preprocessor.h"
+
+
 #include <cassert>
 #include <cmath>
 #include <cstring>
 #include <nifti1_io.h>
+
 #include <qelapsedtimer.h>
 #include <QtDebug>
 #include <spdlog/spdlog.h>
+
+#include "managers/progressManager.h"
 
 namespace preprocessing {
     
@@ -273,6 +278,9 @@ namespace preprocessing {
                                QFileInfo(modality_path).baseName();
 
         if (!is_MNI) {
+            ProgressManager::instance().report(41, 9, 10,
+                                               new QString("Registering to MNI space"));
+
             printAction("bias correction");
             QString prefix = QFileInfo(path).absolutePath() + "/" + QFileInfo(path).baseName();
             path = biasCorrect(path, prefix);
@@ -284,6 +292,8 @@ namespace preprocessing {
 
             qDebug() << "trsf path:" << trsf;
         }
+
+        ProgressManager::instance().report(41, 9, 20, new QString("Cropping to non-zero content"));
 
         printAction("loading NIFTI volume");
         NiftiVolume vol = NiftiVolume::loadNifti(path);
@@ -297,6 +307,8 @@ namespace preprocessing {
         printAction("cropping to non-zero content");
         std::array<std::array<int, 2>, 3> local_bbox = {{{-1, -1}, {-1, -1}, {-1, -1}}};
         auto [cropped, _] = cropToNonZero(vol, nullptr, -1, bbox_ptr ? bbox_ptr : &local_bbox);
+
+        ProgressManager::instance().report(41, 9, 40);
 
         if (bbox_ptr && (*bbox_ptr)[0][0] == -1)
             *bbox_ptr = local_bbox;
@@ -314,6 +326,8 @@ namespace preprocessing {
             NiftiVolume::saveNifti(debug_prefix + "_cropped.nii.gz", cropped);
         }
 
+        ProgressManager::instance().report(41, 9, 80, new QString("Resampling to 1.0mm iso"));
+
         printAction("resampling to 1.0mm iso");
         NiftiVolume res = m_resampler.resample(cropped, Eigen::Vector3f(1.0f, 1.0f, 1.0f), false);
 
@@ -322,6 +336,8 @@ namespace preprocessing {
             NiftiVolume::saveNifti(debug_prefix + "_resampled.nii.gz", res);
         }
 
+        ProgressManager::instance().report(41, 9, 85, new QString("Z-score normalization"));
+
         printAction("z-score normalization");
         zScoreNormalize(res);
 
@@ -329,6 +345,8 @@ namespace preprocessing {
         if (m_save_intermediary_steps) {
             NiftiVolume::saveNifti(debug_prefix + "_normalized.nii.gz", res);
         }
+
+        ProgressManager::instance().report(41, 9, 90, new QString("Padding to minimum size 128 and multiple of 32"));
 
         printAction("padding to target size (128)");
         auto [padded, p_info] = padVolume(res, 128);
@@ -341,6 +359,8 @@ namespace preprocessing {
 
         // Volume final avant inference
         NiftiVolume::saveNifti(debug_prefix + "_PREPROC.nii.gz", padded);
+
+        ProgressManager::instance().report(41, 9, 100);
 
         result.data = padded.data;
         result.spacing = padded.spacing;
@@ -364,6 +384,10 @@ namespace preprocessing {
         bet_timer.start();
         QString bet_t1 = t1_path;
         if (!t1_path.contains("BET") && !t1_path.contains("MNI")) {
+            connect(m_brainExtraction, &BrainExtraction::progress, [](float value, const QString &message) {
+                ProgressManager::instance().report(0, 41, 10 + (int)(value * 30), new QString(message));
+            });
+
             bet_t1 = m_brainExtraction->run(t1_path, temp_dir + "/" + QFileInfo(t1_path).baseName());
         }
 
@@ -458,4 +482,5 @@ namespace preprocessing {
 
         return dst;
     }
+
 } // namespace preprocessing

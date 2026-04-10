@@ -11,8 +11,7 @@ add_library(${GUI} STATIC
     "models/modelManager.h"
     "models/modelManager.cpp"
     "workers/pipelineWorker.h"
-    "workers/pipelineWorker.cpp"
-)
+    "workers/pipelineWorker.cpp")
 
 set_target_properties(${GUI} PROPERTIES
     AUTOMOC ON
