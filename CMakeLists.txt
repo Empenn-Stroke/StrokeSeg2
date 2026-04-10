@@ -120,6 +120,7 @@ elseif(APPLE)
     set(ANIMA_URL "https://github.com/Inria-Empenn/Anima-Public/releases/download/v4.2/Anima-macOS-4.2.zip")
 else()
     set(ANIMA_URL "https://github.com/Inria-Empenn/Anima-Public/releases/download/v4.2/Anima-Ubuntu-4.2.zip")
+endif()
 
 set(ANIMA_REQUIRED_TOOLS 
     "animaApplyTransformSerie"
@@ -158,7 +159,7 @@ foreach(FILE_PATH ${ANIMA_FILES_TO_COPY})
     if(EXISTS "${FILE_PATH}")
         file(COPY "${FILE_PATH}" DESTINATION "${ANIMA_RUNTIME_DESTINATION}")
     else()
-        message(WARNING "Binaire ANIMA introuvable à l'emplacement : ${FILE_PATH}")
+        message(WARNING "ANIMA binary not found at path : ${FILE_PATH}")
     endif()
 endforeach()
 
