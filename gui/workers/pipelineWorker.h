@@ -21,7 +21,7 @@ struct PipelineParams {
 class PipelineWorker : public QObject {
     Q_OBJECT
   public:
-    PipelineWorker(PipelineParams &p) : m_p(p) {}
+    PipelineWorker(PipelineParams &p);
 
   public slots:
     void process();
@@ -30,6 +30,8 @@ class PipelineWorker : public QObject {
     void statusChanged(QString message);
     void finished(bool success, QString message, QString finalPath);
     void progressUpdated(int percent);
+
   private:
     PipelineParams m_p;
+    AnimaWrapper *m_wrapper;
 };

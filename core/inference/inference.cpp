@@ -5,6 +5,8 @@
 #include <QElapsedTimer>
 #include <QFile>
 
+#include "managers/progressManager.h"
+
 /* @brief Run inference on the specified input image using the loaded ONNX model and return the
  *        output as a NiftiVolume.
  * @param modelPath The full path to the ONNX model file to use for inference (including the .onnx
@@ -109,6 +111,13 @@ NiftiVolume Inference::run(const QString &modelPath, NiftiVolume &image,
         for (int y : steps[1]) {
             for (int z : steps[2]) {
                 patch_cpt++;
+                
+                QString status =
+                    QString("Processing patch %1/%2").arg(patch_cpt).arg(total_patches);
+
+                ProgressManager::instance().report(41, 43, (patch_cpt * 100 / total_patches),
+                                                   &status);
+
                 qDebug() << "Processing patch (" << patch_cpt << "/" << total_patches
                          << ") at (X:" << x << ", Y:" << y << ", Z:" << z << ")";
 

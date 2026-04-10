@@ -12,12 +12,20 @@ AnimaWrapper::AnimaWrapper(QObject *parent)
     process.setProcessChannelMode(QProcess::SeparateChannels);
 }
 
+void AnimaWrapper::abort() {
+    if (m_currentProcess && m_currentProcess->state() != QProcess::NotRunning) {
+        m_currentProcess->kill();
+    }
+}
+
 /*
  * @brief Runs the specified command synchronously and captures its output.
  * @param args The command to run, where the first element is the program and the rest are
  * arguments.
  */
 int AnimaWrapper::run(const QStringList &args) {
+    m_currentProcess = &process;
+
     m_stdout.clear();
     m_stderr.clear();
 
@@ -78,6 +86,8 @@ int AnimaWrapper::run(const QStringList &args) {
         // Return -1 to notify the crash.
         return -1;
     }
+
+    m_currentProcess = nullptr;
 
     return process.exitCode();
 }

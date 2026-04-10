@@ -1,10 +1,11 @@
+#include "postprocessing/postprocessor.h"
+
 #include <QString>
 #include <optional>
 #include <spdlog/spdlog.h>
 
-#include "postprocessing/postprocessor.h"
-
 #include "utils/log.h"
+#include "managers/progressManager.h"
 
 namespace 
 {
@@ -242,6 +243,9 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
     Eigen::Vector3f debug_spacing = preproc_volume.spacing;
 
     // --- Step 1: Convert to segmentation ---
+
+    ProgressManager::instance().report(93, 7, 0, new QString("Converting to segmentation"));
+
     printAction("Convert to segmentation");
     Segmentation segmentation = convert_to_segmentation(data, segmentation_threshold, save_pmap);
     
@@ -250,6 +254,8 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
         save_img(dir, debug_spacing, segmentation_to_nifti_volume(segmentation, debug_spacing).data,
                  QFileInfo(preproc_volume.original_t1_path).baseName(), "after_convert");
     }
+
+    ProgressManager::instance().report(93, 7, 10, new QString("Removing padding"));
 
     // --- Step 2: Remove padding ---
     printAction("Remove padding");
@@ -260,6 +266,8 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
         save_img(dir, debug_spacing, segmentation_to_nifti_volume(segmentation, debug_spacing).data,
                  QFileInfo(preproc_volume.original_t1_path).baseName(), "after_unpad");
     }
+
+    ProgressManager::instance().report(93, 7, 20, new QString("Returning to initial dimensions"));
 
     // --- Step 3: Uncrop ---
     printAction("Uncrop");
@@ -274,6 +282,8 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
     }
 
     // --- Step 4: Resample ---
+    ProgressManager::instance().report(93, 7, 30, new QString("Resampling to initial spacing"));
+
     printAction("Resample");
     Eigen::Vector3f target_spacing{1, 1, 1};
 
@@ -300,6 +310,8 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
 
     segmentation.seg = nifti_volume_to_tensor3f(segmentation_as_nifti);
 
+    ProgressManager::instance().report(93, 7, 70);
+
     // DEBUG SAVE 4
     if (m_save_intermediary_steps) {
         save_img(dir, debug_spacing, segmentation_as_nifti.data,
@@ -312,15 +324,21 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
     // correct orientation and spacing metadata.
     NiftiVolume::saveNiftiWithReference(tmp_mni_path, segmentation_as_nifti, Paths::atlasDir() + "/Reference_T1.nii.gz");
 
+    ProgressManager::instance().report(93, 7, 80);
+
     // --- Step 5 : Apply inverse registration to patient space ---
 
     QString patient_ref_path = preproc_volume.original_t1_path;
 
     QString final_patient_path;
     try {
+        ProgressManager::instance().report(93, 7, 70, new QString("Applying inverse registration to patient space"));
+
         printAction("Applying inverse registration (Anima)");
         final_patient_path =
             applyInverseRegistration(m_wrapper, tmp_mni_path, trsf_path, patient_ref_path);
+
+        ProgressManager::instance().report(93, 7, 100);
     } catch (const std::exception &e) {
         spdlog::error("Critical error during inverse registration: {}", e.what());
         return;
