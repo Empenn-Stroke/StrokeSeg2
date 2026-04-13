@@ -60,7 +60,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     m_mainWidget->setGraphicsEffect(shadow);
 
     QVBoxLayout *windowLayout = new QVBoxLayout(m_mainWidget);
-    windowLayout->setContentsMargins(15, 15, 15, 15);
+    windowLayout->setContentsMargins(0, 0, 0, 0);
     windowLayout->setSpacing(0);
 
     QHBoxLayout *mainLayout = new QHBoxLayout();

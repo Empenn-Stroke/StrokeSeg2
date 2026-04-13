@@ -8,8 +8,8 @@ add_library(${GUI} STATIC
     "views/aboutWindow.cpp"
     "views/warningWindow.h"
     "views/warningWindow.cpp"
-    "models/modelManager.h"
-    "models/modelManager.cpp"
+    "views/modelManager.h"
+    "views/modelManager.cpp"
     "workers/pipelineWorker.h"
     "workers/pipelineWorker.cpp")
 
@@ -32,7 +32,6 @@ target_include_directories(${GUI}
 PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/views
-    ${CMAKE_CURRENT_SOURCE_DIR}/models
     ${CMAKE_CURRENT_SOURCE_DIR}/workers
 
 PRIVATE

@@ -20,6 +20,7 @@ class ModelManager : public QWidget {
 
   protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
+    bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) override;
 
     bool m_dragging = false;
     QPoint m_dragPosition;
