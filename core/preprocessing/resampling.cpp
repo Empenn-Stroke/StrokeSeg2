@@ -21,10 +21,9 @@ namespace preprocessing
                                                   const Eigen::Vector3f &old_spacing,
                                                   const Eigen::Vector3f &new_spacing) const 
     {
-        Eigen::Vector3i s;
-        for (int i = 0; i < 3; ++i)
-            s[i] = int(std::round(old_shape[i] * old_spacing[i] / new_spacing[i]));
-        return s;
+        return (old_shape.cast<float>().array() * old_spacing.array() / new_spacing.array())
+            .round()
+            .cast<int>();
     }
 
     /**
@@ -45,15 +44,13 @@ namespace preprocessing
     int Resampling::get_lowres_axis(const Eigen::Vector3f &spacing) const 
     {
         float max_s = spacing.maxCoeff();
-        int axis = -1;
-        for (int i = 0; i < 3; ++i) {
-            if (std::abs(spacing[i] - max_s) < 1e-6f) {
-                if (axis != -1)
-                    return -1; // ambiguous
-                axis = i;
-            }
-        }
-        return axis;
+        auto mask = (spacing.array() - max_s).abs() < 1e-6f;
+        
+        if (mask.count() != 1) return -1; 
+
+        int index;
+        mask.cast<int>().maxCoeff(&index);
+        return index;
     }
 
     /**
@@ -95,42 +92,43 @@ namespace preprocessing
                                   int axis) const 
     {
         const auto &t = vol.data;
-        int dim0, dim1, dim_slice;
 
+        Eigen::Vector2i dims;
+        int s_max;
         if (axis == 0) {
-            dim_slice = t.dimension(1);
-            dim0 = t.dimension(2);
-            dim1 = t.dimension(3);
+            s_max = t.dimension(1);
+            dims << t.dimension(2), t.dimension(3);
         } else if (axis == 1) {
-            dim_slice = t.dimension(2);
-            dim0 = t.dimension(1);
-            dim1 = t.dimension(3);
+            s_max = t.dimension(2);
+            dims << t.dimension(1), t.dimension(3);
         } else {
-            dim_slice = t.dimension(3);
-            dim0 = t.dimension(1);
-            dim1 = t.dimension(2);
+            s_max = t.dimension(3);
+            dims << t.dimension(1), t.dimension(2);
         }
 
-        int s = std::clamp(slice, 0, dim_slice - 1);
+        int s = std::clamp(slice, 0, s_max - 1);
 
-        int x0 = std::clamp(int(std::floor(x)), 0, dim0 - 1);
-        int x1 = std::min(x0 + 1, dim0 - 1);
-        int y0 = std::clamp(int(std::floor(y)), 0, dim1 - 1);
-        int y1 = std::min(y0 + 1, dim1 - 1);
+        Eigen::Vector2f pos(x, y);
+        Eigen::Vector2i p0 = pos.array().floor().cast<int>().cwiseMax(0).cwiseMin(dims.array() - 1);
+        Eigen::Vector2i p1 = (p0.array() + 1).cwiseMin(dims.array() - 1);
+        Eigen::Vector2f d = pos - p0.cast<float>();
 
-        float dx = x - x0;
-        float dy = y - y0;
-
-        auto access = [&](int i0, int j0) {
+        auto get_val = [&](int i, int j) -> float {
             if (axis == 0)
-                return t(c, s, i0, j0);
+                return t(c, s, i, j);
             if (axis == 1)
-                return t(c, i0, s, j0);
-            return t(c, i0, j0, s);
+                return t(c, i, s, j);
+            return t(c, i, j, s);
         };
 
-        return std::lerp(std::lerp(access(x0, y0), access(x1, y0), dx),
-                         std::lerp(access(x0, y1), access(x1, y1), dx), dy);
+        float v00 = get_val(p0.x(), p0.y());
+        float v10 = get_val(p1.x(), p0.y());
+        float v01 = get_val(p0.x(), p1.y());
+        float v11 = get_val(p1.x(), p1.y());
+
+        float res_x0 = v00 + d.x() * (v10 - v00);
+        float res_x1 = v01 + d.x() * (v11 - v01);
+        return res_x0 + d.y() * (res_x1 - res_x0);
     }
 
     /**
@@ -189,14 +187,7 @@ namespace preprocessing
      * @return Resampled NiftiVolume.
      */
     NiftiVolume Resampling::resample(const NiftiVolume &in, const Eigen::Vector3f &new_spacing,
-                                     bool is_segmentation) 
-    {
-
-        qDebug() << "RESAMPLE START - Input Dims:" << in.data.dimension(0) << "x" // C
-                 << in.data.dimension(1) << "x"                                   // X
-                 << in.data.dimension(2) << "x"                                   // Y
-                 << in.data.dimension(3);                                         // Z
-
+                                     bool is_segmentation) {
         NiftiVolume out;
         out.spacing = new_spacing;
 
@@ -204,71 +195,85 @@ namespace preprocessing
         Eigen::Vector3i old_shape(src.dimension(1), src.dimension(2), src.dimension(3));
         Eigen::Vector3i new_shape = compute_new_shape(old_shape, in.spacing, new_spacing);
 
-        out.data = Eigen::Tensor<float, 4, Eigen::ColMajor>(src.dimension(0), new_shape.x(),
-                                                            new_shape.y(), new_shape.z());
+        out.data.resize(src.dimension(0), new_shape.x(), new_shape.y(), new_shape.z());
+        Eigen::Vector3f ratios = old_shape.cast<float>().array() / new_shape.cast<float>().array();
 
-        qDebug() << "Allocating output volume:" << new_shape.x() << "x" << new_shape.y() << "x"
-                 << new_shape.z();
+        // Pre-calculate indices for nearest neighbor resampling (used in both branches)
+        Eigen::ArrayXi idxX = generate_indices(new_shape.x(), ratios.x(), old_shape.x() - 1);
+        Eigen::ArrayXi idxY = generate_indices(new_shape.y(), ratios.y(), old_shape.y() - 1);
+        Eigen::ArrayXi idxZ = generate_indices(new_shape.z(), ratios.z(), old_shape.z() - 1);
 
         auto [do_sep, axis] = determine_separate_axis(in.spacing, new_spacing);
 
         if (!do_sep) {
-            // isotropic / full resampling
-            for (int c = 0; c < src.dimension(0); ++c)
-                for (int x = 0; x < new_shape.x(); ++x)
-                    for (int y = 0; y < new_shape.y(); ++y)
-                        for (int z = 0; z < new_shape.z(); ++z) {
-                            float ix = x * float(old_shape.x()) / new_shape.x();
-                            float iy = y * float(old_shape.y()) / new_shape.y();
-                            float iz = z * float(old_shape.z()) / new_shape.z();
-                            // trilinear approx: bilinear xy + nearest z
-                            float v = bilinear_2d(in, c, ix, iy, int(std::round(iz)), 2);
-                            out.data(c, x, y, z) = is_segmentation ? std::round(v) : v;
+            // Resampling by slices
+            for (int c = 0; c < src.dimension(0); ++c) {
+                for (int z = 0; z < new_shape.z(); ++z) {
+                    int src_z = idxZ[z];
+
+                    for (int x = 0; x < new_shape.x(); ++x) {
+                        for (int y = 0; y < new_shape.y(); ++y) {
+                            out.data(c, x, y, z) = src(c, idxX[x], idxY[y], src_z);
                         }
+                    }
+                }
+            }
+            if (is_segmentation)
+                out.data = out.data.round();
             return out;
         }
 
-        // Inside Resampling::resample, anisotropic branch:
-        int d1_idx = (axis + 1) % 3;
-        int d2_idx = (axis + 2) % 3;
+        int d1 = (axis + 1) % 3;
+        int d2 = (axis + 2) % 3;
 
-        // Intermediate tensor: (C, NewDim1, NewDim2, OldDimAxis)
-        Eigen::Tensor<float, 4, Eigen::RowMajor> tmp(src.dimension(0), new_shape[d1_idx],
-                                                     new_shape[d2_idx], old_shape[axis]);
+        // Pre-calculate indices for high-resolution axes only
+        Eigen::ArrayXi idxD1 = generate_indices(new_shape[d1], ratios[d1], old_shape[d1] - 1);
+        Eigen::ArrayXi idxD2 = generate_indices(new_shape[d2], ratios[d2], old_shape[d2] - 1);
 
-        // Step 1: Resize 2D slices
-        for (int c = 0; c < src.dimension(0); ++c)
-            for (int s = 0; s < old_shape[axis]; ++s)
-                for (int i = 0; i < new_shape[d1_idx]; ++i)
-                    for (int j = 0; j < new_shape[d2_idx]; ++j) {
-                        float ix = i * float(old_shape[d1_idx]) / new_shape[d1_idx];
-                        float iy = j * float(old_shape[d2_idx]) / new_shape[d2_idx];
-                        float v = bilinear_2d(in, c, ix, iy, s, axis);
-                        // For segmentations, round immediately to prevent label bleeding
-                        tmp(c, i, j, s) = is_segmentation ? std::round(v) : v;
-                    }
-
-        // step2: resize along low-res axis
-        for (int c = 0; c < src.dimension(0); ++c)
-            for (int i = 0; i < new_shape[d1_idx]; ++i)
-                for (int j = 0; j < new_shape[d2_idx]; ++j)
-                    for (int s = 0; s < new_shape[axis]; ++s) {
-                        float pos = s * float(old_shape[axis]) / new_shape[axis];
-
-                        // Use a direct nearest lookup on the last dimension of tmp
-                        int idx = std::clamp(int(std::round(pos)), 0, old_shape[axis] - 1);
-                        float v = tmp(c, i, j, idx);
-
-                        // Map back to output volume
+        // Step 1: Resample 2D slices (Vectorized by channel and slice)
+        // Using temporary tensors to facilitate memory access
+        for (int c = 0; c < src.dimension(0); ++c) {
+            for (int s = 0; s < old_shape[axis]; ++s) {
+                for (int i = 0; i < new_shape[d1]; ++i) {
+                    for (int j = 0; j < new_shape[d2]; ++j) {
+                        // Direct access according to the low-resolution axis
+                        float val;
                         if (axis == 0)
-                            out.data(c, s, i, j) = v;
+                            val = src(c, s, idxD1[i], idxD2[j]);
                         else if (axis == 1)
-                            out.data(c, i, s, j) = v;
+                            val = src(c, idxD1[i], s, idxD2[j]);
                         else
-                            out.data(c, i, j, s) = v;
-                    }
+                            val = src(c, idxD1[i], idxD2[j], s);
 
+                        // Fill the output (final step integrated to avoid temporary tensors)
+                        // Replicate the value across the new slices (Nearest Neighbor)
+                        for (int ns = 0; ns < new_shape[axis]; ++ns) {
+                            if (idxZ[ns] ==
+                                s) { // If this new slice points to the current source slice
+                                if (axis == 0)
+                                    out.data(c, ns, i, j) = val;
+                                else if (axis == 1)
+                                    out.data(c, i, ns, j) = val;
+                                else
+                                    out.data(c, i, j, ns) = val;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (is_segmentation)
+            out.data = out.data.round();
         return out;
+    }
+
+    Eigen::ArrayXi Resampling::generate_indices(int new_dim, float ratio, int max_val) {
+        return (Eigen::ArrayXf::LinSpaced(new_dim, 0, new_dim - 1) * ratio)
+            .round()
+            .cast<int>()
+            .cwiseMin(max_val)
+            .cwiseMax(0);
     }
 
 } // namespace preprocessing

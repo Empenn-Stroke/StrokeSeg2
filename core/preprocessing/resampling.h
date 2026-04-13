@@ -62,6 +62,8 @@ namespace preprocessing
 
         float vote_nearest_1d(const Eigen::Tensor<float, 4, Eigen::RowMajor> &t, int c, int i,
                               int j, float pos, int axis) const;
+
+        Eigen::ArrayXi generate_indices(int new_dim, float ratio, int max_val);
     };
 
 } // namespace preprocessing
