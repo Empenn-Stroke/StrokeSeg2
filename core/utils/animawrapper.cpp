@@ -1,5 +1,5 @@
 #include "animawrapper.h"
-#include "path.h"
+#include "env_path.h"
 #include <iostream>
 
 AnimaWrapper::AnimaWrapper(QObject *parent)
@@ -12,7 +12,20 @@ AnimaWrapper::AnimaWrapper(QObject *parent)
     process.setProcessChannelMode(QProcess::SeparateChannels);
 }
 
+void AnimaWrapper::abort() {
+    if (m_currentProcess && m_currentProcess->state() != QProcess::NotRunning) {
+        m_currentProcess->kill();
+    }
+}
+
+/*
+ * @brief Runs the specified command synchronously and captures its output.
+ * @param args The command to run, where the first element is the program and the rest are
+ * arguments.
+ */
 int AnimaWrapper::run(const QStringList &args) {
+    m_currentProcess = &process;
+
     m_stdout.clear();
     m_stderr.clear();
 
@@ -31,7 +44,7 @@ int AnimaWrapper::run(const QStringList &args) {
     }
 
     // Configure and start process.
-    QString program_path = QDir(anima_root_path).filePath(program);
+    QString program_path = QDir(Paths::animaRootPath()).filePath(program);
 
     std::cout << "Starting process: " << program_path.toStdString()
               << " "
@@ -40,6 +53,21 @@ int AnimaWrapper::run(const QStringList &args) {
     process.setProgram(program_path);
     process.setArguments(arguments);
     process.setProcessChannelMode(QProcess::SeparateChannels);
+
+    connect(&process, &QProcess::readyReadStandardOutput, this, [this]() {
+        QByteArray data = process.readAllStandardOutput();
+        QString log = QString::fromUtf8(data).trimmed();
+        if (!log.isEmpty()) {
+            emit logAvailable(log);
+        }
+    });
+
+    connect(&process, &QProcess::readyReadStandardError, this, [this]() {
+        QString err = QString::fromUtf8(process.readAllStandardError()).trimmed();
+        if (!err.isEmpty())
+            emit logAvailable("ERREUR : " + err);
+    });
+
     process.start();
 
     // Wait for start.
@@ -53,23 +81,13 @@ int AnimaWrapper::run(const QStringList &args) {
     // Wait for end.
     process.waitForFinished(-1);
 
-    // Read outputs.
-    const QByteArray out = process.readAllStandardOutput();
-    const QByteArray err = process.readAllStandardError();
-    m_stdout = QString::fromUtf8(out);
-    m_stderr = QString::fromUtf8(err);
-
-    if (process.exitCode() != 0) {
-        qDebug() << "--- ANIMA CRASH LOG ---";
-        qDebug() << "STDOUT:" << m_stdout;
-        qDebug() << "STDERR:" << m_stderr;
-    }
-
     // Check if process abnormally stopped.
     if (process.exitStatus() == QProcess::CrashExit) {
         // Return -1 to notify the crash.
         return -1;
     }
+
+    m_currentProcess = nullptr;
 
     return process.exitCode();
 }

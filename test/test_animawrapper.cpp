@@ -2,7 +2,7 @@
 #include <QFileInfo>
 
 #include <utils/animawrapper.h>
-#include <utils/path.h>
+#include <utils/env_path.h>
 #include <iostream>
 
 class TestAnimaWrapper : public QObject {
@@ -12,8 +12,8 @@ private slots:
 
     void initTestCase() {
         // Vérification minimale : le dossier ANIMA existe
-        qDebug() << anima_root_path;
-        QVERIFY2(QFileInfo(anima_root_path).exists(),
+        qDebug() << Paths::animaRootPath();
+        QVERIFY2(QFileInfo(Paths::animaRootPath()).exists(),
                  "anima_root_path does not exist");
     }
 

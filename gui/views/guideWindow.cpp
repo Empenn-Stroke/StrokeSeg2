@@ -1,8 +1,8 @@
-#include "aboutWindow.h"
+#include "guideWindow.h"
 
-AboutWindow::AboutWindow(QWidget *parent) : QWidget(parent) {
+GuideWindow::GuideWindow(QWidget *parent) : QWidget(parent) {
     setAttribute(Qt::WA_DeleteOnClose);
-    setWindowTitle("About");
+    setWindowTitle("Guide");
     resize(1000, 600);
 
     setWindowFlags(Qt::FramelessWindowHint);
@@ -12,7 +12,7 @@ AboutWindow::AboutWindow(QWidget *parent) : QWidget(parent) {
     //                  GLOBAL STRUCTURE
     // =========================================================
 
-    this->setObjectName("aboutWindow");
+    this->setObjectName("guideWindow");
 
     QVBoxLayout *windowLayout = new QVBoxLayout(this);
     windowLayout->setContentsMargins(15, 15, 15, 15);
@@ -38,7 +38,7 @@ AboutWindow::AboutWindow(QWidget *parent) : QWidget(parent) {
     titleLayout->setContentsMargins(60, 0, 0, 2);
     titleLayout->setSpacing(0);
 
-    QLabel *title = new QLabel("About", m_titleBar);
+    QLabel *title = new QLabel("Guide", m_titleBar);
     QPushButton *reduceBtn = new QPushButton("\u2212", m_titleBar);
     QPushButton *closeBtn = new QPushButton("\u00D7", m_titleBar);
     closeBtn->setObjectName("closeBtn");
@@ -65,10 +65,10 @@ AboutWindow::AboutWindow(QWidget *parent) : QWidget(parent) {
     mainAreaLayout->setSpacing(20);
 
     QTextEdit *textArea = new QTextEdit(this);
-    textArea->setObjectName("aboutContent");
+    textArea->setObjectName("guideContent");
     textArea->setReadOnly(true);
 
-    QFile file("../../../gui/ressources/about.html");
+    QFile file(":/gui/resources/guide.html");
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QTextStream in(&file);
         textArea->setHtml(in.readAll());
@@ -96,7 +96,7 @@ AboutWindow::AboutWindow(QWidget *parent) : QWidget(parent) {
 //                        METHODS
 // =========================================================
 
-bool AboutWindow::eventFilter(QObject *obj, QEvent *event) {
+bool GuideWindow::eventFilter(QObject *obj, QEvent *event) {
     if (obj == m_titleBar) {
         auto *e = static_cast<QMouseEvent *>(event);
         if (event->type() == QEvent::MouseButtonPress && e->button() == Qt::LeftButton) {

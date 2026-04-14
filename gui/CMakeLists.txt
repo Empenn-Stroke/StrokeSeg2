@@ -1,50 +1,49 @@
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
+# Add the GUI files to the executable defined in the root
+add_library(${GUI} STATIC
+    "views/mainWindow.h"
+    "views/mainWindow.cpp"
+    "views/guideWindow.h"
+    "views/guideWindow.cpp"
+    "views/aboutWindow.h"
+    "views/aboutWindow.cpp"
+    "views/warningWindow.h"
+    "views/warningWindow.cpp"
+    "models/modelManager.h"
+    "models/modelManager.cpp"
+    "workers/pipelineWorker.h"
+    "workers/pipelineWorker.cpp")
 
-if (WIN32)
-    set(APP_ICON_RESOURCE "${CMAKE_CURRENT_SOURCE_DIR}/appicon.rc")
-endif()
-
-qt_add_executable(
-    ${PROJECT_NAME}
-    main.cpp
-    mainWindow.h
-    mainWindow.cpp
-    guideWindow.h
-    guideWindow.cpp
-    aboutWindow.h
-    aboutWindow.cpp
-    warningWindow.h
-    warningWindow.cpp
-    modelManager.h
-    modelManager.cpp
-    ../resources.qrc
-    ${APP_ICON_RESOURCE}
+set_target_properties(${GUI} PROPERTIES
+    AUTOMOC ON
+    AUTOUIC ON
+    AUTORCC ON
 )
 
+# Handle the icon if it's in this folder
+if (WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/resources/appicon.rc")
+    target_sources(${PROJECT_NAME} PRIVATE resources/appicon.rc)
+endif()
+
+# Requirements for the app
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
-target_include_directories(${PROJECT_NAME} PRIVATE
-    ${CMAKE_SOURCE_DIR}/${GUI}/
+
+
+target_include_directories(${GUI} 
+PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/views
+    ${CMAKE_CURRENT_SOURCE_DIR}/models
+    ${CMAKE_CURRENT_SOURCE_DIR}/workers
+
+PRIVATE
     ${CMAKE_SOURCE_DIR}/${COMMON}/
     ${CMAKE_SOURCE_DIR}/${CORE}/
 )
 
-target_link_libraries(${PROJECT_NAME} PUBLIC
-    ${CORE}
+target_link_libraries(${GUI} PUBLIC
     Qt6::Core
     Qt6::Gui
     Qt6::Widgets
     Qt6::Concurrent
+    ${CORE}
 )
-
-if(WIN32)
-
-    get_target_property(QT_QMAKE_EXECUTABLE Qt6::qmake IMPORTED_LOCATION)
-    get_filename_component(QT_BIN_DIR "${QT_QMAKE_EXECUTABLE}" DIRECTORY)
-
-    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND "${QT_BIN_DIR}/windeployqt.exe"
-            --no-translations
-            --no-system-d3d-compiler
-            \"$<TARGET_FILE:${PROJECT_NAME}>\"
-    )
-endif()

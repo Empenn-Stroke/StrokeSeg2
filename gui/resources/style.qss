@@ -214,7 +214,7 @@ QSlider::handle:horizontal {
 }
 
 QWidget#formParameters QComboBox::down-arrow {
-    image: url(":/gui/ressources/arrow_down.png");
+    image: url(":/gui/resources/arrow_down.png");
     width:6px;
     height:6px;
 }
@@ -262,7 +262,7 @@ QComboBox QAbstractItemView::item:hover {
 }
 
 QWidget#formParameters QComboBox::down-arrow:on {
-    image: url(":/gui/ressources/arrow_up.png");
+    image: url(":/gui/resources/arrow_up.png");
 }
 
 QWidget#formParameters QCheckBox {
@@ -277,12 +277,12 @@ QWidget#formParameters QCheckBox::indicator {
 }
 
 QWidget#formParameters QCheckBox::indicator:unchecked {
-    image: url(":/gui/ressources/checkbox_off.svg");
+    image: url(":/gui/resources/checkbox_off.svg");
 }
 
 QWidget#formParameters QCheckBox::indicator:checked {
     /* background-color:#5ea6f2; */
-    image: url(":/gui/ressources/checkbox_on.svg");
+    image: url(":/gui/resources/checkbox_on.svg");
 }
 
 QWidget#formParameters QLabel {
@@ -382,6 +382,51 @@ QToolButton#chooseFileButton[dragging="true"]{
     background-color: #c7dff8;
 }
 
+QProgressBar {
+    background-color: #deebf9;
+    border: none;
+    border-radius: 0px;
+    height: 14px;
+    text-align: right;
+    margin-right: 45px;
+    color: #0a0c0f;
+    font-size: 11px;
+}
+
+QProgressBar::chunk {
+    background-color: #5ea6f2;
+    border: none;
+    border-radius: 0px;
+}
+
+QLabel#percentLabel {
+    color: #0a0c0f;
+    font-size: 13px;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+}
+
+QLabel#statusLabel {
+    color: #555555;
+    font-size: 13px;
+    margin-top: 5px;
+}
+
+QPushButton#cancelBtn {
+    background-color: #eff4fa;
+    color: #0a0c0f;
+    padding: 7px 15px;
+    font-size: 12px;
+    border-radius: 10px;
+    border: 1px solid #deebf9;
+}
+
+QPushButton#cancelBtn:hover {
+    background-color: #ff8474;
+    color: #ffffff;
+}
+
 
 /* 
 =========================================================
@@ -474,11 +519,11 @@ QWidget#warningWindow QPushButton:hover{
 }
 
 #dontShowAgain::indicator:unchecked {
-    image: url(":/gui/ressources/checkbox2_off.png");
+    image: url(":/gui/resources/checkbox2_off.png");
 }
 
 #dontShowAgain::indicator:checked {
-    image: url(":/gui/ressources/checkbox2_on.png");
+    image: url(":/gui/resources/checkbox2_on.png");
 }
 
 /* 

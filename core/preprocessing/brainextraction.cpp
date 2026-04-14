@@ -1,18 +1,36 @@
 #include "brainextraction.h"
 
-
 #include <stdexcept>
 
+#include <QElapsedTimer>
+
+#include "managers/progressManager.h"
+
+/**
+ * @brief Constructor of the brain extraction class
+ * @param wrapper(AnimaWrapper): A wrapper to simplify the use of anima executables atlasImage
+ * @param atlasImage(Qstring): Path of the atlas image used for the registration. The atlas
+ * image should be in the same space as the input image (e.g. MNI space). It will be used as a
+ * reference for the registration and the brain mask creation. The atlas image should be a 3D
+ * image with a brain mask (e.g. BrainMask.nrrd) in the same directory.
+ *
+ */
 BrainExtraction::BrainExtraction(AnimaWrapper *wrapper, const QString &atlasImage, QObject *parent)
     : QObject(parent), m_wrapper(wrapper), m_atlasImage(atlasImage),
-      m_iccImage(QDir(atlas_dir).filePath("BrainMask.nrrd")),
+      m_iccImage(QDir(Paths::atlasDir()).filePath("BrainMask.nrrd")),
       m_pyramidOption({"-p", "4", "-l", "1"}) {}
 
-void BrainExtraction::requestCancel() {
+void BrainExtraction::requestCancel() 
+{
     m_cancelRequested = true;
 }
 
-void BrainExtraction::runCommand(const QStringList &command) {
+/**
+ * @brief Runs the command and make an exception if the user cancelled the action.
+ * @param command(QStringList): A specific command
+ */
+void BrainExtraction::runCommand(const QStringList &command) 
+{
     if (m_cancelRequested) {
         throw std::runtime_error("Brain extraction cancelled by user");
     }
@@ -27,8 +45,19 @@ void BrainExtraction::runCommand(const QStringList &command) {
     }
 }
 
-QString BrainExtraction::run(const QString &imgPath, const QString &prefix) {
+/**
+ * @brief Performs the brain extraction on 3D image. Composed by a sequence of anima commands. Store
+ * all intermediate results in the temporary directory
+ * @param imgPath(QString): Input path
+ * @param prefix(QString): Composed of the temporary folder path and the input file’s base name
+ * without its extension
+ * @return (QString): Path of the brain extracted image
+ */
+QString BrainExtraction::run(const QString &imgPath, const QString &prefix) 
+{
     try {
+        QElapsedTimer timer;
+        timer.start();
         emit progress(0.0f, "Starting brain extraction");
 
         QString brainMask = prefix + "_brainMask.nii.gz";
@@ -43,6 +72,10 @@ QString BrainExtraction::run(const QString &imgPath, const QString &prefix) {
         command += m_pyramidOption;
         runCommand(command);
 
+        //ProgressManager::instance().report(0, 41, 7, new QString("Performing brain extraction"));
+
+        qDebug() << "Rigid registration completed in" << timer.elapsed() / 1000.0 << "seconds";
+
         // --- Affine registration ---
         emit progress(0.2f, "Affine registration");
         command.clear();
@@ -53,6 +86,10 @@ QString BrainExtraction::run(const QString &imgPath, const QString &prefix) {
         command += m_pyramidOption;
         runCommand(command);
 
+        //ProgressManager::instance().report(0, 41, 18);
+
+        qDebug() << "Affine registration completed in" << timer.elapsed() / 1000.0 << "seconds";
+
         // --- Base crop mask ---
         emit progress(0.3f, "Creating base crop mask");
         command.clear();
@@ -61,12 +98,20 @@ QString BrainExtraction::run(const QString &imgPath, const QString &prefix) {
                 << "-o" << (prefix + "_baseCropMask.nrrd");
         runCommand(command);
 
+        //ProgressManager::instance().report(0, 41, 19);
+
+        qDebug() << "Base crop mask created in" << timer.elapsed() / 1000.0 << "seconds";
+
         // --- Transform serie ---
         emit progress(0.4f, "Generating transform series");
         command.clear();
         command << "animaTransformSerieXmlGenerator"
                 << "-i" << (prefix + "_aff_tr.txt") << "-o" << (prefix + "_aff_tr.xml");
         runCommand(command);
+
+        //ProgressManager::instance().report(0, 41, 20);
+
+        qDebug() << "Transform series generated in" << timer.elapsed() / 1000.0 << "seconds";
 
         // --- Apply transform ---
         emit progress(0.5f, "Applying transform");
@@ -76,6 +121,10 @@ QString BrainExtraction::run(const QString &imgPath, const QString &prefix) {
                 << "-g" << imgPath << "-o" << (prefix + "_cropMask.nrrd") << "-n" << "nearest";
         runCommand(command);
 
+        //ProgressManager::instance().report(0, 41, 21);
+
+        qDebug() << "Transform applied in" << timer.elapsed() / 1000.0 << "seconds";
+
         // --- Mask image ---
         emit progress(0.6f, "Masking image");
         command.clear();
@@ -83,6 +132,10 @@ QString BrainExtraction::run(const QString &imgPath, const QString &prefix) {
                 << "-i" << imgPath << "-m" << (prefix + "_cropMask.nrrd") << "-o"
                 << (prefix + "_c.nrrd");
         runCommand(command);
+
+        //ProgressManager::instance().report(0, 41, 22);
+
+        qDebug() << "Image masked in" << timer.elapsed() / 1000.0 << "seconds";
 
         // --- Dense registration ---
         emit progress(0.7f, "Dense registration");
@@ -94,6 +147,10 @@ QString BrainExtraction::run(const QString &imgPath, const QString &prefix) {
         command += m_pyramidOption;
         runCommand(command);
 
+        //ProgressManager::instance().report(0, 41, 97);
+
+        qDebug() << "Dense registration completed in" << timer.elapsed() / 1000.0 << "seconds";
+
         // --- Transform serie (non-linear) ---
         emit progress(0.8f, "Generating non-linear transform");
         command.clear();
@@ -101,6 +158,10 @@ QString BrainExtraction::run(const QString &imgPath, const QString &prefix) {
                 << "-i" << (prefix + "_aff_tr.txt") << "-i" << (prefix + "_nl_tr.nrrd") << "-o"
                 << (prefix + "_nl_tr.xml");
         runCommand(command);
+
+        //ProgressManager::instance().report(0, 41, 98);
+
+        qDebug() << "Non-linear transform generated in" << timer.elapsed() / 1000.0 << "seconds";
 
         // --- Apply ICC mask ---
         emit progress(0.9f, "Applying ICC mask");
@@ -110,12 +171,20 @@ QString BrainExtraction::run(const QString &imgPath, const QString &prefix) {
                 << (prefix + "_rough_brainMask.nrrd") << "-n" << "nearest";
         runCommand(command);
 
+        //ProgressManager::instance().report(0, 41, 99);
+
+        qDebug() << "ICC mask applied in" << timer.elapsed() / 1000.0 << "seconds";
+
         // --- Final mask ---
         command.clear();
         command << "animaMaskImage"
                 << "-i" << imgPath << "-m" << (prefix + "_rough_brainMask.nrrd") << "-o"
                 << (prefix + "_rough_masked.nrrd");
         runCommand(command);
+
+        //ProgressManager::instance().report(0, 41, 100);
+
+        qDebug() << "Final mask created in" << timer.elapsed() / 1000.0 << "seconds";
 
         // --- Convert outputs ---
         emit progress(0.95f, "Converting outputs");
@@ -124,12 +193,14 @@ QString BrainExtraction::run(const QString &imgPath, const QString &prefix) {
                 << "-i" << (prefix + "_rough_masked.nrrd") << "-o" << maskedBrain;
         runCommand(command);
 
+        qDebug() << "Outputs converted in" << timer.elapsed() / 1000.0 << "seconds";
+
         emit progress(1.0f, "Brain extraction finished");
         emit finished(maskedBrain);
 
         return maskedBrain;
     } catch (const std::exception &e) {
-        emit error(e.what());
-        return {};
+        qDebug() << "Brain extraction failed:" << e.what();
+        throw std::runtime_error(std::string("Brain extraction failed: ") + e.what());
     }
 }

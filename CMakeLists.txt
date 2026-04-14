@@ -24,9 +24,22 @@ set(CMAKE_AUTOUIC ON)
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Concurrent)
 qt_standard_project_setup()
 
-# --- Recherche des dépendances compilées par le Superprojet ---
-# Au lieu de FetchContent, on utilise find_package ou find_library
-# car le Superprojet les a déjà buildées pour nous.
+if(MSVC)
+    string(REPLACE "/ZI" "/Zi" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    string(REPLACE "/ZI" "/Zi" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+    string(REPLACE "/ZI" "/Zi" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+
+    add_compile_options(/Zm200 /bigobj)
+
+    add_compile_options(/O2 /arch:AVX2 /Oi /Ot /GL)
+    add_link_options(/LTCG)
+endif()
+
+if(CMAKE_GENERATOR MATCHES "^Visual Studio")
+    file(WRITE "${CMAKE_BINARY_DIR}/Directory.Build.rsp" "-m -graphBuild:true -p:UseMultiToolTask=true -nodeReuse:false -terminalLogger:auto")
+    file(WRITE "${CMAKE_BINARY_DIR}/Directory.Build.props" "<Project></Project>")
+    file(WRITE "${CMAKE_BINARY_DIR}/Directory.Build.targets" "<Project></Project>")
+endif()
 
 # 1. Eigen
 
@@ -76,27 +89,61 @@ set(CPPWINRT_SYSTEM_VERSION ${CPPWINRT_VERSION} CACHE STRING "System version of 
 set(CPP_WINRT_VERSION ${CPPWINRT_VERSION}) # Parfois requis par certains scripts
 set(WIN_APP_SDK_VERSION "1.8.251106002" CACHE STRING "Version of Windows App SDK")
 
-include(FetchContent)
-FetchContent_Declare(
-    NuGetCMakePackage
-    GIT_REPOSITORY https://github.com/mschofie/NuGetCMakePackage
-    GIT_TAG b13e013481605d134f498fd9fc3a123c416da197
-)
-FetchContent_MakeAvailable(NuGetCMakePackage)
+#include(FetchContent)
+#FetchContent_Declare(
+#    NuGetCMakePackage
+#    GIT_REPOSITORY https://github.com/mschofie/NuGetCMakePackage
+#    GIT_TAG b13e013481605d134f498fd9fc3a123c416da197
+#)
+#FetchContent_Declare(
+#    Anima
+#    URL ${ANIMA_URL}
+#    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+#)
+#
+#FetchContent_MakeAvailable(Anima)
 
-add_nuget_packages(
-    PACKAGES
-        Microsoft.Windows.CppWinRT 2.0.250303.1
-        Microsoft.ML.OnnxRuntime.DirectML 1.17.1
-        Microsoft.Windows.ImplementationLibrary 1.0.250325.1
-        Microsoft.WindowsAppSDK.Foundation 1.8.251104000
-        Microsoft.WindowsAppSDK.InteractiveExperiences 1.8.251104001
-        Microsoft.WindowsAppSDK.ML 1.8.2109
-        Microsoft.WindowsAppSDK.Runtime 1.8.251106002
-)
+set(ANIMA_FILES_TO_COPY "")
+foreach(TOOL ${ANIMA_REQUIRED_TOOLS})
+    if(WIN32)
+        set(BIN_PATH "${anima_SOURCE_DIR}/${TOOL}.exe")
+    else()
+        set(BIN_PATH "${anima_SOURCE_DIR}/${TOOL}")
+    endif()
+    
+    list(APPEND ANIMA_FILES_TO_COPY "${BIN_PATH}")
+endforeach()
 
-find_package(Microsoft.Windows.ImplementationLibrary CONFIG REQUIRED)
-find_package(Microsoft.WindowsAppSDK.ML CONFIG REQUIRED)
+set(ANIMA_RUNTIME_DESTINATION "${CMAKE_BINARY_DIR}/${ANIMA_REL_PATH}")
+file(MAKE_DIRECTORY "${ANIMA_RUNTIME_DESTINATION}")
+
+foreach(FILE_PATH ${ANIMA_FILES_TO_COPY})
+    if(EXISTS "${FILE_PATH}")
+        file(COPY "${FILE_PATH}" DESTINATION "${ANIMA_RUNTIME_DESTINATION}")
+    else()
+        message(WARNING "ANIMA binary not found at path : ${FILE_PATH}")
+    endif()
+endforeach()
+
+
+# Adding specific dependencies depending on the operating system
+#if(WIN32)
+#    FetchContent_MakeAvailable(NuGetCMakePackage)
+#
+#add_nuget_packages(
+#    PACKAGES
+#        Microsoft.Windows.CppWinRT 2.0.250303.1
+#        Microsoft.ML.OnnxRuntime.DirectML 1.17.1
+#        Microsoft.Windows.ImplementationLibrary 1.0.250325.1
+#        Microsoft.WindowsAppSDK.Foundation 1.8.251104000
+#        Microsoft.WindowsAppSDK.InteractiveExperiences 1.8.251104001
+#        Microsoft.WindowsAppSDK.ML 1.8.2109
+#        Microsoft.WindowsAppSDK.Runtime 1.8.251106002
+#)
+#endif()
+#
+#find_package(Microsoft.Windows.ImplementationLibrary CONFIG REQUIRED)
+#find_package(Microsoft.WindowsAppSDK.ML CONFIG REQUIRED)
 
 # --- Definitions & Configuration ---
 set(CORE "core")

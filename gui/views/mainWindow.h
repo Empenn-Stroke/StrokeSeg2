@@ -1,5 +1,6 @@
 #pragma once
 #ifndef MAINWINDOW_H
+#define MAINWINDOW_H
 
 #include <QMainWindow>
 #include <QGraphicsDropShadowEffect>
@@ -24,11 +25,12 @@
 #include <QFormLayout>
 #include <QStackedWidget>
 #include <QPointer>
+#include <QTimer>
 
-#include "managers/configmanager.h"
+#include <managers/configmanager.h>
 #include "guideWindow.h"
 #include "aboutWindow.h"
-#include "modelManager.h"
+#include "models/modelManager.h"
 #include "warningWindow.h"
 
 class MainWindow : public QMainWindow {
@@ -86,6 +88,8 @@ private:
     int realToSliderValue(double realValue);
     QString formatThreshold(double v);
 
+    void setInputsEnabled(bool enabled);
+
     void openGuide();
     void openAbout();
     void openModelManager();
@@ -96,6 +100,8 @@ private:
     void loadSettings();
 
     void closeEvent(QCloseEvent *event) override;
+
+    void onPipelineFinished(bool success, QString message, QString finalPath);
 
   public slots:
     void refreshModelsList();

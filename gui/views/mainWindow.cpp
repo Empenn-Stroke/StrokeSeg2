@@ -1,20 +1,23 @@
 #include "mainWindow.h"
 
-#include <QIcon>
 #include <algorithm>
-#include <QSettings>
-#include <QStandardPaths>
+#include <QProgressBar>
+
+#include <QDebug>
+#include <QDesktopServices>
 #include <QDragEnterEvent>
 #include <QDropEvent>
+#include <QIcon>
+#include <QMessageBox>
 #include <QMimeData>
-#include <QDebug>
-#include <QtConcurrent>
 #include <QMovie>
-#include <QDesktopServices>
+#include <QSettings>
+#include <QStandardPaths>
+#include <QtConcurrent>
 
-#include <../core/inference/inferenceengine.h>
-
-#include <utils/path.h>
+#include <workers/pipelineWorker.h>
+#include <utils/env_path.h>
+#include <managers/progressManager.h>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -23,7 +26,7 @@
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     setWindowTitle("StrokeSeg2");
-    setWindowIcon(QIcon(":/gui/ressources/StrokeSeg2.ico"));
+    setWindowIcon(QIcon(":/gui/resources/StrokeSeg2.ico"));
     resize(1280, 720);
 
     setWindowFlags(Qt::FramelessWindowHint);
@@ -172,7 +175,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     // Model
     m_model = new QComboBox(formParameters);
-    QDir modelsDir = QDir("C:/ProgramData/StrokeSeg/Models");
+    QDir modelsDir = Paths::modelDir();
     QStringList entries = modelsDir.entryList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
 
     for (const QString &entry : entries) {
@@ -290,7 +293,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     // Icon
     QLabel *iconLabel = new QLabel(m_fileButton);
-    QPixmap pix(":/gui/ressources/files.png");
+    QPixmap pix(":/gui/resources/files.png");
     iconLabel->setPixmap(pix.scaled(80, 80, Qt::KeepAspectRatio, Qt::SmoothTransformation));
     iconLabel->setAlignment(Qt::AlignCenter);
     iconLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
@@ -338,13 +341,54 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     QWidget *loadingPage = new QWidget();
     QVBoxLayout *loadingLayout = new QVBoxLayout(loadingPage);
+    QWidget *barContainer = new QWidget(loadingPage);
+    QHBoxLayout *barLayout = new QHBoxLayout(barContainer);
+    barLayout->setContentsMargins(0, 0, 0, 0);
+    barLayout->setSpacing(10);
+
     QLabel *spinnerLabel = new QLabel(loadingPage);
-    QMovie *movie = new QMovie(":/gui/ressources/infinite-spinner-optimized.gif");
-    movie->start();
+    QMovie *movie = new QMovie(":/gui/resources/infinite-spinner-optimized.gif");
     spinnerLabel->setMovie(movie);
-    loadingLayout->addStretch();
-    loadingLayout->addWidget(spinnerLabel, 0, Qt::AlignHCenter);
-    loadingLayout->addStretch();
+    spinnerLabel->setAlignment(Qt::AlignCenter);
+    movie->start();
+
+    QProgressBar *progressBar = new QProgressBar(barContainer);
+    progressBar->setObjectName("progressBar");
+    progressBar->setRange(0, 100);
+    progressBar->setValue(0);
+    progressBar->setFixedSize(350, 3);
+    progressBar->setTextVisible(false);
+
+    QLabel *percentLabel = new QLabel("0%", barContainer);
+    percentLabel->setObjectName("percentLabel");
+    percentLabel->setFixedWidth(45);
+    percentLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+
+    barLayout->addSpacing(45);
+    barLayout->addWidget(progressBar);
+    barLayout->addWidget(percentLabel);
+
+    barContainer->setFixedSize(barLayout->sizeHint().width(), 20);
+
+    QLabel *statusLabel = new QLabel("Initializing...", loadingPage);
+    statusLabel->setObjectName("statusLabel");
+    statusLabel->setFixedWidth(400);
+    statusLabel->setAlignment(Qt::AlignCenter);
+
+    QPushButton *cancelBtn = new QPushButton("Cancel", loadingPage);
+    cancelBtn->setObjectName("cancelBtn");
+    cancelBtn->setFixedWidth(120);
+    cancelBtn->setCursor(Qt::PointingHandCursor);
+
+    loadingLayout->addStretch(2);
+    loadingLayout->addWidget(spinnerLabel, 0, Qt::AlignCenter);
+    loadingLayout->addSpacing(30);
+    loadingLayout->addWidget(barContainer, 0, Qt::AlignCenter);
+    loadingLayout->addSpacing(10);
+    loadingLayout->addWidget(statusLabel, 0, Qt::AlignCenter);
+    loadingLayout->addSpacing(20);
+    loadingLayout->addWidget(cancelBtn, 0, Qt::AlignCenter);
+    loadingLayout->addStretch(3);
 
     // ---------------- MAIN AREA ASSEMBLY ----------------
 
@@ -431,6 +475,19 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     
     connect(m_mode, &QComboBox::currentIndexChanged, this, [this, thresholdLabel](int index) {
         m_formLayout->setRowVisible(thresholdLabel, index != 1);
+    });
+
+    connect(&ProgressManager::instance(), &ProgressManager::progressUpdated, this,
+            [progressBar, percentLabel](int value) {
+                progressBar->setValue(value);
+                percentLabel->setText(QString::number(value) + "%");
+            });
+
+    connect(&ProgressManager::instance(), &ProgressManager::progressStatusChanged, statusLabel,
+            &QLabel::setText);
+
+    connect(cancelBtn, &QPushButton::clicked, this, [this]() {
+        ProgressManager::instance().requestInterruption();
     });
 
     loadSettings();
@@ -566,7 +623,7 @@ void MainWindow::refreshModelsList() {
     QString currentModel = m_model->currentText();
     m_model->clear();
 
-    QDir modelsDir("C:/ProgramData/StrokeSeg/Models");
+    QDir modelsDir("C:/ProgramData/StrokeSeg/Model");
     QStringList entries = modelsDir.entryList(QDir::Files | QDir::NoDotAndDotDot);
 
     for (const QString &entry : entries) {
@@ -606,12 +663,30 @@ QString MainWindow::formatThreshold(double v) {
     return QString::number(v, 'f', 2);
 }
 
+void MainWindow::setInputsEnabled(bool enabled) {
+    m_suffix->setEnabled(enabled);
+    m_destination->setEnabled(enabled);
+    m_destinationButton->setEnabled(enabled);
+    m_model->setEnabled(enabled);
+    m_toggleView->setEnabled(enabled);
+    m_toggleOpenFolder->setEnabled(enabled);
+    m_toggleOutput->setEnabled(enabled);
+    m_skipBrainExtract->setEnabled(enabled);
+    m_savePMap->setEnabled(enabled);
+    m_savePreprocessing->setEnabled(enabled);
+    m_mode->setEnabled(enabled);
+    m_thresholdSlider->setEnabled(enabled);
+    m_threshold->setEnabled(enabled);
+    m_runButton->setEnabled(enabled);
+    m_fileButton->setEnabled(enabled);
+}
+
 void MainWindow::Process() {
 
     if (*m_fileChosen == "Choose File")
         return;
 
-    if (m_destination->text() == "") {
+    if (m_destination->text().isEmpty()) {
         m_consoleLabel->setText("Please select an output folder.");
         return;
     }
@@ -619,54 +694,61 @@ void MainWindow::Process() {
     m_stackedArea->setCurrentIndex(1);
 
     m_runButton->setEnabled(false);
-    m_consoleLabel->setText("Running inference...");
 
-    QString modelPath = "C:/ProgramData/StrokeSeg/Models/" + m_model->currentText() + ".onnx";
-    QString imagePath = *m_fileChosen;
-    QString destinationPath =
-        m_destination->text() + "/" + QFileInfo(*m_fileChosen).fileName() + m_suffix->text();
+    PipelineParams params;
+    params.t1Path = *m_fileChosen;
+    params.outputDir = m_destination->text();
+    params.modelPath = Paths::modelDir() + m_model->currentText() + ".onnx";
+    params.suffix = m_suffix->text();
+    params.savePMap = m_savePMap->isChecked();
+    params.savePreproc = m_savePreprocessing->isChecked();
+    params.skipBrainExtract = m_skipBrainExtract->isChecked();
 
-    // Start the computation in another thread
-    QFuture<std::vector<float>> worker = QtConcurrent::run([modelPath, imagePath,destinationPath]() {
-        InferenceEngine engine;
-        return engine.RunInference(modelPath, imagePath, destinationPath);
-    });
+    params.threshold = m_threshold->text().replace(" ", "").toFloat();
 
-    // Watch for the end of the computation
-    auto watcher = new QFutureWatcher<std::vector<float>>();
-    connect(watcher, &QFutureWatcher<std::vector<float>>::finished, this, [this, watcher,destinationPath]() {
-        auto output = watcher->result();
-        if (output.empty()) {
-            m_consoleLabel->setText("Failure : no data out");
-        } else {
-            m_consoleLabel->setText(QString("Success! Output size = %1").arg(output.size()));
+    setInputsEnabled(false);
+    m_stackedArea->setCurrentIndex(1);
+    m_consoleLabel->setText("Starting pipeline...");
 
-            if (m_toggleOpenFolder->isChecked()) {
-                QDesktopServices::openUrl(QUrl::fromLocalFile(m_destination->text()));
-            }
+    QThread *thread = new QThread;
+    PipelineWorker *worker = new PipelineWorker(params);
+    worker->moveToThread(thread);
 
-            // ITK
-            if (m_toggleView->isChecked()) {
-                QStringList arguments;
-                arguments << "-g" << destinationPath;
+    connect(thread, &QThread::started, worker, &PipelineWorker::process);
 
-                bool started = QProcess::startDetached("itksnap", arguments);
+    connect(worker, &PipelineWorker::statusChanged, this,
+            [this](QString msg) { m_consoleLabel->setText(msg); });
 
-                if (!started) {
-                    QString commonPath = "C:/Program Files/ITK-SNAP 4.4/bin/ITK-SNAP.exe";
-                    if (!QProcess::startDetached(commonPath, arguments)) {
-                        m_consoleLabel->setText("Success, but ITK-SNAP not found.");
-                    }
-                }
-            }
+    connect(worker, &PipelineWorker::finished, this, &MainWindow::onPipelineFinished);
 
+    connect(worker, &QObject::destroyed, thread, &QThread::quit);
+    connect(thread, &QThread::finished, thread, &QObject::deleteLater);
+
+    thread->start();
+}
+
+void MainWindow::onPipelineFinished(bool success, QString message, QString finalPath) {
+    setInputsEnabled(true);
+    m_stackedArea->setCurrentIndex(0);
+    m_consoleLabel->setText(message);
+
+    sender()->deleteLater();
+
+    if (success) {
+        if (m_toggleOpenFolder->isChecked()) {
+            QDesktopServices::openUrl(QUrl::fromLocalFile(m_destination->text()));
         }
 
-        m_stackedArea->setCurrentIndex(0);
-        m_runButton->setEnabled(true);
-        watcher->deleteLater();
-    });
-    watcher->setFuture(worker);
+        if (m_toggleView->isChecked() && !finalPath.isEmpty()) {
+            QStringList args;
+            args << "-g" << finalPath;
+            if (!QProcess::startDetached("itksnap", args)) {
+                QProcess::startDetached("C:/Program Files/ITK-SNAP 4.4/bin/ITK-SNAP.exe", args);
+            }
+        }
+    } else {
+        QMessageBox::critical(this, "Pipeline Error", message);
+    }
 }
 
 void MainWindow::saveSettings() {

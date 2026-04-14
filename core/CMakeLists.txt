@@ -1,32 +1,49 @@
-add_library(${CORE}
-    "utils/animawrapper.h"              "utils/animawrapper.cpp" 
-    "utils/path.h" 
+set(HEADERS 
+    "utils/animawrapper.h" 
+    "utils/env_path.h" 
     "utils/str.h" 
-    "preprocessing/preprocessor.h"      "preprocessing/preprocessor.cpp" 
-    "utils/NiftiVolume.h"               "utils/NiftiVolume.cpp" 
-    "inference/inferenceengine.h"       "inference/inferenceengine.cpp"
-    "preprocessing/resampling.h"        "preprocessing/resampling.cpp"
-    "preprocessing/brainextraction.h"   "preprocessing/brainextraction.cpp"
-    "managers/configmanager.h"          "managers/configmanager.cpp"
+    "utils/NiftiVolume.h" 
+    "utils/log.h"
+    "preprocessing/preprocessor.h" 
+    "preprocessing/resampling.h" 
+    "preprocessing/brainextraction.h"
+    "postprocessing/postprocessor.h" 
+    "managers/configmanager.h" 
     "managers/appconfig.h"
-    "preprocessing/preprocessor.h"      "preprocessing/preprocessor.cpp" 
-    "utils/NiftiVolume.h"               "utils/NiftiVolume.cpp"
-)
+    "managers/progressManager.h"
+    "inference/inference.h")
+
+set(COMMON_SOURCES 
+    "utils/animawrapper.cpp" 
+    "utils/NiftiVolume.cpp" 
+    "utils/log.cpp"
+    "preprocessing/preprocessor.cpp" 
+    "preprocessing/resampling.cpp" 
+    "preprocessing/brainextraction.cpp"
+    "postprocessing/postprocessor.cpp" 
+    "managers/configmanager.cpp" 
+    "managers/progressManager.cpp"
+    "inference/inference.cpp"
+    "inference/inference_internal.h")
+
+
+if(WIN32)
+    set(OS_SOURCES "inference/Win/inference.cpp" "inference/Win/dml_ep_handler.cpp")
+    set(OS_HEADERS "inference/Win/dml_ep_handler.h")
+elseif(APPLE)
+    set(OS_SOURCES "inference/Mac/inference.cpp")
+else()
+    set(OS_SOURCES "inference/Linux/inference.cpp")
+endif()
+
+add_library(${CORE})
+
+target_sources(${CORE} PRIVATE ${HEADERS} ${OS_HEADERS} ${COMMON_SOURCES} ${OS_SOURCES})
 
 target_compile_features(${CORE} PUBLIC cxx_std_20)
 
-set(ML_PACKAGE_ROOT "${CMAKE_BINARY_DIR}/__nuget/Microsoft.WindowsAppSDK.ML.1.8.2109")
-set(ML_LIB_PATH "${ML_PACKAGE_ROOT}/lib/native/x64")
-
-set(ONNX_PATH "${CMAKE_BINARY_DIR}/__nuget/Microsoft.ML.OnnxRuntime.DirectML.1.17.1")
-set(DML_PATH  "${CMAKE_BINARY_DIR}/__nuget/Microsoft.AI.DirectML.1.13.1")
-set(ZLIB_DLL "${OUT_DIR}/bin/zlib/bin/zd.dll")
-
-set(ONNX_INCLUDE_DIR "${ONNX_PATH}/build/native/include")
-set(DML_INCLUDE_DIR  "${DML_PATH}/include")
-
-set(ONNX_LIB_DIR "${ONNX_PATH}/runtimes/win-x64/native")
-set(DML_LIB_DIR "${DML_PATH}/bin/x64-win")
+set(ML_PACKAGE_ROOT "${CMAKE_BINARY_DIR}/__nuget/Microsoft.WindowsAppSDK.ML.1.8.2141")
+set(ML_DLL_PATH "${ML_PACKAGE_ROOT}/runtimes-framework/win-x64/native")
 
 target_include_directories(${CORE} PUBLIC
     ${CMAKE_SOURCE_DIR}/${CORE}/
@@ -41,17 +58,18 @@ target_link_libraries(${CORE} PUBLIC
     "${ZLIB_LIBRARY}"
     ${NIFTI_LIBS}
     Qt6::Core
-    Eigen3::Eigen
-    "${ONNX_LIB_DIR}/onnxruntime.lib"
-    "${DML_LIB_DIR}/DirectML.lib"
+    eigen
+    WindowsML::Api 
+    WindowsML::OnnxRuntime
     Configuration
 )
 
 add_custom_command(TARGET ${CORE} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${ONNX_LIB_DIR}/onnxruntime.dll"
-    "${DML_LIB_DIR}/DirectML.dll"
-    "${ZLIB_DLL}"
+    "${ML_DLL_PATH}/onnxruntime.dll"
+    "${ML_DLL_PATH}/onnxruntime_providers_shared.dll"
+    "${ML_DLL_PATH}/DirectML.dll"
+    "${ML_DLL_PATH}/Microsoft.Windows.AI.MachineLearning.dll"
     $<TARGET_FILE_DIR:strokeseg2-app>
 )
 

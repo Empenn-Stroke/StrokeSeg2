@@ -5,6 +5,10 @@
 #include <utility>
 #include <format>
 
+/*
+ * TODO : update the different texts to fit the new version and the new team members
+ */
+
 
 static QString developers = R"DEV(Alessandro Di Matteo (Department of Information Engineering, Computer Science and Mathematics, University of L'Aquila)
 Youwan Mahé (Neuroimaging : Methods and Applications, Siemens Healthineers)
