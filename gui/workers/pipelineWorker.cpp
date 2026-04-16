@@ -5,7 +5,7 @@
 #include <inference/inference.h>
 #include <managers/progressManager.h>
 
-void PipelineWorker::process() {
+int PipelineWorker::process() {
     try {
 
         ProgressManager::instance().reset();
@@ -132,12 +132,17 @@ void PipelineWorker::process() {
         }
 
         ProgressManager::instance().reset();
+
+        return 0;
     } catch (const std::runtime_error &e) {
         emit finished(false, QString("Error : %1").arg(e.what()), "");
+        return -1;
     } catch (const std::exception &e) {
         emit finished(false, QString("Fatal Error : %1").arg(e.what()), "");
+        return -1;
     } catch (...) {
         emit finished(false, "Unknown error occured during pipeline.", "");
+        return -1;
     }
 }
 

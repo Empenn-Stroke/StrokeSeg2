@@ -14,8 +14,6 @@
 #include <QSettings>
 #include <QStandardPaths>
 #include <QtConcurrent>
-
-#include <workers/pipelineWorker.h>
 #include <utils/env_path.h>
 #include <managers/progressManager.h>
 
@@ -23,7 +21,8 @@
 #include <windows.h>
 #endif
 
-MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
+MainWindow::MainWindow(const PipelineParams &opts, QWidget *parent)
+    : QMainWindow(parent), m_params(opts) {
 
     setWindowTitle("StrokeSeg2");
     setWindowIcon(QIcon(":/gui/resources/StrokeSeg2.ico"));
@@ -33,16 +32,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     setAttribute(Qt::WA_TranslucentBackground);
 
     QSettings::setDefaultFormat(QSettings::IniFormat);
-    
+
     // Warning window
     QSettings settings;
-    showWarning = settings.value("showWarning", true).toBool(); 
+    showWarning = settings.value("showWarning", true).toBool();
     if (showWarning) {
         warning = new WarningWindow();
         warning->exec();
     }
-
-    
 
     // =========================================================
     //                  GLOBAL STRUCTURE
@@ -134,7 +131,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     QVBoxLayout *leftLayout = new QVBoxLayout(leftColumn);
     leftLayout->setContentsMargins(10, 10, 10, 10);
 
-
     // ---------------- FORM ----------------
 
     QWidget *formParameters = new QWidget(leftColumn);
@@ -219,12 +215,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     thresholdLayout->addWidget(m_thresholdSlider);
     thresholdLayout->setSpacing(8);
 
-
     // Assembly
     m_formLayout->addRow("Suffix :", m_suffix);
 
-    QLabel *destionationLabel = new QLabel("Destination :", formParameters);
-    m_formLayout->addRow(destionationLabel, destinationContainer);
+    QLabel *destinationLabel = new QLabel("Destination :", formParameters);
+    m_formLayout->addRow(destinationLabel, destinationContainer);
 
     m_formLayout->addRow("Model :", m_model);
     m_formLayout->addRow("Open viewer :", m_toggleView);
@@ -238,7 +233,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     QLabel *thresholdLabel = new QLabel("Threshold :", formParameters);
     m_formLayout->addRow(thresholdLabel, thresholdContainer);
 
-
     // ---------------- BOTTOM BUTTONS ----------------
 
     QWidget *bottomBtns = new QWidget(leftColumn);
@@ -249,9 +243,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     m_modelManager = new QPushButton("Model manager");
     m_resetSettings = new QPushButton("Reset settings");
+    m_terminalButton = new QPushButton("Show Console");
 
     bottomLayout->addWidget(m_modelManager);
     bottomLayout->addWidget(m_resetSettings);
+    bottomLayout->addWidget(m_terminalButton);
 
     leftLayout->addSpacing(10);
     leftLayout->addWidget(formParameters, 0, Qt::AlignTop);
@@ -270,7 +266,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     mainAreaLayout->setContentsMargins(0, 0, 0, 0);
     mainAreaLayout->setSpacing(20);
 
-    // Stacked area 
+    // Stacked area
     m_stackedArea = new QStackedWidget(mainArea);
 
     // ---------------- DEFAULT PAGE ----------------
@@ -285,7 +281,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     m_fileButton->installEventFilter(this);
     m_fileButton->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-    // Icon and label layout 
+    // Icon and label layout
     QVBoxLayout *buttonLayout = new QVBoxLayout(m_fileButton);
     buttonLayout->setContentsMargins(0, 0, 0, 0);
     buttonLayout->setSpacing(20);
@@ -322,7 +318,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     consoleLayout->setContentsMargins(0, 10, 8, 0);
     consoleLayout->setSpacing(0);
     consoleLayout->setAlignment(Qt::AlignRight);
-
 
     m_consoleLabel = new QLabel(mainArea);
     m_consoleLabel->setObjectName("consoleLabel");
@@ -416,7 +411,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     connect(m_fileButton, &QToolButton::clicked, this, &MainWindow::chooseFile);
     connect(m_destinationButton, &QPushButton::clicked, this, &MainWindow::chooseDestination);
     connect(m_modelManager, &QPushButton::clicked, this, &MainWindow::openModelManager);
-    connect(m_resetSettings, &QPushButton::clicked, this, [this]() { 
+    connect(m_terminalButton, &QPushButton::clicked, this, &MainWindow::toggleConsole);
+    connect(m_resetSettings, &QPushButton::clicked, this, [this]() {
         m_suffix->setText("");
         m_destination->setText("");
         m_toggleView->setChecked(false);
@@ -438,26 +434,37 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
     connect(m_thresholdSlider, &QSlider::valueChanged, this, [this](int v) {
         double realVal = sliderValueToReal(v);
+        m_threshold->blockSignals(true);
         m_threshold->setText(formatThreshold(realVal));
+        m_threshold->blockSignals(false);
     });
 
     connect(m_threshold, &QLineEdit::textChanged, this, [this](const QString &text) {
         bool ok;
         double val = 0.0;
 
-        if (text == "1-10\u207B\u2075") val = 1.0 - 1e-5;
-        else if (text == "10\u207B\u2075") val = 1e-5;
-        else if (text == "1-10\u207B\u2074") val = 1.0 - 1e-4;
-        else if (text == "10\u207B\u2074") val = 1e-4;
+        if (text == "1-10\u207B\u2075") {
+            val = 1.0 - 1e-5;
+        }
+        else if (text == "10\u207B\u2075") {
+            val = 1e-5;
+        }
+        else if (text == "1-10\u207B\u2074") {
+            val = 1.0 - 1e-4;
+        }
+        else if (text == "10\u207B\u2074") {
+            val = 1e-4;
+        }
         else {
             val = text.toDouble(&ok);
-            if (!ok)
+            if (!ok) {
                 return;
+            }
         }
 
         int sliderVal = realToSliderValue(val);
 
-        if (sliderVal == m_thresholdSlider->value()) {
+        if (sliderVal != m_thresholdSlider->value()) {
             m_thresholdSlider->blockSignals(true);
             m_thresholdSlider->setValue(sliderVal);
             m_thresholdSlider->blockSignals(false);
@@ -472,7 +479,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
         QSettings settings;
         settings.setValue("showWarning", showWarning);
     });
-    
+
     connect(m_mode, &QComboBox::currentIndexChanged, this, [this, thresholdLabel](int index) {
         m_formLayout->setRowVisible(thresholdLabel, index != 1);
     });
@@ -486,11 +493,54 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     connect(&ProgressManager::instance(), &ProgressManager::progressStatusChanged, statusLabel,
             &QLabel::setText);
 
-    connect(cancelBtn, &QPushButton::clicked, this, [this]() {
-        ProgressManager::instance().requestInterruption();
-    });
+    connect(cancelBtn, &QPushButton::clicked, this,
+            [this]() { ProgressManager::instance().requestInterruption(); });
 
-    loadSettings();
+    // =========================================================
+    // 				   LOAD SETTINGS
+    // =========================================================
+
+    if (m_params.t1Path.isEmpty() && m_params.outputDir.isEmpty() && !m_params.gui) {
+        loadSettings();
+    }
+
+    if (!m_params.t1Path.isEmpty()) {
+        m_fileLabel->setText(QFileInfo(m_params.t1Path).fileName());
+        m_fileChosen = new QString(m_params.t1Path);
+    }
+
+    if (!m_params.outputDir.isEmpty()) {
+        m_destination->setText(m_params.outputDir);
+        m_destination->setCursorPosition(m_destination->text().length());
+    }
+
+    if (!m_params.suffix.isEmpty()) {
+        m_suffix->setText(m_params.suffix);
+    }
+
+    if (m_params.threshold > 0 && m_params.threshold != 0.5) {
+        m_threshold->setText(formatThreshold(m_params.threshold));
+        m_thresholdSlider->setValue(realToSliderValue(m_params.threshold));
+    }
+
+    if (m_params.savePMap) {
+        m_savePMap->setChecked(true);
+    }
+
+    if (m_params.savePreproc) {
+        m_savePreprocessing->setChecked(true);
+    }
+
+    if (m_params.skipBrainExtract) {
+        m_skipBrainExtract->setChecked(true);
+    }
+
+    if (!m_params.modelPath.isEmpty()) {
+        QString modelName = QFileInfo(m_params.modelPath).baseName();
+        int index = m_model->findText(modelName);
+        if (index != -1)
+            m_model->setCurrentIndex(index);
+    }
 }
 
 // =========================================================
@@ -637,28 +687,72 @@ void MainWindow::refreshModelsList() {
 
 
 double MainWindow::sliderValueToReal(int v) {
-    if (v <= 0)     return 1e-5;            if (v <= 8)     return 1e-4;        
-    if (v < 16)     return 1e-3;            if (v == 16)    return 0.01;
-    if (v >= 100)   return 1.0 - 1e-5;      if (v >= 92)    return 1.0 - 1e-4; 
-    if (v > 84)     return 1.0 - 1e-3;      if (v == 84)    return 0.99;
+    if (v <= 0) {
+        return 1e-5;
+    }
+    if (v <= 8) {
+        return 1e-4;
+    }
+    if (v < 16)  {
+        return 1e-3;
+    }
+    if (v == 16) {
+        return 0.01;
+    }
+    if (v >= 100) {
+        return 1.0 - 1e-5;
+    }
+    if (v >= 92) {
+        return 1.0 - 1e-4;
+    }
+    if (v > 84) {
+        return 1.0 - 1e-3;
+    }
+    if (v == 84) {
+        return 0.99;
+    }
 
-    double t = (v - 10) / 80.0;
-    return 0.01 + t * (0.99 - 0.01);
+    double t = (v - 16) / 80.0;
+    return 0.001 + t * (0.999 - 0.001);
 }
 
 int MainWindow::realToSliderValue(double v) {
-    if (v <= 1e-5)          return 0;       if (v <= 1e-4)          return 8;
-    if (v <= 1e-3)          return 16;      if (v >= 1.0 - 1e-5)    return 100;
-    if (v >= 1.0 - 1e-4)    return 92;      if (v >= 1.0 - 1e-3)    return 84;
+    if (v <= 1e-5) {
+        return 0;
+    }
+    if (v <= 1e-4) {
+        return 8;
+    }
+    if (v <= 1e-3) {
+        return 16;
+    }
+    if (v >= 1.0 - 1e-5) {
+        return 100;
+    }
+    if (v >= 1.0 - 1e-4) {
+        return 92;
+    }
+    if (v >= 1.0 - 1e-3) {
+        return 84;
+    }
 
-    double t = (v - 0.01) / (0.99 - 0.01);
-    return 32 + int(std::round(t * 68));
+    double t = (v - 0.001) / (0.999 - 0.001);
+    return 16 + int(std::round(t * 68));
 }
 
 QString MainWindow::formatThreshold(double v) {
-    if (v <= 1e-5)          return "10\u207B\u2075";    if (v <= 1e-4)          return "10\u207B\u2074";
-    if (v <= 1e-3)          return "0.001";             if (v >= 1.0 - 1e-5)    return "1-10\u207B\u2075";
-    if (v >= 1.0 - 1e-4)    return "1-10\u207B\u2074";  if (v >= 1.0 - 1e-3)    return "0.999";
+    if (v <= 1e-5)          
+        return "10\u207B\u2075";    
+    if (v <= 1e-4)          
+        return "10\u207B\u2074";
+    if (v <= 1e-3)          
+        return "0.001";             
+    if (v >= 1.0 - 1e-5)    
+        return "1-10\u207B\u2075";
+    if (v >= 1.0 - 1e-4)    
+        return "1-10\u207B\u2074";  
+    if (v >= 1.0 - 1e-3)    
+        return "0.999";
 
     return QString::number(v, 'f', 2);
 }
@@ -695,23 +789,22 @@ void MainWindow::Process() {
 
     m_runButton->setEnabled(false);
 
-    PipelineParams params;
-    params.t1Path = *m_fileChosen;
-    params.outputDir = m_destination->text();
-    params.modelPath = Paths::modelDir() + m_model->currentText() + ".onnx";
-    params.suffix = m_suffix->text();
-    params.savePMap = m_savePMap->isChecked();
-    params.savePreproc = m_savePreprocessing->isChecked();
-    params.skipBrainExtract = m_skipBrainExtract->isChecked();
+    m_params.t1Path = *m_fileChosen;
+    m_params.outputDir = m_destination->text();
+    m_params.modelPath = Paths::modelDir() + m_model->currentText() + ".onnx";
+    m_params.suffix = m_suffix->text();
+    m_params.savePMap = m_savePMap->isChecked();
+    m_params.savePreproc = m_savePreprocessing->isChecked();
+    m_params.skipBrainExtract = m_skipBrainExtract->isChecked();
 
-    params.threshold = m_threshold->text().replace(" ", "").toFloat();
+    m_params.threshold = m_threshold->text().replace(" ", "").toFloat();
 
     setInputsEnabled(false);
     m_stackedArea->setCurrentIndex(1);
     m_consoleLabel->setText("Starting pipeline...");
 
     QThread *thread = new QThread;
-    PipelineWorker *worker = new PipelineWorker(params);
+    PipelineWorker *worker = new PipelineWorker(m_params);
     worker->moveToThread(thread);
 
     connect(thread, &QThread::started, worker, &PipelineWorker::process);
@@ -797,6 +890,26 @@ void MainWindow::loadSettings() {
     m_thresholdSlider->setValue(settings.value("thresholdSlider", 50).toInt());
 }
 
+void MainWindow::toggleConsole() {
+    HWND hwnd = GetConsoleWindow();
+
+    // Si la console n'existe pas encore (cas du double-clic), on la crée
+    if (hwnd == NULL) {
+        AllocConsole();
+        freopen("CONOUT$", "w", stdout);
+        freopen("CONOUT$", "w", stderr);
+        hwnd = GetConsoleWindow();
+    }
+
+    if (IsWindowVisible(hwnd)) {
+        ShowWindow(hwnd, SW_HIDE);
+        m_terminalButton->setText("Show Console");
+    } else {
+        ShowWindow(hwnd, SW_SHOW);
+        m_terminalButton->setText("Hide Console");
+    }
+}
+
 void MainWindow::closeEvent(QCloseEvent *event) {
 
     if (!modelManager.isNull()) {
@@ -811,10 +924,14 @@ void MainWindow::closeEvent(QCloseEvent *event) {
         about->close();
     }
 
-    saveSettings();
+    if (!m_params.gui) {
+        saveSettings();
+    }
     event->accept();
 }
 
 MainWindow::~MainWindow() {
-    saveSettings();
+    if (!m_params.gui) {
+        saveSettings();
+    }
 }

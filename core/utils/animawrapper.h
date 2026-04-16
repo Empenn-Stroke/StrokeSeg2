@@ -4,8 +4,8 @@
 #include <QStringList>
 #include <QtCore/QtGlobal>
 
-#ifndef CORE_UTILS_ANIMANWRAPPER_H
-#define CORE_UTILS_ANIMANWRAPPER_H
+#ifndef CORE_UTILS_ANIMAWRAPPER_H
+#define CORE_UTILS_ANIMAWRAPPER_H
 
 class AnimaWrapper : public QObject {
     Q_OBJECT
@@ -33,5 +33,4 @@ class AnimaWrapper : public QObject {
     void errorOccurred(const QString &error);
 };
 
-
-#endif
+#endif // CORE_UTILS_ANIMAWRAPPER_H
