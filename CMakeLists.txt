@@ -225,11 +225,20 @@ set_property(DIRECTORY APPEND PROPERTY VS_SOLUTION_ITEMS
 
 include(./Configuration.cmake)
 
-qt_add_executable(
-    ${PROJECT_NAME}
-    resources.qrc
-    main.cpp
-)
+if(WIN32)
+    add_executable(
+        ${PROJECT_NAME}
+        resources.qrc
+        main.cpp
+    )
+endif()
+
+if(MSVC)
+    set_target_properties(${PROJECT_NAME} PROPERTIES 
+        WIN32_EXECUTABLE TRUE
+        LINK_FLAGS "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup"
+    )
+endif()
 
 # TARGETS ##########################################################################################
 

@@ -16,6 +16,7 @@ struct PipelineParams {
     bool savePMap;
     bool savePreproc;
     bool skipBrainExtract;
+    bool gui;
 };
 
 class PipelineWorker : public QObject {
@@ -24,7 +25,7 @@ class PipelineWorker : public QObject {
     PipelineWorker(PipelineParams &p);
 
   public slots:
-    void process();
+    int process();
 
   signals:
     void statusChanged(QString message);

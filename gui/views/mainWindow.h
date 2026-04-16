@@ -1,4 +1,5 @@
 #pragma once
+#include <pipelineWorker.h>
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
@@ -30,14 +31,14 @@
 #include <managers/configmanager.h>
 #include "guideWindow.h"
 #include "aboutWindow.h"
-#include "models/modelManager.h"
+#include "modelManager.h"
 #include "warningWindow.h"
 
 class MainWindow : public QMainWindow {
 	Q_OBJECT
 
 public:
-    MainWindow(QWidget *parent=0);
+    explicit MainWindow(const PipelineParams &opts, QWidget *parent = 0);
     ~MainWindow();
 
 protected:
@@ -72,12 +73,15 @@ private:
 
     QPushButton *m_modelManager;
     QPushButton *m_resetSettings;
+    QPushButton *m_terminalButton;
 
     QPointer<GuideWindow> guide;
     QPointer<AboutWindow> about;
     QPointer<ModelManager> modelManager;
     WarningWindow *warning = nullptr;
     bool showWarning = true;
+
+    PipelineParams m_params;
 
 
   private slots:
@@ -98,6 +102,8 @@ private:
 
     void saveSettings();
     void loadSettings();
+
+    void toggleConsole();
 
     void closeEvent(QCloseEvent *event) override;
 

@@ -44,4 +44,8 @@ namespace Paths {
         return QDir(roaming()).filePath(app_name + "/config.ini");
     }
 
+    inline QString defaultOutputDir() {
+        return QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)).filePath(app_name);
+    }
+
 } // namespace Paths
