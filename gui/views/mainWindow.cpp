@@ -891,23 +891,34 @@ void MainWindow::loadSettings() {
 }
 
 void MainWindow::toggleConsole() {
+#ifdef Q_OS_WIN
     HWND hwnd = GetConsoleWindow();
 
-    // Si la console n'existe pas encore (cas du double-clic), on la crée
     if (hwnd == NULL) {
-        AllocConsole();
-        freopen("CONOUT$", "w", stdout);
-        freopen("CONOUT$", "w", stderr);
-        hwnd = GetConsoleWindow();
+        if (AllocConsole()) {
+            freopen("CONOUT$", "w", stdout);
+            freopen("CONOUT$", "w", stderr);
+            std::ios::sync_with_stdio();
+            hwnd = GetConsoleWindow();
+        }
     }
 
-    if (IsWindowVisible(hwnd)) {
-        ShowWindow(hwnd, SW_HIDE);
-        m_terminalButton->setText("Show Console");
-    } else {
-        ShowWindow(hwnd, SW_SHOW);
-        m_terminalButton->setText("Hide Console");
+    static bool isVisible = false;
+
+    if (hwnd) {
+        if (!isVisible) {
+            ShowWindow(hwnd, SW_SHOW);
+            SetForegroundWindow(hwnd);
+            m_terminalButton->setText("Hide Console");
+            isVisible = true;
+            qDebug() << "--- Console Session Started ---";
+        } else {
+            ShowWindow(hwnd, SW_HIDE);
+            m_terminalButton->setText("Show Console");
+            isVisible = false;
+        }
     }
+#endif
 }
 
 void MainWindow::closeEvent(QCloseEvent *event) {

@@ -14,7 +14,19 @@ void ensureConsole() {
     }
 }
 
+void myMessageOutput(QtMsgType type, const QMessageLogContext &context, const QString &msg) {
+    QByteArray localMsg = msg.toLocal8Bit();
+
+    fprintf(stdout, "%s\n", localMsg.constData());
+    fflush(stdout);
+
+    QString time = QDateTime::currentDateTime().toString("hh:mm:ss");
+
+    OutputDebugStringA(("[" + time + "] " + msg + "\n").toStdString().c_str());
+}
+
 int main(int argc, char *argv[]) {
+    qInstallMessageHandler(myMessageOutput);
 
     bool hasArgs = argc > 1;
 
