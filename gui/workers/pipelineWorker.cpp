@@ -110,8 +110,9 @@ int PipelineWorker::process() {
         QString fileName = QFileInfo(m_p.t1Path).baseName() + m_p.suffix + ".nii.gz";
         QString finalPath = m_p.outputDir + "/" + fileName;
 
+        // --- UPDATED: Pass 'finalPath' at the very end of this function call ---
         postproc.postprocess(inferenceResult.data, preprocResult, preprocResult.bbox, m_p.threshold,
-                             m_p.savePMap, m_p.outputDir, preprocResult.trsf_path);
+                             m_p.savePMap, m_p.outputDir, preprocResult.trsf_path, finalPath);
 
         QFile::remove(tmpInput);
         if (!m_p.savePreproc)

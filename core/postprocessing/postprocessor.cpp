@@ -211,6 +211,7 @@ namespace
                   << "-n" << "nearest";          // Permet d'avoir le masque binaire
 
         printAction("Applying inverse registration to patient space");
+        qDebug() << "DEBUG - applyArgs list contents:" << applyArgs;
         if (wrapper->run(applyArgs) != 0) {
             throw std::runtime_error("Inverse registration failed: " +
                                      wrapper->lastStderr().toStdString());
@@ -237,7 +238,8 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
                                                 const PreprocessedVolume &preproc_volume,
                                                 const std::array<std::array<int, 2>, 3> &bbox,
                                                 float segmentation_threshold, bool save_pmap,
-                                                QString dir, QString trsf_path) 
+                                                QString dir, QString trsf_path,
+                                                QString finalPath)
 {
 
     Eigen::Vector3f debug_spacing = preproc_volume.spacing;
@@ -322,7 +324,7 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
 
     // Copy save the data of the segmentation in MNI space, using the reference T1 header to ensure
     // correct orientation and spacing metadata.
-    NiftiVolume::saveNiftiWithReference(tmp_mni_path, segmentation_as_nifti, Paths::atlasDir() + "/Reference_T1.nii.gz");
+    NiftiVolume::saveNiftiWithReference(tmp_mni_path, segmentation_as_nifti, Paths::atlasDir() + "Reference_T1.nrrd");
 
     ProgressManager::instance().report(93, 7, 80);
 
@@ -335,8 +337,13 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
         ProgressManager::instance().report(93, 7, 70, new QString("Applying inverse registration to patient space"));
 
         printAction("Applying inverse registration (Anima)");
-        final_patient_path =
-            applyInverseRegistration(m_wrapper, tmp_mni_path, trsf_path, patient_ref_path);
+
+        final_patient_path = applyInverseRegistration(m_wrapper, tmp_mni_path, trsf_path, patient_ref_path);
+
+        if (QFile::exists(finalPath)) {
+            QFile::remove(finalPath);
+        }
+        QFile::rename(final_patient_path, finalPath);
 
         ProgressManager::instance().report(93, 7, 100);
     } catch (const std::exception &e) {

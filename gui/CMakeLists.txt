@@ -10,6 +10,8 @@ add_library(${GUI} STATIC
     "views/warningWindow.cpp"
     "views/modelManager.h"
     "views/modelManager.cpp"
+    "views/niftiViewerWindow.h"
+    "views/niftiViewerWindow.cpp"
     "workers/pipelineWorker.h"
     "workers/pipelineWorker.cpp")
 
