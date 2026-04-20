@@ -17,7 +17,7 @@ int PipelineWorker::process() {
         emit statusChanged("Initialisation des composants...");
 
         preprocessing::Resampling resampler;
-        BrainExtraction brainExtractor(m_wrapper, Paths::atlasDir() + "Reference_T1.nrrd");
+        BrainExtraction brainExtractor(m_wrapper, Paths::atlasDir().filePath("Reference_T1.nrrd"));
         preprocessing::Preprocessor preproc(&resampler, &brainExtractor, m_wrapper, true);
         PreprocessedVolume preprocResult;
 

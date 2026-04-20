@@ -791,7 +791,7 @@ void MainWindow::Process() {
 
     m_params.t1Path = *m_fileChosen;
     m_params.outputDir = m_destination->text();
-    m_params.modelPath = Paths::modelDir() + m_model->currentText() + ".onnx";
+    m_params.modelPath = Paths::modelDir().filePath(m_model->currentText() + ".onnx");
     m_params.suffix = m_suffix->text();
     m_params.savePMap = m_savePMap->isChecked();
     m_params.savePreproc = m_savePreprocessing->isChecked();
@@ -901,6 +901,12 @@ void MainWindow::toggleConsole() {
             std::ios::sync_with_stdio();
             hwnd = GetConsoleWindow();
         }
+    }
+
+    HMENU hMenu = GetSystemMenu(hwnd, FALSE);
+    if (hMenu) {
+        DeleteMenu(hMenu, SC_CLOSE, MF_BYCOMMAND);
+        DrawMenuBar(hwnd);
     }
 
     static bool isVisible = false;

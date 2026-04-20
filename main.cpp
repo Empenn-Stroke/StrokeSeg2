@@ -52,22 +52,53 @@ int main(int argc, char *argv[]) {
     QCommandLineOption thresholdOption({"threshold", "t"}, "Segmentation threshold", "threshold");
     QCommandLineOption pmapOption("pmap", "Save probability map");
     QCommandLineOption verboseOption("verbose", "set logging level to DEBUG instead of INFO");
-    QCommandLineOption outputDirOption({"output-dir", "o"}, "Output directory for processed files",
-                                       "outputDir");
+    QCommandLineOption outputDirOption({"output-dir", "o"}, "Output directory for processed files", "outputDir");
+    QCommandLineOption skipPreprocOption("skip-preproc", "Skip preprocessing steps and directly run prediction on the input image");
+    QCommandLineOption listModelsOption("list-models", "List available models in the model directory");
+    QCommandLineOption deviceOption("device", "Target device for inference (cpu, gpu, npu, auto).",
+                                    "device", "auto");
+    QCommandLineOption listDevicesOption("list-devices",
+                                         "List all available hardware accelerators.");
 
     parser.addOptions({guiOption, inputOption, importModelOption, modelOption, onlyPreprocOption,
-                     viewerOption, suffixOption, savePreprocOption, keepMNIOption, thresholdOption,
-                     pmapOption, verboseOption, outputDirOption});
-
+                     viewerOption, suffixOption, savePreprocOption, keepMNIOption, thresholdOption, pmapOption, verboseOption, outputDirOption,
+                       skipPreprocOption, listModelsOption});
     parser.process(app);
 
     PipelineParams opts;
+    if (parser.isSet(listModelsOption)) {
+        ensureConsole();
+        QDir modelsDir = Paths::modelDir();
+        QStringList entries = modelsDir.entryList({"*.onnx"}, QDir::Files);
+
+        qDebug() << "--- Available Models ---";
+        for (const QString &model : entries) {
+            qDebug() << "  ->" << model.section('.', 0, 0);
+        }
+        return 0;
+    }
     if (parser.isSet(inputOption)) {
         opts.t1Path = parser.value(inputOption);
     }
 
     if (parser.isSet(modelOption)) {
-        opts.modelPath = parser.value(modelOption);
+        QString modelInput = parser.value(modelOption);
+
+        if (!modelInput.contains('/') && !modelInput.contains('\\') &&
+            !modelInput.endsWith(".onnx")) {
+            QString fullPath = Paths::modelDir().absoluteFilePath(modelInput + ".onnx");
+
+            if (QFile::exists(fullPath)) {
+                opts.modelPath = fullPath;
+            } else {
+                ensureConsole();
+                qCritical() << "Error: Model '" << modelInput << "' not found in "
+                            << Paths::modelDir().path();
+                return 1;
+            }
+        } else {
+            opts.modelPath = modelInput;
+        }
     }
 
     if (parser.isSet(suffixOption)) {
@@ -83,7 +114,7 @@ int main(int argc, char *argv[]) {
     }
     opts.savePreproc = parser.isSet(savePreprocOption);
     opts.savePMap = parser.isSet(keepMNIOption);
-    opts.skipBrainExtract = parser.isSet(onlyPreprocOption);
+    opts.skipBrainExtract = parser.isSet(skipPreprocOption);
     opts.gui = parser.isSet(guiOption);
 
     if (parser.isSet(verboseOption)) {

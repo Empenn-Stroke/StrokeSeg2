@@ -1,12 +1,13 @@
 #include "configmanager.h"
+#include <QDir>
 
 ConfigManager &ConfigManager::instance() {
     static ConfigManager instance;
     return instance;
 }
 
-ConfigManager::ConfigManager() : settings(Paths::configPath(), QSettings::IniFormat) {
-    QDir().mkpath(QFileInfo(Paths::configPath()).absolutePath());
+ConfigManager::ConfigManager() : settings(Paths::configPath().absolutePath(), QSettings::IniFormat) {
+    QDir().mkpath(Paths::configPath().absolutePath());
 }
 
 

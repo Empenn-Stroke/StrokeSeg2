@@ -11,7 +11,8 @@ set(HEADERS
     "managers/configmanager.h" 
     "managers/appconfig.h"
     "managers/progressManager.h"
-    "inference/inference.h")
+    "inference/inference.h"
+    "workers/pipelineWorker.h")
 
 set(COMMON_SOURCES 
     "utils/animawrapper.cpp" 
@@ -24,7 +25,8 @@ set(COMMON_SOURCES
     "managers/configmanager.cpp" 
     "managers/progressManager.cpp"
     "inference/inference.cpp"
-    "inference/inference_internal.h")
+    "inference/inference_internal.h"
+    "workers/pipelineWorker.cpp")
 
 
 if(WIN32)

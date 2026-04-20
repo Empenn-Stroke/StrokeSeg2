@@ -11,40 +11,40 @@
 
 namespace Paths {
 
-    inline QString roaming() {
-        return QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+    inline QDir roaming() {
+        return QDir(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation));
     }
 
-    inline QString local() {
-        return QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
+    inline QDir local() {
+        return QDir(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation));
     }
 
-    inline QString programData() {
+    inline QDir programData() {
         QString path = qEnvironmentVariable("ProgramData");
-        return path.isEmpty() ? "C:/ProgramData" : path;
+        return path.isEmpty() ? QDir("C:/ProgramData") : QDir(path);
     }
 
-    inline QString baseDir() {
+    inline QDir baseDir() {
         return QDir(QFileInfo(__FILE__).absolutePath()).filePath("../../..");
     }
 
-    inline QString animaRootPath() {
+    inline QDir animaRootPath() {
         return QDir(QCoreApplication::applicationDirPath()).filePath(ANIMA_RELATIVE_PATH);
     }
 
-    inline QString modelDir() {
+    inline QDir modelDir() {
         return QDir(programData()).filePath(app_name + "/Model/");
     }
 
-    inline QString atlasDir() {
+    inline QDir atlasDir() {
         return QDir(programData()).filePath(app_name + "/Atlas/");
     }
 
-    inline QString configPath() {
+    inline QDir configPath() {
         return QDir(roaming()).filePath(app_name + "/config.ini");
     }
 
-    inline QString defaultOutputDir() {
+    inline QDir defaultOutputDir() {
         return QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)).filePath(app_name);
     }
 

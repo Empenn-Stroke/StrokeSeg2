@@ -322,7 +322,7 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
 
     // Copy save the data of the segmentation in MNI space, using the reference T1 header to ensure
     // correct orientation and spacing metadata.
-    NiftiVolume::saveNiftiWithReference(tmp_mni_path, segmentation_as_nifti, Paths::atlasDir() + "/Reference_T1.nii.gz");
+    NiftiVolume::saveNiftiWithReference(tmp_mni_path, segmentation_as_nifti, Paths::atlasDir().filePath("Reference_T1.nii.gz"));
 
     ProgressManager::instance().report(93, 7, 80);
 

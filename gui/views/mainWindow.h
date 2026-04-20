@@ -1,5 +1,4 @@
 #pragma once
-#include <pipelineWorker.h>
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
@@ -33,6 +32,7 @@
 #include "aboutWindow.h"
 #include "modelManager.h"
 #include "warningWindow.h"
+#include <workers/pipelineWorker.h>
 
 class MainWindow : public QMainWindow {
 	Q_OBJECT

@@ -9,9 +9,7 @@ add_library(${GUI} STATIC
     "views/warningWindow.h"
     "views/warningWindow.cpp"
     "views/modelManager.h"
-    "views/modelManager.cpp"
-    "workers/pipelineWorker.h"
-    "workers/pipelineWorker.cpp")
+    "views/modelManager.cpp")
 
 set_target_properties(${GUI} PROPERTIES
     AUTOMOC ON
