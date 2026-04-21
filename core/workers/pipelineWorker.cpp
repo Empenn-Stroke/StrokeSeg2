@@ -1,4 +1,5 @@
 #include "pipelineWorker.h"
+#include <utils/dicomConverter.h>
 
 #include <QElapsedTimer>
 
@@ -13,6 +14,28 @@ int PipelineWorker::process() {
         QElapsedTimer total_timer;
         QElapsedTimer step_timer;
         total_timer.start();
+
+        QString workingInputPath = m_p.t1Path;
+        bool isTemporaryInput = false;
+
+        if (DicomConverter::requiresConversion(m_p.t1Path)) {
+            emit statusChanged("Conversion DICOM en cours...");
+            qDebug() << "[DICOM] Detection d'un format non-NIfTI. Lancement de dcm2niix.";
+
+            // On convertit dans le dossier de sortie
+            QString convertedFile =
+                DicomConverter::convert(m_p.t1Path, m_p.outputDir);
+
+            if (convertedFile.isEmpty() || !QFile::exists(convertedFile)) {
+                throw std::runtime_error("La conversion DICOM a échoué. Vérifiez l'intégrité des "
+                                         "fichiers ou la présence de dcm2niix.");
+            }
+
+            workingInputPath = convertedFile;
+            isTemporaryInput = true;
+            qDebug() << "[DICOM] Conversion réussie :" << workingInputPath;
+        }
+
 
         emit statusChanged("Initialisation des composants...");
 
@@ -34,10 +57,8 @@ int PipelineWorker::process() {
         if (bypassed && QFile::exists(preprocPath) && QFile::exists(metaPath)) {
             emit statusChanged("Cache detected, preprocessed volume loading...");
             qDebug() << "[BYPASS] Loading existing preprocessed file:" << preprocPath;
-            // On charge le volume existant
             NiftiVolume existingVol = NiftiVolume::loadNifti(preprocPath);
 
-            // On remplit l'objet preprocResult manuellement
             preprocResult.data = existingVol.data;
             preprocResult.spacing = existingVol.spacing;
 

@@ -589,16 +589,21 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
             if (!urls.isEmpty()) {
                 QString filePath = urls.first().toLocalFile();
 
-                if (filePath.endsWith(".nii") || filePath.endsWith(".nii.gz")) {
-                    //m_fileButton->setText(QFileInfo(filePath).fileName());
+                if (isSupportedFormat(filePath)) {
                     m_fileLabel->setText(QFileInfo(filePath).fileName());
+
+                    if (m_fileChosen)
+                        delete m_fileChosen;
                     m_fileChosen = new QString(filePath);
+
                     dropEvent->acceptProposedAction();
                 } else {
-                    m_consoleLabel->setText("File format not supported");
+                    m_consoleLabel->setText("Unsupported format");
                     dropEvent->ignore();
                 }
             }
+            m_fileButton->setProperty("dragging", false);
+            m_fileButton->update();
             return true;
         }
     }
@@ -606,22 +611,32 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
 }
 
 void MainWindow::chooseFile() {
-
     QSettings settings;
     QString lastDirFile = settings.value("lastInputPath", QDir::homePath()).toString();
 
-    QString filePath = QFileDialog::getOpenFileName(
-        this, 
-        "Choose file",
-        lastDirFile,
-        "IRM images (*.nii *.nii.gz);;All files (*)"
-    );
+    QString filters = "Medical Images (*.nii *.nii.gz *.nrrd *.dcm);;All files (*)";
+
+    QString filePath = QFileDialog::getOpenFileName(this, "Choose file", lastDirFile, filters);
 
     if (!filePath.isEmpty()) {
         m_fileLabel->setText(QFileInfo(filePath).fileName());
         m_fileChosen = new QString(filePath);
         settings.setValue("lastInputPath", QFileInfo(filePath).absolutePath());
     }
+}
+
+bool MainWindow::isSupportedFormat(const QString &filePath) {
+    QFileInfo info(filePath);
+
+    if (info.isDir())
+        return true;
+
+    static const QStringList supportedExtensions = {"nii", "nii.gz", "nrrd", "dcm"};
+
+    QString suffix = info.suffix().toLower();
+    QString completeSuffix = info.completeSuffix().toLower();
+
+    return supportedExtensions.contains(suffix) || supportedExtensions.contains(completeSuffix);
 }
 
 void MainWindow::chooseDestination() {

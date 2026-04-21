@@ -285,7 +285,6 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
     ProgressManager::instance().report(93, 7, 30, new QString("Resampling to initial spacing"));
 
     printAction("Resample");
-    Eigen::Vector3f target_spacing{1, 1, 1};
 
     Eigen::Tensor<float, 4, Eigen::ColMajor> temp_shuffled =
         segmentation_as_nifti.data.shuffle(Eigen::array<int, 4>{3, 0, 1, 2});
@@ -297,7 +296,7 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
     segmentation_as_nifti.data = temp_shuffled;
 
     try {
-        segmentation_as_nifti = m_resampler.resample(segmentation_as_nifti, target_spacing);
+        segmentation_as_nifti = m_resampler.resample(segmentation_as_nifti, preproc_volume.spacing);
     } catch (const std::bad_alloc &e) {
         spdlog::error("Resampling failed: Out of memory. Check dimensions!");
         throw;
@@ -322,7 +321,8 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
 
     // Copy save the data of the segmentation in MNI space, using the reference T1 header to ensure
     // correct orientation and spacing metadata.
-    NiftiVolume::saveNiftiWithReference(tmp_mni_path, segmentation_as_nifti, Paths::atlasDir().filePath("Reference_T1.nii.gz"));
+    //NiftiVolume::saveNiftiWithReference(tmp_mni_path, segmentation_as_nifti, Paths::atlasDir().filePath("Reference_T1.nii.gz"));
+    NiftiVolume::saveNifti(tmp_mni_path, segmentation_as_nifti);
 
     ProgressManager::instance().report(93, 7, 80);
 

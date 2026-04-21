@@ -113,7 +113,7 @@ FetchContent_Declare(
   GIT_TAG b13e013481605d134f498fd9fc3a123c416da197
 )
 
-#Anima
+# Anima
 if(WIN32)
     set(ANIMA_URL "https://github.com/Inria-Empenn/Anima-Public/releases/download/v4.2/Anima-Windows-4.2.zip")
 elseif(APPLE)
@@ -163,6 +163,24 @@ foreach(FILE_PATH ${ANIMA_FILES_TO_COPY})
     endif()
 endforeach()
 
+# DCM2NIIX
+include(FetchContent)
+
+FetchContent_Declare(
+    dcm2niix_bin
+    URL https://github.com/rordenlab/dcm2niix/releases/download/v1.0.20240202/dcm2niix_win.zip
+)
+
+FetchContent_MakeAvailable(dcm2niix_bin)
+
+set(DCM2NIIX_EXE_PATH "${dcm2niix_bin_SOURCE_DIR}/dcm2niix.exe")
+
+if(EXISTS "${DCM2NIIX_EXE_PATH}")
+    file(COPY "${DCM2NIIX_EXE_PATH}" DESTINATION "${ANIMA_RUNTIME_DESTINATION}")
+    message(STATUS "dcm2niix binary ready: ${DCM2NIIX_EXE_PATH}")
+else()
+    message(WARNING "dcm2niix.exe not found after extraction from: ${DCM2NIIX_URL}")
+endif()
 
 # Adding specific dependencies depending on the operating system
 if(WIN32)

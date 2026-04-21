@@ -87,6 +87,7 @@ private:
   private slots:
     void chooseDestination();
     void chooseFile();
+    bool isSupportedFormat(const QString &filePath);
 
     double sliderValueToReal(int sliderValue);
     int realToSliderValue(double realValue);
