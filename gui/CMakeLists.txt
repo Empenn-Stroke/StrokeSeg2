@@ -12,6 +12,8 @@ add_library(${GUI} STATIC
     "views/modelManager.cpp"
     "views/niftiViewerWindow.h"
     "views/niftiViewerWindow.cpp"
+    "views/ClickableLabel.h"
+    "views/ClickableLabel.cpp"
     "workers/pipelineWorker.h"
     "workers/pipelineWorker.cpp")
 
@@ -39,6 +41,7 @@ PUBLIC
 PRIVATE
     ${CMAKE_SOURCE_DIR}/${COMMON}/
     ${CMAKE_SOURCE_DIR}/${CORE}/
+    ${CMAKE_SOURCE_DIR}/${CORE}/utils
 )
 
 target_link_libraries(${GUI} PUBLIC
