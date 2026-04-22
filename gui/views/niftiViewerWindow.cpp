@@ -114,23 +114,15 @@ NiftiViewerWindow::NiftiViewerWindow(const QString &t1Path, const QString &final
     imagesLayout->addLayout(createViewPanel(coronalLabel, coronalSlider, "Coronal (Y)", 1));
     imagesLayout->addLayout(createViewPanel(axialLabel, axialSlider, "Axial (Z)", 2));
 
-    openButton = new QPushButton("Open NIfTI Image", this);
     statusLabel = new QLabel("No image loaded.", this);
-
-    QLabel *copyrightLabel = new QLabel("Copyright (C) 2026 Youwan Mahé", this);
-    copyrightLabel->setAlignment(Qt::AlignRight);
-    copyrightLabel->setStyleSheet("font-size: 9px; color: #888888; margin-top: 5px;");
 
     mainLayout->addLayout(bcLayout);
     mainLayout->addLayout(imagesLayout);
-    mainLayout->addWidget(openButton);
     mainLayout->addWidget(statusLabel);
-    mainLayout->addWidget(copyrightLabel);
 
     windowLayout->addWidget(m_titleBar);
     windowLayout->addWidget(mainArea);
 
-    connect(openButton, &QPushButton::clicked, this, &NiftiViewerWindow::openNiftiFile);
     connect(sagittalSlider, &QSlider::valueChanged, this, &NiftiViewerWindow::updateViews);
     connect(coronalSlider, &QSlider::valueChanged, this, &NiftiViewerWindow::updateViews);
     connect(axialSlider, &QSlider::valueChanged, this, &NiftiViewerWindow::updateViews);
@@ -172,8 +164,6 @@ void NiftiViewerWindow::loadVolume(const QString &fileName, const QString &maskF
         return;
 
     statusLabel->setText("Loading and standardizing orientation...");
-    openButton->setText("Loading...");
-    openButton->setEnabled(false);
     QApplication::setOverrideCursor(Qt::WaitCursor);
 
     QCoreApplication::processEvents();
@@ -220,10 +210,6 @@ void NiftiViewerWindow::loadVolume(const QString &fileName, const QString &maskF
         QMessageBox::critical(this, "Error", QString("Failed to load:\n") + e.what());
         statusLabel->setText("Error loading file.");
     }
-
-    openButton->setText("Open NIfTI Image");
-    openButton->setEnabled(true);
-    QApplication::restoreOverrideCursor();
 }
 
 void NiftiViewerWindow::openNiftiFile() {

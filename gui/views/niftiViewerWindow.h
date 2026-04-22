@@ -46,7 +46,6 @@ class NiftiViewerWindow : public QDialog {
     QString m_finalPath;
 
     // --- UI Elements ---
-    QPushButton *openButton;
     QLabel *statusLabel;
 
     ClickableLabel *sagittalLabel;
