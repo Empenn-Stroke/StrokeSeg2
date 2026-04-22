@@ -128,15 +128,26 @@ int PipelineWorker::process() {
 
         postprocessing::Postprocessor postproc(m_wrapper);
 
-        QString fileName = QFileInfo(m_p.t1Path).baseName() + m_p.suffix + ".nii.gz";
-        QString finalPath = m_p.outputDir + "/" + fileName;
-
-        postproc.postprocess(inferenceResult.data, preprocResult, preprocResult.bbox, m_p.threshold,
+        NiftiVolume final_volume = postproc.postprocess(inferenceResult.data, preprocResult, preprocResult.bbox, m_p.threshold,
                              m_p.savePMap, m_p.outputDir, preprocResult.trsf_path);
 
+        QString fileName;
+        QString finalPath;
+
+        if (m_p.suffix == "") {
+            fileName = QFileInfo(m_p.t1Path).baseName() + "_seg" + ".nii.gz";
+            finalPath = m_p.outputDir + "/" + fileName;
+        } else {
+            fileName = QFileInfo(m_p.t1Path).baseName() + "_" + m_p.suffix + ".nii.gz";
+            finalPath = m_p.outputDir + "/" + fileName;
+        }
+
+        NiftiVolume::saveNifti(finalPath, final_volume);
+
         QFile::remove(tmpInput);
-        if (!m_p.savePreproc)
+        if (!m_p.savePreproc) {
             QFile::remove(rawInferencePath);
+        }
 
         emit finished(true, "analysis performed with success !", finalPath);
 

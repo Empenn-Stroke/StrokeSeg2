@@ -233,11 +233,11 @@ namespace
  * - Register to reference only if the inverse transformation was applied during
  *   preprocessing
  */
-void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &data,
-                                                const PreprocessedVolume &preproc_volume,
-                                                const std::array<std::array<int, 2>, 3> &bbox,
-                                                float segmentation_threshold, bool save_pmap,
-                                                QString dir, QString trsf_path) 
+NiftiVolume postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &data,
+                                                        const PreprocessedVolume &preproc_volume,
+                                                        const std::array<std::array<int, 2>, 3> &bbox,
+                                                        float segmentation_threshold, bool save_pmap,
+                                                        QString dir, QString trsf_path) 
 {
 
     Eigen::Vector3f debug_spacing = preproc_volume.spacing;
@@ -339,8 +339,10 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
             applyInverseRegistration(m_wrapper, tmp_mni_path, trsf_path, patient_ref_path);
 
         ProgressManager::instance().report(93, 7, 100);
-    } catch (const std::exception &e) {
+
+        return NiftiVolume::loadNifti(final_patient_path);
+    } catch (const std::exception &e) { 
         spdlog::error("Critical error during inverse registration: {}", e.what());
-        return;
+        return NiftiVolume();
     }
 }

@@ -24,11 +24,11 @@ namespace postprocessing
         Postprocessor(AnimaWrapper *wr) : m_wrapper(wr) {}
         ~Postprocessor() = default;
 
-        void postprocess(const NiftiVolume::Tensor4f &data,
-                         const PreprocessedVolume &preproc_volume,
-                         const std::array<std::array<int, 2>, 3> &bbox,
-                         float segmentation_threshold, bool save_pmap, QString dir,
-                         QString trsf_path);
+        NiftiVolume postprocess(const NiftiVolume::Tensor4f &data,
+                                 const PreprocessedVolume &preproc_volume,
+                                 const std::array<std::array<int, 2>, 3> &bbox,
+                                 float segmentation_threshold, bool save_pmap, QString dir,
+                                 QString trsf_path);
 
       private:
         ConfigManager &m_config = ConfigManager::instance();

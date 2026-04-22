@@ -805,12 +805,18 @@ void MainWindow::Process() {
     m_runButton->setEnabled(false);
 
     m_params.t1Path = *m_fileChosen;
-    m_params.outputDir = m_destination->text();
+    m_params.outputDir = m_destination->text() + "/" + QFileInfo(*m_fileChosen).baseName();
     m_params.modelPath = Paths::modelDir().filePath(m_model->currentText() + ".onnx");
     m_params.suffix = m_suffix->text();
     m_params.savePMap = m_savePMap->isChecked();
     m_params.savePreproc = m_savePreprocessing->isChecked();
     m_params.skipBrainExtract = m_skipBrainExtract->isChecked();
+
+    if (QDir().mkpath(m_params.outputDir)) {
+        qDebug() << "Output directory created:" << m_params.outputDir;
+    } else {
+        qDebug() << "Failed to create output directory:" << m_params.outputDir;
+    }
 
     m_params.threshold = m_threshold->text().replace(" ", "").toFloat();
 
