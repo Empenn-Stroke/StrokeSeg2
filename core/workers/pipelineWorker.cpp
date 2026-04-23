@@ -142,7 +142,7 @@ int PipelineWorker::process() {
             finalPath = m_p.outputDir + "/" + fileName;
         }
 
-        NiftiVolume::saveNifti(finalPath, final_volume);
+        NiftiVolume::saveNiftiWithReference(finalPath, final_volume, m_p.t1Path);
 
         QFile::remove(tmpInput);
         if (!m_p.savePreproc) {

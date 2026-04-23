@@ -9,7 +9,11 @@ add_library(${GUI} STATIC
     "views/warningWindow.h"
     "views/warningWindow.cpp"
     "views/modelManager.h"
-    "views/modelManager.cpp")
+    "views/modelManager.cpp"
+    "views/niftiViewerWindow.h"
+    "views/niftiViewerWindow.cpp"
+    "views/ClickableLabel.h"
+    "views/ClickableLabel.cpp")
 
 set_target_properties(${GUI} PROPERTIES
     AUTOMOC ON
@@ -35,6 +39,7 @@ PUBLIC
 PRIVATE
     ${CMAKE_SOURCE_DIR}/${COMMON}/
     ${CMAKE_SOURCE_DIR}/${CORE}/
+    ${CMAKE_SOURCE_DIR}/${CORE}/utils
 )
 
 target_link_libraries(${GUI} PUBLIC

@@ -16,6 +16,7 @@
 #include <QtConcurrent>
 #include <utils/env_path.h>
 #include <managers/progressManager.h>
+#include "NiftiViewerWindow.h"
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -854,11 +855,16 @@ void MainWindow::onPipelineFinished(bool success, QString message, QString final
         }
 
         if (m_toggleView->isChecked() && !finalPath.isEmpty()) {
-            QStringList args;
-            args << "-g" << finalPath;
-            if (!QProcess::startDetached("itksnap", args)) {
-                QProcess::startDetached("C:/Program Files/ITK-SNAP 4.4/bin/ITK-SNAP.exe", args);
-            }
+            // We pass the original MRI (m_params.t1Path) AND the generated mask (finalPath)
+            NiftiViewerWindow *viewer = new NiftiViewerWindow(m_params.t1Path, finalPath, this);
+            qDebug() << "Opening viewer with MRI:" << m_params.t1Path << "and mask:" << finalPath;
+
+            // Qt will automatically delete the window from memory when the user closes it
+            viewer->setAttribute(Qt::WA_DeleteOnClose);
+
+            // Force it to open as an independent window, not embedded inside the main UI
+            viewer->setWindowFlag(Qt::Window);
+            viewer->show();
         }
     } else {
         QMessageBox::critical(this, "Pipeline Error", message);

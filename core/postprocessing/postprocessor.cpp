@@ -211,6 +211,7 @@ namespace
                   << "-n" << "nearest";          // Permet d'avoir le masque binaire
 
         printAction("Applying inverse registration to patient space");
+        qDebug() << "DEBUG - applyArgs list contents:" << applyArgs;
         if (wrapper->run(applyArgs) != 0) {
             throw std::runtime_error("Inverse registration failed: " +
                                      wrapper->lastStderr().toStdString());
@@ -335,8 +336,8 @@ NiftiVolume postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor
         ProgressManager::instance().report(93, 7, 70, new QString("Applying inverse registration to patient space"));
 
         printAction("Applying inverse registration (Anima)");
-        final_patient_path =
-            applyInverseRegistration(m_wrapper, tmp_mni_path, trsf_path, patient_ref_path);
+
+        final_patient_path = applyInverseRegistration(m_wrapper, tmp_mni_path, trsf_path, patient_ref_path);
 
         ProgressManager::instance().report(93, 7, 100);
 
