@@ -8,7 +8,6 @@
 
 int PipelineWorker::process() {
     try {
-
         ProgressManager::instance().reset();
 
         QElapsedTimer total_timer;
@@ -80,7 +79,7 @@ int PipelineWorker::process() {
             preprocessing::Preprocessor preproc(&resampler, &brainExtractor, m_wrapper,
                                                 m_p.savePreproc);
 
-            preprocResult = preproc.preprocess(m_p.t1Path, "", m_p.outputDir, m_p.skipBrainExtract);
+            preprocResult = preproc.preprocess(m_p.t1Path, "", m_p.outputDir, m_p.betOnly, m_p.mni);
             preprocResult.saveMetadata(metaPath);
 
             if (m_p.savePreproc) {
@@ -89,6 +88,11 @@ int PipelineWorker::process() {
                 volPre.data = preprocResult.data;
                 volPre.spacing = preprocResult.spacing;
                 NiftiVolume::saveNifti(preprocSavePath, volPre);
+            }
+
+            if (m_p.betOnly) {
+                emit finished(true, "Brain extraction performed with success !", preprocPath);
+                return 0;
             }
 
             qDebug() << "------------------------------------------";
@@ -129,20 +133,28 @@ int PipelineWorker::process() {
         postprocessing::Postprocessor postproc(m_wrapper);
 
         NiftiVolume final_volume = postproc.postprocess(inferenceResult.data, preprocResult, preprocResult.bbox, m_p.threshold,
-                             m_p.savePMap, m_p.outputDir, preprocResult.trsf_path);
+                             m_p.savePMap, m_p.outputDir, preprocResult.trsf_path, m_p.mni);
 
         QString fileName;
         QString finalPath;
 
+        QString prefixMNI = m_p.mni ? "MNI_" : "";
+
         if (m_p.suffix == "") {
-            fileName = QFileInfo(m_p.t1Path).baseName() + "_seg" + ".nii.gz";
+            fileName = prefixMNI + QFileInfo(m_p.t1Path).baseName() + "_seg" + ".nii.gz";
             finalPath = m_p.outputDir + "/" + fileName;
         } else {
-            fileName = QFileInfo(m_p.t1Path).baseName() + "_" + m_p.suffix + ".nii.gz";
+            fileName = prefixMNI + QFileInfo(m_p.t1Path).baseName() + "_" + m_p.suffix + ".nii.gz";
             finalPath = m_p.outputDir + "/" + fileName;
         }
 
-        NiftiVolume::saveNiftiWithReference(finalPath, final_volume, m_p.t1Path);
+        // Duplicate original header to avoid header corruption.
+        if (m_p.mni) {
+            NiftiVolume::saveNiftiWithReference(finalPath, final_volume,
+                                                Paths::atlasDir().filePath("Reference_T1.nii.gz"));
+        } else {
+            NiftiVolume::saveNiftiWithReference(finalPath, final_volume, m_p.t1Path);
+        }
 
         QFile::remove(tmpInput);
         if (!m_p.savePreproc) {

@@ -62,7 +62,10 @@ private:
     QCheckBox *m_savePMap;
     QCheckBox *m_savePreprocessing;
     QComboBox *m_mode;
-    QSlider *m_thresholdSlider; QLineEdit *m_threshold;
+
+    QSlider *m_thresholdSlider; 
+    QLineEdit *m_threshold;
+    QWidget *m_thresholdContainer;
 
     QStackedWidget *m_stackedArea;
     QToolButton *m_fileButton;

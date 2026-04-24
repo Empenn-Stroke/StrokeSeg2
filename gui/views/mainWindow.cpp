@@ -206,11 +206,11 @@ MainWindow::MainWindow(const PipelineParams &opts, QWidget *parent)
     validator->setLocale(QLocale::C);
     m_threshold->setValidator(validator);
 
-    QWidget *thresholdContainer = new QWidget(formParameters);
-    thresholdContainer->setObjectName("thresholdContainer");
-    thresholdContainer->setAttribute(Qt::WA_StyledBackground, true);
+    m_thresholdContainer = new QWidget(formParameters);
+    m_thresholdContainer->setObjectName("thresholdContainer");
+    m_thresholdContainer->setAttribute(Qt::WA_StyledBackground, true);
 
-    QHBoxLayout *thresholdLayout = new QHBoxLayout(thresholdContainer);
+    QHBoxLayout *thresholdLayout = new QHBoxLayout(m_thresholdContainer);
     thresholdLayout->setContentsMargins(0, 0, 0, 0);
     thresholdLayout->addWidget(m_threshold);
     thresholdLayout->addWidget(m_thresholdSlider);
@@ -232,7 +232,7 @@ MainWindow::MainWindow(const PipelineParams &opts, QWidget *parent)
     m_formLayout->addRow("Execution mode :", m_mode);
 
     QLabel *thresholdLabel = new QLabel("Threshold :", formParameters);
-    m_formLayout->addRow(thresholdLabel, thresholdContainer);
+    m_formLayout->addRow(thresholdLabel, m_thresholdContainer);
 
     // ---------------- BOTTOM BUTTONS ----------------
 
@@ -482,7 +482,20 @@ MainWindow::MainWindow(const PipelineParams &opts, QWidget *parent)
     });
 
     connect(m_mode, &QComboBox::currentIndexChanged, this, [this, thresholdLabel](int index) {
-        m_formLayout->setRowVisible(thresholdLabel, index != 1);
+        bool isBetOnly = (index == 1);
+
+        m_formLayout->setRowVisible(thresholdLabel, !isBetOnly);
+        m_thresholdContainer->setVisible(
+            !isBetOnly);
+
+        m_skipBrainExtract->setChecked(false);
+        m_skipBrainExtract->setEnabled(!isBetOnly);
+
+        m_savePMap->setChecked(false);
+        m_savePMap->setEnabled(!isBetOnly);
+
+        m_savePreprocessing->setChecked(false);
+        m_savePreprocessing->setEnabled(!isBetOnly);
     });
 
     connect(&ProgressManager::instance(), &ProgressManager::progressUpdated, this,
@@ -812,6 +825,8 @@ void MainWindow::Process() {
     m_params.savePMap = m_savePMap->isChecked();
     m_params.savePreproc = m_savePreprocessing->isChecked();
     m_params.skipBrainExtract = m_skipBrainExtract->isChecked();
+    m_params.mni = m_toggleOutput->isChecked();
+    m_params.betOnly = m_mode->currentText() == "Brain Extraction Only";
 
     if (QDir().mkpath(m_params.outputDir)) {
         qDebug() << "Output directory created:" << m_params.outputDir;
@@ -856,8 +871,23 @@ void MainWindow::onPipelineFinished(bool success, QString message, QString final
 
         if (m_toggleView->isChecked() && !finalPath.isEmpty()) {
             // We pass the original MRI (m_params.t1Path) AND the generated mask (finalPath)
-            NiftiViewerWindow *viewer = new NiftiViewerWindow(m_params.t1Path, finalPath, this);
-            qDebug() << "Opening viewer with MRI:" << m_params.t1Path << "and mask:" << finalPath;
+            QString baseImagePath;
+
+            if (m_params.betOnly) {
+                finalPath = "";
+                baseImagePath = m_params.outputDir + "/" +
+                                QFileInfo(m_params.t1Path).baseName() + "_BET.nii.gz";
+            }
+
+            if (m_params.mni) {
+                baseImagePath = m_params.outputDir + "/" +
+                                "MNI_" + QFileInfo(m_params.t1Path).baseName() + "_BET.nii.gz";
+            } else {
+                baseImagePath = m_params.t1Path;
+            }
+
+            NiftiViewerWindow *viewer = new NiftiViewerWindow(baseImagePath, finalPath, this);
+            qDebug() << "Opening viewer with MRI:" << baseImagePath << "and mask:" << finalPath;
 
             // Qt will automatically delete the window from memory when the user closes it
             viewer->setAttribute(Qt::WA_DeleteOnClose);

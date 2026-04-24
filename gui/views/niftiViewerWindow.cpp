@@ -206,6 +206,8 @@ void NiftiViewerWindow::loadVolume(const QString &fileName, const QString &maskF
             QString("Successfully loaded: %1x%2x%3").arg(dimX).arg(dimY).arg(dimZ));
 
         updateViews();
+
+        QApplication::restoreOverrideCursor();
     } catch (const std::exception &e) {
         isLoaded = false;
         isMaskLoaded = false;

@@ -378,7 +378,7 @@ namespace preprocessing {
      * @return PreprocessedVolume Objet contenant les volumes finaux et leurs métadonnées.
      */
     PreprocessedVolume Preprocessor::preprocess(const QString &t1_path, const QString &flair_path,
-                                                const QString &temp_dir, bool bet_only) 
+                                                const QString &temp_dir, bool bet_only, bool mni) 
     {
         QElapsedTimer bet_timer;
         bet_timer.start();
@@ -392,6 +392,31 @@ namespace preprocessing {
         }
 
         qDebug() << "Brain extraction took" << bet_timer.elapsed() / 1000 << "s";
+
+        if (bet_only) {
+            PreprocessedVolume res;
+
+            if (!mni) {
+                ProgressManager::instance().report(41, 9, 10,
+                                                   new QString("Registering to MNI space"));
+
+                printAction("bias correction");
+                QString prefix =
+                    QFileInfo(bet_t1).absolutePath() + "/" + QFileInfo(bet_t1).baseName();
+                bet_t1 = biasCorrect(bet_t1, prefix);
+
+                printAction("registration to MNI atlas");
+                auto [reg_path, trsf] = registerToReference(bet_t1, m_atlasImage, prefix, "MNI");
+                bet_t1 = reg_path;
+                res.trsf_path = trsf;
+
+                qDebug() << "trsf path:" << trsf;
+            }
+
+            res.original_t1_path = bet_t1;
+
+            return res;
+        }
 
         PreprocessedVolume t1_res = preprocessModality(bet_t1, t1_path.contains("MNI"));
 

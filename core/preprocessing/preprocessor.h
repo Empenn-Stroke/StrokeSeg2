@@ -55,7 +55,7 @@ namespace preprocessing {
         ~Preprocessor() = default;
 
         PreprocessedVolume preprocess(const QString &t1_path, const QString &flair_path,
-                                      const QString &temp_dir, bool bet_only);
+                                      const QString &temp_dir, bool bet_only, bool mni = false);
 
       private:
         Resampling m_resampler;

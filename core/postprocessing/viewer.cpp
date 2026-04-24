@@ -102,6 +102,8 @@ void Viewer::UpdatePath()
 }
 
 void Viewer::Run(const QString &imgPath, const QString &segPath) {
+    QGuiApplication::setOverrideCursor(Qt::WaitCursor);
+
     const QString viewerName = m_config->get("viewer", "itksnap").toString();
     QString exePath = m_config->get(viewerName, "").toString();
 
@@ -113,6 +115,7 @@ void Viewer::Run(const QString &imgPath, const QString &segPath) {
         qCritical() << "Impossible de trouver l'exécutable pour le viewer:" << viewerName;
         return;
     }
+    QGuiApplication::setOverrideCursor(Qt::WaitCursor);
 
     QStringList arguments;
     if (viewerName == "itksnap") {
@@ -122,7 +125,11 @@ void Viewer::Run(const QString &imgPath, const QString &segPath) {
         arguments << QDir::toNativeSeparators(imgPath) << QDir::toNativeSeparators(segPath);
     }
 
-    if (!QProcess::startDetached(exePath, arguments)) {
+    bool success = QProcess::startDetached(exePath, arguments);
+
+    QGuiApplication::restoreOverrideCursor();
+
+    if (!success) {
         qCritical() << "Échec du lancement du viewer à l'emplacement :" << exePath;
     }
 }

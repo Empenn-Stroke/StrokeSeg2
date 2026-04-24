@@ -28,7 +28,7 @@ namespace postprocessing
                                  const PreprocessedVolume &preproc_volume,
                                  const std::array<std::array<int, 2>, 3> &bbox,
                                  float segmentation_threshold, bool save_pmap, QString dir,
-                                 QString trsf_path);
+                                 QString trsf_path, bool mni);
 
       private:
         ConfigManager &m_config = ConfigManager::instance();

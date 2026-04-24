@@ -17,6 +17,8 @@ struct PipelineParams {
     bool savePreproc;
     bool skipBrainExtract;
     bool gui;
+    bool mni;
+    bool betOnly;
 };
 
 class PipelineWorker : public QObject {
