@@ -27,11 +27,13 @@ if(CMAKE_GENERATOR MATCHES "^Visual Studio")
     file(WRITE "${CMAKE_BINARY_DIR}/Directory.Build.targets" "<Project></Project>")
 endif()
 
-set(ENV{WindowsSdkDir} "C:/Program Files (x86)/Windows Kits/10")
+if(WIN32)  
+    set(ENV{WindowsSdkDir} "C:/Program Files (x86)/Windows Kits/10")
 
-if(NOT EXISTS "$ENV{WindowsSdkDir}/Platforms/UAP/10.0.26100.0/Platform.xml")
-    message("$ENV{WindowsSdkDir}/Platforms/UAP/10.0.26100.0/Platform.xml")
-    message(FATAL_ERROR "Windows SDK UWP 10.0.26100.0 non trouvé.")
+    if(NOT EXISTS "$ENV{WindowsSdkDir}/Platforms/UAP/10.0.26100.0/Platform.xml")
+        message("$ENV{WindowsSdkDir}/Platforms/UAP/10.0.26100.0/Platform.xml")
+        message(FATAL_ERROR "Windows SDK UWP 10.0.26100.0 non trouvé.")
+    endif()
 endif()
 
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)

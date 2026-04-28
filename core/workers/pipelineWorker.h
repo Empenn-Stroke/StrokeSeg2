@@ -14,8 +14,10 @@ struct PipelineParams {
     QString suffix;
     float threshold;
     bool savePMap;
-    bool savePreproc;
-    bool skipBrainExtract;
+    bool savePreProcessing;
+    bool skipPreProcessing;
+    bool skipInference;
+    bool skipPostProcessing;
     bool gui;
     bool mni;
     bool betOnly;

@@ -10,6 +10,8 @@ int PipelineWorker::process() {
     try {
         ProgressManager::instance().reset();
 
+        ProgressManager::instance().setFileName(QFileInfo(m_p.t1Path).fileName());
+
         QElapsedTimer total_timer;
         QElapsedTimer step_timer;
         total_timer.start();
@@ -42,18 +44,34 @@ int PipelineWorker::process() {
         BrainExtraction brainExtractor(m_wrapper, Paths::atlasDir().filePath("Reference_T1.nii.gz"));
         preprocessing::Preprocessor preproc(&resampler, &brainExtractor, m_wrapper, true);
         PreprocessedVolume preprocResult;
+        NiftiVolume inferenceResult;
 
         QString baseName = QFileInfo(m_p.t1Path).baseName();
         QString preprocPath = m_p.outputDir + "/" + baseName + "_BET_PREPROC.nii.gz";
-        QString metaPath = m_p.outputDir + "/" + baseName + "_PREPROC_metadata.json";
+        QString rawInferencePath = m_p.outputDir + "/" + baseName + "_INFERENCE_raw.nii.gz";
 
-        bool bypassed = m_p.skipBrainExtract;
+        QString metaPath = m_p.outputDir + "/" + baseName + "_PREPROC_metadata.json";
+        
+        QString prefixMNI = m_p.mni ? "MNI_" : "";
+        QString thresholdStr = m_p.threshold == 0.5 ? "" : "_" + QString::number(m_p.threshold * 100, 'f', 3).replace(".", "");
+
+        // Remove leading underscores from suffix to avoid double underscores in filename
+        if (m_p.suffix.startsWith("_")) {
+            m_p.suffix = m_p.suffix.mid(1);
+        }
+
+        QString finalFileName = prefixMNI + QFileInfo(m_p.t1Path).baseName() + thresholdStr + "_seg" + ".nii.gz";
+        QString finalPath = m_p.outputDir + "/" + finalFileName;
+
+        bool bypassed_preproc = m_p.skipPreProcessing;
+        bool bypassed_inference = m_p.skipInference;
+        bool bypassed_postproc = m_p.skipPostProcessing;
 
         // 1. PREPROCESSING
 
         step_timer.start();
 
-        if (bypassed && QFile::exists(preprocPath) && QFile::exists(metaPath)) {
+        if (bypassed_preproc && QFile::exists(preprocPath) && QFile::exists(metaPath)) {
             emit statusChanged("Cache detected, preprocessed volume loading...");
             qDebug() << "[BYPASS] Loading existing preprocessed file:" << preprocPath;
             NiftiVolume existingVol = NiftiVolume::loadNifti(preprocPath);
@@ -71,18 +89,18 @@ int PipelineWorker::process() {
             }
         } else {
             qDebug() << "[BYPASS] No valid cache found. Running preprocessing.";
-            bypassed = false;
+            bypassed_preproc = false;
         }
 
-        if (!bypassed) {
+        if (!bypassed_preproc) {
             emit statusChanged("Step 1/3 : Preprocessing...");
             preprocessing::Preprocessor preproc(&resampler, &brainExtractor, m_wrapper,
-                                                m_p.savePreproc);
+                                                m_p.savePreProcessing);
 
             preprocResult = preproc.preprocess(m_p.t1Path, "", m_p.outputDir, m_p.betOnly, m_p.mni);
             preprocResult.saveMetadata(metaPath);
 
-            if (m_p.savePreproc) {
+            if (m_p.savePreProcessing) {
                 QString preprocSavePath = m_p.outputDir + "/debug_preprocessed.nii.gz";
                 NiftiVolume volPre;
                 volPre.data = preprocResult.data;
@@ -105,67 +123,79 @@ int PipelineWorker::process() {
         }
 
         // 2. INFERENCE
-        step_timer.restart();
-        Inference engine;
-        emit statusChanged("Step 2/3 : Inference...");
+        if (bypassed_inference && QFile::exists(rawInferencePath)) {
+            emit statusChanged("Cache detected, inference result loading...");
+            qDebug() << "[BYPASS] Loading existing inference result:" << rawInferencePath;
+            inferenceResult = NiftiVolume::loadNifti(rawInferencePath);
+            ProgressManager::instance().report(41, 1, 100, new QString("Bypassing inference"));
+            if (ProgressManager::instance().isInterrupted()) {
+                throw std::runtime_error("Cancelled");
+            }
+        } else {
+            qDebug() << "[BYPASS] No valid cache found. Running inference.";
+            bypassed_inference = false;
+        }
 
-        QString tmpInput = m_p.outputDir + "/tmp_inference_input.nii.gz";
-        NiftiVolume::saveNifti(tmpInput, {preprocResult.data, preprocResult.spacing});
+        if (!bypassed_inference) {
+            step_timer.restart();
+            Inference engine;
+            emit statusChanged("Step 2/3 : Inference...");
 
-        NiftiVolume inferenceVol = NiftiVolume::loadNifti(tmpInput);
+            NiftiVolume::saveNifti(preprocPath, {preprocResult.data, preprocResult.spacing});
 
-        QString rawInferencePath = m_p.outputDir + "/inference_raw.nii.gz";
-        auto inferenceResult =
-            engine.run(m_p.modelPath, inferenceVol, rawInferencePath, "input", "output");
+            NiftiVolume inferenceInput = NiftiVolume::loadNifti(preprocPath);
 
-        qDebug() << "------------------------------------------";
-        qDebug() << "[TIMER] INFERENCE :" << step_timer.elapsed() / 1000 << "s";
-        qDebug() << "------------------------------------------";
+            inferenceResult =
+                engine.run(m_p.modelPath, inferenceInput, rawInferencePath, "input", "output");
+
+            qDebug() << "------------------------------------------";
+            qDebug() << "[TIMER] INFERENCE :" << step_timer.elapsed() / 1000 << "s";
+            qDebug() << "------------------------------------------";
+        }
 
         if (ProgressManager::instance().isInterrupted()) {
             throw std::runtime_error("Cancelled");
         }
 
         // 3. POSTPROCESSING
-        step_timer.restart();
-        emit statusChanged("Step 3/3 : Postprocessing...");
 
-        postprocessing::Postprocessor postproc(m_wrapper);
-
-        NiftiVolume final_volume = postproc.postprocess(inferenceResult.data, preprocResult, preprocResult.bbox, m_p.threshold,
-                             m_p.savePMap, m_p.outputDir, preprocResult.trsf_path, m_p.mni);
-
-        QString fileName;
-        QString finalPath;
-
-        QString prefixMNI = m_p.mni ? "MNI_" : "";
-
-        if (m_p.suffix == "") {
-            fileName = prefixMNI + QFileInfo(m_p.t1Path).baseName() + "_seg" + ".nii.gz";
-            finalPath = m_p.outputDir + "/" + fileName;
+        if (bypassed_postproc && QFile::exists(finalPath)) {
+            emit statusChanged("Cache detected, postprocessed volume loading...");
+            qDebug() << "[BYPASS] Loading existing postprocessed file:" << finalPath;
+            NiftiVolume final_volume = NiftiVolume::loadNifti(finalPath);
+            emit finished(true, "analysis performed with success !", finalPath);
+            return 0;
         } else {
-            fileName = prefixMNI + QFileInfo(m_p.t1Path).baseName() + "_" + m_p.suffix + ".nii.gz";
-            finalPath = m_p.outputDir + "/" + fileName;
+            qDebug() << "[BYPASS] No valid cache found. Running postprocessing.";
+            bypassed_postproc = false;
         }
 
-        // Duplicate original header to avoid header corruption.
-        if (m_p.mni) {
-            NiftiVolume::saveNiftiWithReference(finalPath, final_volume,
-                                                Paths::atlasDir().filePath("Reference_T1.nii.gz"));
-        } else {
-            NiftiVolume::saveNiftiWithReference(finalPath, final_volume, m_p.t1Path);
+        if (!bypassed_postproc) {
+            step_timer.restart();
+            emit statusChanged("Step 3/3 : Postprocessing...");
+
+            postprocessing::Postprocessor postproc(m_wrapper);
+
+            NiftiVolume final_volume = postproc.postprocess(
+                inferenceResult.data, preprocResult, preprocResult.bbox, m_p.threshold,
+                m_p.savePMap, m_p.outputDir, preprocResult.trsf_path, m_p.mni);
+
+            // Duplicate original header to avoid header corruption.
+            if (m_p.mni) {
+                NiftiVolume::saveNiftiWithReference(
+                    finalPath, final_volume, Paths::atlasDir().filePath("Reference_T1.nii.gz"));
+            } else {
+                qDebug() << finalPath;
+                qDebug() << finalFileName;
+                NiftiVolume::saveNiftiWithReference(finalPath, final_volume, m_p.t1Path);
+            }
+
+            emit finished(true, "analysis performed with success !", finalPath);
+
+            qDebug() << "------------------------------------------";
+            qDebug() << "[TIMER] POSTPROCESSING :" << step_timer.elapsed() / 1000 << "s";
+            qDebug() << "------------------------------------------";
         }
-
-        QFile::remove(tmpInput);
-        if (!m_p.savePreproc) {
-            QFile::remove(rawInferencePath);
-        }
-
-        emit finished(true, "analysis performed with success !", finalPath);
-
-        qDebug() << "------------------------------------------";
-        qDebug() << "[TIMER] POSTPROCESSING :" << step_timer.elapsed() / 1000 << "s";
-        qDebug() << "------------------------------------------";
 
         qDebug() << "------------------------------------------";
         qDebug() << "[TIMER] TOTAL PROCESS :" << total_timer.elapsed() / 1000 << "s";

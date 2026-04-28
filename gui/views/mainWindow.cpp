@@ -1,6 +1,7 @@
 #include "mainWindow.h"
 
 #include <algorithm>
+#include <managers/logManager.h>
 #include <QProgressBar>
 
 #include <QDebug>
@@ -185,9 +186,11 @@ MainWindow::MainWindow(const PipelineParams &opts, QWidget *parent)
     m_toggleView = new QCheckBox("", formParameters);
     m_toggleOpenFolder = new QCheckBox("", formParameters);
     m_toggleOutput = new QCheckBox("", formParameters);
-    m_skipBrainExtract = new QCheckBox("", formParameters);
+    m_skipPreProcessing = new QCheckBox("", formParameters);
+    m_skipInference = new QCheckBox("", formParameters);
+    m_skipPostProcessing = new QCheckBox("", formParameters);
     m_savePMap = new QCheckBox("", formParameters);
-    m_savePreprocessing = new QCheckBox("", formParameters);
+    m_savePreProcessing = new QCheckBox("", formParameters);
 
     // Prediction mode
     m_mode = new QComboBox(formParameters);
@@ -226,9 +229,11 @@ MainWindow::MainWindow(const PipelineParams &opts, QWidget *parent)
     m_formLayout->addRow("Open viewer :", m_toggleView);
     m_formLayout->addRow("Open destination folder :", m_toggleOpenFolder);
     m_formLayout->addRow("Output MNI space :", m_toggleOutput);
-    m_formLayout->addRow("Skip brain extraction:", m_skipBrainExtract);
+    m_formLayout->addRow("Skip pre-processing:", m_skipPreProcessing);
+    m_formLayout->addRow("Skip inference:", m_skipInference);
+    m_formLayout->addRow("Skip post-processing:", m_skipPostProcessing);
     m_formLayout->addRow("Save probability map :", m_savePMap);
-    m_formLayout->addRow("Save pre-processing :", m_savePreprocessing);
+    m_formLayout->addRow("Save pre-processing :", m_savePreProcessing);
     m_formLayout->addRow("Execution mode :", m_mode);
 
     QLabel *thresholdLabel = new QLabel("Threshold :", formParameters);
@@ -420,12 +425,14 @@ MainWindow::MainWindow(const PipelineParams &opts, QWidget *parent)
         m_toggleOpenFolder->setChecked(false);
         m_toggleOutput->setChecked(false);
         m_savePMap->setChecked(false);
-        m_savePreprocessing->setChecked(false);
+        m_savePreProcessing->setChecked(false);
         m_threshold->setText("0.50");
         m_thresholdSlider->setValue(50);
         m_model->setCurrentIndex(1);
         m_mode->setCurrentIndex(0);
-        m_skipBrainExtract->setChecked(false);
+        m_skipPreProcessing->setChecked(false);
+        m_skipInference->setChecked(false);
+        m_skipPostProcessing->setChecked(false);
 
         m_consoleLabel->setText("Settings reset");
     });
@@ -488,14 +495,20 @@ MainWindow::MainWindow(const PipelineParams &opts, QWidget *parent)
         m_thresholdContainer->setVisible(
             !isBetOnly);
 
-        m_skipBrainExtract->setChecked(false);
-        m_skipBrainExtract->setEnabled(!isBetOnly);
+        m_skipPreProcessing->setChecked(false);
+        m_skipPreProcessing->setEnabled(!isBetOnly);
+
+        m_skipInference->setChecked(false);
+        m_skipInference->setEnabled(!isBetOnly);
+
+        m_skipPostProcessing->setChecked(false);
+        m_skipPostProcessing->setEnabled(!isBetOnly);
 
         m_savePMap->setChecked(false);
         m_savePMap->setEnabled(!isBetOnly);
 
-        m_savePreprocessing->setChecked(false);
-        m_savePreprocessing->setEnabled(!isBetOnly);
+        m_savePreProcessing->setChecked(false);
+        m_savePreProcessing->setEnabled(!isBetOnly);
     });
 
     connect(&ProgressManager::instance(), &ProgressManager::progressUpdated, this,
@@ -541,12 +554,20 @@ MainWindow::MainWindow(const PipelineParams &opts, QWidget *parent)
         m_savePMap->setChecked(true);
     }
 
-    if (m_params.savePreproc) {
-        m_savePreprocessing->setChecked(true);
+    if (m_params.savePreProcessing) {
+        m_savePreProcessing->setChecked(true);
     }
 
-    if (m_params.skipBrainExtract) {
-        m_skipBrainExtract->setChecked(true);
+    if (m_params.skipPreProcessing) {
+        m_skipPreProcessing->setChecked(true);
+    }
+
+    if (m_params.skipInference) {
+        m_skipInference->setChecked(true);
+    }
+
+    if (m_params.skipPostProcessing) {
+        m_skipPostProcessing->setChecked(true);
     }
 
     if (!m_params.modelPath.isEmpty()) {
@@ -794,9 +815,11 @@ void MainWindow::setInputsEnabled(bool enabled) {
     m_toggleView->setEnabled(enabled);
     m_toggleOpenFolder->setEnabled(enabled);
     m_toggleOutput->setEnabled(enabled);
-    m_skipBrainExtract->setEnabled(enabled);
+    m_skipPreProcessing->setEnabled(enabled);
+    m_skipInference->setEnabled(enabled);
+    m_skipPostProcessing->setEnabled(enabled);
     m_savePMap->setEnabled(enabled);
-    m_savePreprocessing->setEnabled(enabled);
+    m_savePreProcessing->setEnabled(enabled);
     m_mode->setEnabled(enabled);
     m_thresholdSlider->setEnabled(enabled);
     m_threshold->setEnabled(enabled);
@@ -823,8 +846,10 @@ void MainWindow::Process() {
     m_params.modelPath = Paths::modelDir().filePath(m_model->currentText() + ".onnx");
     m_params.suffix = m_suffix->text();
     m_params.savePMap = m_savePMap->isChecked();
-    m_params.savePreproc = m_savePreprocessing->isChecked();
-    m_params.skipBrainExtract = m_skipBrainExtract->isChecked();
+    m_params.savePreProcessing = m_savePreProcessing->isChecked();
+    m_params.skipPreProcessing = m_skipPreProcessing->isChecked();
+    m_params.skipInference = m_skipInference->isChecked();
+    m_params.skipPostProcessing = m_skipPostProcessing->isChecked();
     m_params.mni = m_toggleOutput->isChecked();
     m_params.betOnly = m_mode->currentText() == "Brain Extraction Only";
 
@@ -914,9 +939,11 @@ void MainWindow::saveSettings() {
     settings.setValue("toggleView", m_toggleView->isChecked());
     settings.setValue("toggleOpenFolder", m_toggleOpenFolder->isChecked());
     settings.setValue("toggleOutput", m_toggleOutput->isChecked());
-    settings.setValue("skipBrainExtract", m_skipBrainExtract->isChecked());
+    settings.setValue("skipPreProcessing", m_skipPreProcessing->isChecked());
+    settings.setValue("skipInference", m_skipInference->isChecked());
+    settings.setValue("skipPostProcessing", m_skipPostProcessing->isChecked());
     settings.setValue("savePMap", m_savePMap->isChecked());
-    settings.setValue("savePreprocessing", m_savePreprocessing->isChecked());
+    settings.setValue("savePreProcessing", m_savePreProcessing->isChecked());
 
     // Threshold
     settings.setValue("thresholdValue", m_threshold->text());
@@ -939,9 +966,11 @@ void MainWindow::loadSettings() {
     m_toggleView->setChecked(settings.value("toggleView", false).toBool());
     m_toggleOpenFolder->setChecked(settings.value("toggleOpenFolder", false).toBool());
     m_toggleOutput->setChecked(settings.value("toggleOutput", false).toBool());
-    m_skipBrainExtract->setChecked(settings.value("skipBrainExtract", false).toBool());
+    m_skipPreProcessing->setChecked(settings.value("skipPreProcessing", false).toBool());
+    m_skipInference->setChecked(settings.value("skipInference", false).toBool());
+    m_skipPostProcessing->setChecked(settings.value("skipPostProcessing", false).toBool());
     m_savePMap->setChecked(settings.value("savePMap", false).toBool());
-    m_savePreprocessing->setChecked(settings.value("savePreprocessing", false).toBool());
+    m_savePreProcessing->setChecked(settings.value("savePreProcessing", false).toBool());
 
     m_threshold->setText(settings.value("thresholdValue", "0.50").toString());
     m_thresholdSlider->setValue(settings.value("thresholdSlider", 50).toInt());
@@ -974,7 +1003,18 @@ void MainWindow::toggleConsole() {
             SetForegroundWindow(hwnd);
             m_terminalButton->setText("Hide Console");
             isVisible = true;
-            qDebug() << "--- Console Session Started ---";
+
+            QString logPath = LogManager::getLogFilePath();
+            QFile logFile(logPath);
+            if (logFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                QTextStream in(&logFile);
+                system("cls");
+                printf("%s\n", in.readAll().toLocal8Bit().constData());
+                fflush(stdout);
+                logFile.close();
+            }
+
+            qDebug() << "--- Console Session Active ---";
         } else {
             ShowWindow(hwnd, SW_HIDE);
             m_terminalButton->setText("Show Console");

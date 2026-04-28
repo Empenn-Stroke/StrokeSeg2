@@ -12,6 +12,7 @@ set(HEADERS
     "managers/configmanager.h"
     "managers/appconfig.h"
     "managers/progressManager.h"
+    "managers/logManager.h"
     "inference/inference.h"
     "workers/pipelineWorker.h")
 
@@ -26,6 +27,7 @@ set(COMMON_SOURCES
     "postprocessing/postprocessor.cpp" 
     "managers/configmanager.cpp" 
     "managers/progressManager.cpp"
+    "managers/logManager.cpp"
     "inference/inference.cpp"
     "inference/inference_internal.h"
     "workers/pipelineWorker.cpp")

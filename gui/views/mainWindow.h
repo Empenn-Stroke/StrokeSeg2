@@ -58,9 +58,11 @@ private:
     QCheckBox *m_toggleView;
     QCheckBox *m_toggleOpenFolder;
     QCheckBox *m_toggleOutput;
-    QCheckBox *m_skipBrainExtract;
+    QCheckBox *m_skipPreProcessing;
+    QCheckBox *m_skipInference;
+    QCheckBox *m_skipPostProcessing;
     QCheckBox *m_savePMap;
-    QCheckBox *m_savePreprocessing;
+    QCheckBox *m_savePreProcessing;
     QComboBox *m_mode;
 
     QSlider *m_thresholdSlider; 
