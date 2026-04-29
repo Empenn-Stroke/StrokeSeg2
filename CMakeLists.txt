@@ -21,6 +21,7 @@ endif()
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
+
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Concurrent)
 qt_standard_project_setup()
 
@@ -28,9 +29,7 @@ if(MSVC)
     string(REPLACE "/ZI" "/Zi" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
     string(REPLACE "/ZI" "/Zi" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
     string(REPLACE "/ZI" "/Zi" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
-
     add_compile_options(/Zm200 /bigobj)
-
     add_compile_options(/O2 /arch:AVX2 /Oi /Ot /GL)
     add_link_options(/LTCG)
 endif()
@@ -42,22 +41,17 @@ if(CMAKE_GENERATOR MATCHES "^Visual Studio")
 endif()
 
 # 1. Eigen
-
 set(EIGEN_INSTALL_DIR "${CMAKE_BINARY_DIR}/../../bin/eigen") # À ajuster selon votre arborescence réelle
-
 list(APPEND CMAKE_PREFIX_PATH 
     "${EIGEN_INSTALL_DIR}"
     "${CMAKE_BINARY_DIR}/../../bin"
 )
-
 find_package(Eigen3 REQUIRED)
-
 message(STATUS "Searching for Eigen3 in: ${CMAKE_PREFIX_PATH}")
 
 # 2. ZLIB
 get_filename_component(OUT_DIR "${CMAKE_BINARY_DIR}/../../.." ABSOLUTE)
 set(ZLIB_LIB_DIR "${OUT_DIR}/bin/zlib/lib")
-
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(ZLIB_LIBRARY "${ZLIB_LIB_DIR}/zsd.lib")
 else()
@@ -67,15 +61,12 @@ endif()
 # 3. NIFTI (compilé via ExternalProject dans le superprojet)
 # Si NIFTI n'exporte pas de config CMake, on le cherche manuellement
 get_filename_component(OUT_DIR "${CMAKE_BINARY_DIR}/../../.." ABSOLUTE)
-
 set(NIFTI_INSTALL_ROOT "${OUT_DIR}/bin/Nifti_clib")
-
 set(NIFTI_INCLUDE_DIR "${NIFTI_INSTALL_ROOT}/include/nifti")
 set(NIFTI_LIBS 
     "${NIFTI_INSTALL_ROOT}/lib/niftiio.lib"
     "${NIFTI_INSTALL_ROOT}/lib/znz.lib"
 )
-
 # On vérifie si les chemins existent pour aider au debug
 message(STATUS "Checking Nifti in: ${NIFTI_INCLUDE_DIR}")
 
@@ -85,23 +76,24 @@ qt_standard_project_setup() # sets some variables to setup qt
 
 # --- NuGet Packages (Gardé ici car spécifique au build MSVC de l'app) ---
 set(CPPWINRT_VERSION "2.0.250303.1" CACHE STRING "Version of CppWinRT")
-set(CPPWINRT_SYSTEM_VERSION ${CPPWINRT_VERSION} CACHE STRING "System version of CppWinRT")
-set(CPP_WINRT_VERSION ${CPPWINRT_VERSION}) # Parfois requis par certains scripts
-set(WIN_APP_SDK_VERSION "1.8.251106002" CACHE STRING "Version of Windows App SDK")
+set(WIN_APP_SDK_VERSION "1.8.260317003" CACHE STRING "Version of Windows App SDK")
 
-#include(FetchContent)
-#FetchContent_Declare(
-#    NuGetCMakePackage
-#    GIT_REPOSITORY https://github.com/mschofie/NuGetCMakePackage
-#    GIT_TAG b13e013481605d134f498fd9fc3a123c416da197
-#)
-#FetchContent_Declare(
-#    Anima
-#    URL ${ANIMA_URL}
-#    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-#)
-#
-#FetchContent_MakeAvailable(Anima)
+# Définition du chemin vers l'overlay (là où se trouve le fichier config d'après ton message)
+get_filename_component(EXT_PROJS_ROOT "${CMAKE_BINARY_DIR}/.." ABSOLUTE)
+set(NUGET_OVERLAY_DIR "${EXT_PROJS_ROOT}/source/NuGetCMakePackage/overlay")
+
+# On ajoute le chemin spécifique de WIL au prefix path
+list(APPEND CMAKE_PREFIX_PATH 
+    "${NUGET_OVERLAY_DIR}/microsoft.windows.implementationlibrary"
+    "${EXT_PROJS_ROOT}/build/NuGetDeps/__nuget"
+)
+
+# On aide CMake en définissant explicitement le dossier de config pour WIL
+set(Microsoft.Windows.ImplementationLibrary_DIR "${NUGET_OVERLAY_DIR}/microsoft.windows.implementationlibrary")
+
+# On force la recherche des configurations NuGet
+find_package(Microsoft.Windows.ImplementationLibrary CONFIG REQUIRED)
+find_package(Microsoft.WindowsAppSDK.ML CONFIG REQUIRED)
 
 set(ANIMA_FILES_TO_COPY "")
 foreach(TOOL ${ANIMA_REQUIRED_TOOLS})
@@ -110,13 +102,11 @@ foreach(TOOL ${ANIMA_REQUIRED_TOOLS})
     else()
         set(BIN_PATH "${anima_SOURCE_DIR}/${TOOL}")
     endif()
-    
-    list(APPEND ANIMA_FILES_TO_COPY "${BIN_PATH}")
+        list(APPEND ANIMA_FILES_TO_COPY "${BIN_PATH}")
 endforeach()
 
 set(ANIMA_RUNTIME_DESTINATION "${CMAKE_BINARY_DIR}/${ANIMA_REL_PATH}")
 file(MAKE_DIRECTORY "${ANIMA_RUNTIME_DESTINATION}")
-
 foreach(FILE_PATH ${ANIMA_FILES_TO_COPY})
     if(EXISTS "${FILE_PATH}")
         file(COPY "${FILE_PATH}" DESTINATION "${ANIMA_RUNTIME_DESTINATION}")
@@ -124,26 +114,6 @@ foreach(FILE_PATH ${ANIMA_FILES_TO_COPY})
         message(WARNING "ANIMA binary not found at path : ${FILE_PATH}")
     endif()
 endforeach()
-
-
-# Adding specific dependencies depending on the operating system
-#if(WIN32)
-#    FetchContent_MakeAvailable(NuGetCMakePackage)
-#
-#add_nuget_packages(
-#    PACKAGES
-#        Microsoft.Windows.CppWinRT 2.0.250303.1
-#        Microsoft.ML.OnnxRuntime.DirectML 1.17.1
-#        Microsoft.Windows.ImplementationLibrary 1.0.250325.1
-#        Microsoft.WindowsAppSDK.Foundation 1.8.251104000
-#        Microsoft.WindowsAppSDK.InteractiveExperiences 1.8.251104001
-#        Microsoft.WindowsAppSDK.ML 1.8.2109
-#        Microsoft.WindowsAppSDK.Runtime 1.8.251106002
-#)
-#endif()
-#
-#find_package(Microsoft.Windows.ImplementationLibrary CONFIG REQUIRED)
-#find_package(Microsoft.WindowsAppSDK.ML CONFIG REQUIRED)
 
 # --- Definitions & Configuration ---
 set(CORE "core")
@@ -156,6 +126,8 @@ endif()
 add_compile_definitions(ANIMA_ROOT_PATH="${ANIMA_ROOT_PATH}")
 
 include(./Configuration.cmake)
+
+qt_add_executable(${PROJECT_NAME})
 
 # --- Targets ---
 add_subdirectory(${CMAKE_SOURCE_DIR}/${CORE})
