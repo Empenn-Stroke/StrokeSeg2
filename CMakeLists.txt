@@ -74,26 +74,38 @@ message(STATUS "Checking Nifti in: ${NIFTI_INCLUDE_DIR}")
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Concurrent)
 qt_standard_project_setup() # sets some variables to setup qt
 
-# --- NuGet Packages (Gardé ici car spécifique au build MSVC de l'app) ---
-set(CPPWINRT_VERSION "2.0.250303.1" CACHE STRING "Version of CppWinRT")
-set(WIN_APP_SDK_VERSION "1.8.260317003" CACHE STRING "Version of Windows App SDK")
+# --- NuGet Packages Configuration ---
 
-# Définition du chemin vers l'overlay (là où se trouve le fichier config d'après ton message)
-get_filename_component(EXT_PROJS_ROOT "${CMAKE_BINARY_DIR}/.." ABSOLUTE)
+# 1. Chemins vers les dossiers (Basés sur tes captures)
+get_filename_component(EXT_PROJS_ROOT "${CMAKE_BINARY_DIR}/../.." ABSOLUTE)
+set(NUGET_GEN_DIR "${EXT_PROJS_ROOT}/build/NuGetDeps/__nuget")
 set(NUGET_OVERLAY_DIR "${EXT_PROJS_ROOT}/source/NuGetCMakePackage/overlay")
 
-# On ajoute le chemin spécifique de WIL au prefix path
-list(APPEND CMAKE_PREFIX_PATH 
-    "${NUGET_OVERLAY_DIR}/microsoft.windows.implementationlibrary"
-    "${EXT_PROJS_ROOT}/build/NuGetDeps/__nuget"
-)
+# 2. On définit les racines pour que les overlays sachent où chercher les binaires
+set(Microsoft_Windows_ImplementationLibrary_ROOT "${NUGET_GEN_DIR}/Microsoft.Windows.ImplementationLibrary.1.0.250325.1")
+set(Microsoft_WindowsAppSDK_ML_ROOT              "${NUGET_GEN_DIR}/Microsoft.WindowsAppSDK.ML.1.8.2141")
+set(Microsoft_Windows_CppWinRT_ROOT              "${NUGET_GEN_DIR}/Microsoft.Windows.CppWinRT.2.0.250303.1")
 
-# On aide CMake en définissant explicitement le dossier de config pour WIL
-set(Microsoft.Windows.ImplementationLibrary_DIR "${NUGET_OVERLAY_DIR}/microsoft.windows.implementationlibrary")
+# 3. AU LIEU DE find_package, on inclut directement les overlays
+# Ces fichiers .cmake dans l'overlay vont créer les cibles (targets) pour toi
+set(WIL_CONFIG      "${NUGET_OVERLAY_DIR}/microsoft.windows.implementationlibrary/microsoft.windows.implementationlibrary-config.cmake")
+set(CPPWINRT_CONFIG "${NUGET_OVERLAY_DIR}/microsoft.windows.cppwinrt/microsoft.windows.cppwinrt-config.cmake")
+set(ML_CONFIG       "${NUGET_OVERLAY_DIR}/microsoft.windowsappsdk.ml/microsoft.windowsappsdk.ml-config.cmake")
 
-# On force la recherche des configurations NuGet
-find_package(Microsoft.Windows.ImplementationLibrary CONFIG REQUIRED)
-find_package(Microsoft.WindowsAppSDK.ML CONFIG REQUIRED)
+if(EXISTS "${WIL_CONFIG}")
+    include("${WIL_CONFIG}")
+endif()
+
+if(EXISTS "${CPPWINRT_CONFIG}")
+    include("${CPPWINRT_CONFIG}")
+    message(STATUS "CppWinRT Overlay loaded")
+    set(Microsoft.Windows.CppWinRT_DIR "${NUGET_OVERLAY_DIR}/microsoft.windows.cppwinrt" CACHE PATH "" FORCE)
+endif()
+
+if(EXISTS "${ML_CONFIG}")
+    include("${ML_CONFIG}")
+    message(STATUS "ML Overlay loaded")
+endif()
 
 set(ANIMA_FILES_TO_COPY "")
 foreach(TOOL ${ANIMA_REQUIRED_TOOLS})
