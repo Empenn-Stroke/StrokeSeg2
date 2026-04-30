@@ -12,7 +12,7 @@
 #include <QObject>
 
 #include "brainextraction.h"
-#include "preprocvolume.h"
+#include "preprocVolume.h"
 #include "resampling.h"
 
 #include <utils/animawrapper.h>

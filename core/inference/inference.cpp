@@ -1,11 +1,19 @@
 #include "inference.h"
-#include "inference_internal.h"
+
+#ifdef _WIN32
+    #include "Win/inference_win.h"
+#elif defined(__APPLE__)
+    #include "Mac/inference_mac.h"
+#else
+    #include "Linux/inference_linux.h" // Todo Axel :)
+#endif
 
 #include <QDebug>
 #include <QElapsedTimer>
 #include <QFile>
 
 #include "managers/progressManager.h"
+// ... rest of the file ...
 
 /* @brief Run inference on the specified input image using the loaded ONNX model and return the
  *        output as a NiftiVolume.

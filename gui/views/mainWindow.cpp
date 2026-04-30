@@ -17,7 +17,7 @@
 #include <QtConcurrent>
 #include <utils/env_path.h>
 #include <managers/progressManager.h>
-#include "NiftiViewerWindow.h"
+#include "niftiViewerWindow.h"
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -956,7 +956,7 @@ void MainWindow::loadSettings() {
     m_suffix->setText(settings.value("suffix", "").toString());
     m_destination->setText(settings.value("destination", "").toString());
 
-    // On restaure l'index du modèle seulement s'il est valide
+    // On restaure l'index du modï¿½le seulement s'il est valide
     int modelIdx = settings.value("modelIndex", 0).toInt();
     if (modelIdx < m_model->count())
         m_model->setCurrentIndex(modelIdx);

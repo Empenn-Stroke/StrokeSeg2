@@ -32,7 +32,7 @@ if(WIN32)
 
     if(NOT EXISTS "$ENV{WindowsSdkDir}/Platforms/UAP/10.0.26100.0/Platform.xml")
         message("$ENV{WindowsSdkDir}/Platforms/UAP/10.0.26100.0/Platform.xml")
-        message(FATAL_ERROR "Windows SDK UWP 10.0.26100.0 non trouvé.")
+        message(FATAL_ERROR "Windows SDK UWP 10.0.26100.0 non trouvï¿½.")
     endif()
 endif()
 
@@ -83,7 +83,11 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/madler/zlib.git
   GIT_TAG v1.2.13
 )
-FetchContent_MakeAvailable(zlib)
+if(WIN32)
+    FetchContent_MakeAvailable(zlib)
+else()
+    find_package(ZLIB REQUIRED)
+endif()
 
 set(ZLIB_INCLUDE_DIR ${zlib_SOURCE_DIR})
 set(ZLIB_LIBRARY zlib)
@@ -245,7 +249,23 @@ set_property(DIRECTORY APPEND PROPERTY VS_SOLUTION_ITEMS
 
 include(./Configuration.cmake)
 
+# TARGET DEFINITION ################################################################################
+
 if(WIN32)
+    add_executable(
+        ${PROJECT_NAME}
+        resources.qrc
+        main.cpp
+    )
+elseif(APPLE)
+    add_executable(
+        ${PROJECT_NAME} 
+        MACOSX_BUNDLE
+        resources.qrc
+        main.cpp
+    )
+else()
+    # Standard Linux/Unix executable
     add_executable(
         ${PROJECT_NAME}
         resources.qrc

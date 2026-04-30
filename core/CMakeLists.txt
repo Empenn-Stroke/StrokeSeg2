@@ -29,15 +29,14 @@ set(COMMON_SOURCES
     "managers/progressManager.cpp"
     "managers/logManager.cpp"
     "inference/inference.cpp"
-    "inference/inference_internal.h"
     "workers/pipelineWorker.cpp")
 
 
 if(WIN32)
-    set(OS_SOURCES "inference/Win/inference.cpp" "inference/Win/dml_ep_handler.cpp")
-    set(OS_HEADERS "inference/Win/dml_ep_handler.h")
+    set(OS_SOURCES "inference/Win/inference_win.cpp" "inference/Win/dml_ep_handler.cpp")
+    set(OS_HEADERS "inference/Win/dml_ep_handler.h" "inference/inference_win.h")
 elseif(APPLE)
-    set(OS_SOURCES "inference/Mac/inference.cpp")
+    set(OS_SOURCES "inference/Mac/inference_mac.cpp")
 else()
     set(OS_SOURCES "inference/Linux/inference.cpp")
 endif()
@@ -55,28 +54,41 @@ target_include_directories(${CORE} PUBLIC
     ${CMAKE_SOURCE_DIR}/${CORE}/
     ${CMAKE_SOURCE_DIR}/${COMMON}/
     "${ONNX_INCLUDE_DIR}"
-    "${DML_INCLUDE_DIR}"
 )
 
+if(WIN32)
+    target_include_directories(${CORE} PUBLIC "${DML_INCLUDE_DIR}")
+endif()
+
+# Standard libraries used by everyone
 target_link_libraries(${CORE} PUBLIC
-    zlibstatic
+    ZLIB::ZLIB
     niftiio
     znz
     spdlog
     Qt6::Core
     eigen
-    WindowsML::Api 
-    WindowsML::OnnxRuntime
     Configuration
 )
 
-add_custom_command(TARGET ${CORE} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${ML_DLL_PATH}/onnxruntime.dll"
-    "${ML_DLL_PATH}/onnxruntime_providers_shared.dll"
-    "${ML_DLL_PATH}/DirectML.dll"
-    "${ML_DLL_PATH}/Microsoft.Windows.AI.MachineLearning.dll"
-    $<TARGET_FILE_DIR:strokeseg2-app>
-)
+# Platform specific ML backends
+if(WIN32)
+    target_link_libraries(${CORE} PUBLIC
+        WindowsML::Api 
+        WindowsML::OnnxRuntime
+    )
+elseif(APPLE)
+    # This links to the imported library you created in the root CMakeLists.txt
+    target_link_libraries(${CORE} PUBLIC onnxruntime_lib)
+endif()
 
-add_dependencies(${CORE} zlib)
+if(WIN32)
+    add_custom_command(TARGET ${CORE} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${ML_DLL_PATH}/onnxruntime.dll"
+        "${ML_DLL_PATH}/onnxruntime_providers_shared.dll"
+        "${ML_DLL_PATH}/DirectML.dll"
+        "${ML_DLL_PATH}/Microsoft.Windows.AI.MachineLearning.dll"
+        $<TARGET_FILE_DIR:strokeseg2-app>
+    )
+endif()
