@@ -165,8 +165,14 @@ bool ModelManager::nativeEvent(const QByteArray &eventType, void *message, qintp
 }
 
 void ModelManager::importModel() {
-    QString filename = QFileDialog::getOpenFileName(this, "Choose file", Paths::modelDir().absolutePath(),
-                                                    "ONNX Model (*.onnx);;All files (*)");
+    QString filename = QFileDialog::getOpenFileName(
+        nullptr, 
+        "Choose file", 
+        Paths::modelDir().absolutePath(),
+        "ONNX Model (*.onnx);;All files (*)",
+        nullptr,
+        QFileDialog::DontUseNativeDialog
+    );
 
     if (filename.isEmpty())
         return;
