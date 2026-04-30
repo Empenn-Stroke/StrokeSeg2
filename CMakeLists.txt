@@ -74,38 +74,43 @@ message(STATUS "Checking Nifti in: ${NIFTI_INCLUDE_DIR}")
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Concurrent)
 qt_standard_project_setup() # sets some variables to setup qt
 
-# --- NuGet Packages Configuration ---
+# --- NuGet Packages Configuration (Correction Définitive) ---
 
-# 1. Chemins vers les dossiers (Basés sur tes captures)
 get_filename_component(EXT_PROJS_ROOT "${CMAKE_BINARY_DIR}/../.." ABSOLUTE)
 set(NUGET_GEN_DIR "${EXT_PROJS_ROOT}/build/NuGetDeps/__nuget")
 set(NUGET_OVERLAY_DIR "${EXT_PROJS_ROOT}/source/NuGetCMakePackage/overlay")
 
-# 2. On définit les racines pour que les overlays sachent où chercher les binaires
+# 1. On mappe les racines (ROOT) pour que les overlays trouvent les DLL/LIB
+# On utilise les noms exacts vus sur tes captures d'écran
 set(Microsoft_Windows_ImplementationLibrary_ROOT "${NUGET_GEN_DIR}/Microsoft.Windows.ImplementationLibrary.1.0.250325.1")
 set(Microsoft_WindowsAppSDK_ML_ROOT              "${NUGET_GEN_DIR}/Microsoft.WindowsAppSDK.ML.1.8.2141")
 set(Microsoft_Windows_CppWinRT_ROOT              "${NUGET_GEN_DIR}/Microsoft.Windows.CppWinRT.2.0.250303.1")
+set(Microsoft_WindowsAppSDK_Runtime_ROOT         "${NUGET_GEN_DIR}/Microsoft.WindowsAppSDK.Runtime.1.8.260317003")
+set(Microsoft_WindowsAppSDK_Foundation_ROOT      "${NUGET_GEN_DIR}/Microsoft.WindowsAppSDK.Foundation.1.8.260222000")
+set(Microsoft_WindowsAppSDK_InteractiveExperiences_ROOT "${NUGET_GEN_DIR}/Microsoft.WindowsAppSDK.InteractiveExperiences.1.8.260125001")
 
-# 3. AU LIEU DE find_package, on inclut directement les overlays
-# Ces fichiers .cmake dans l'overlay vont créer les cibles (targets) pour toi
-set(WIL_CONFIG      "${NUGET_OVERLAY_DIR}/microsoft.windows.implementationlibrary/microsoft.windows.implementationlibrary-config.cmake")
-set(CPPWINRT_CONFIG "${NUGET_OVERLAY_DIR}/microsoft.windows.cppwinrt/microsoft.windows.cppwinrt-config.cmake")
-set(ML_CONFIG       "${NUGET_OVERLAY_DIR}/microsoft.windowsappsdk.ml/microsoft.windowsappsdk.ml-config.cmake")
+# 2. LA FORCE BRUTE : On injecte CHAQUE sous-dossier d'overlay dans le Prefix Path
+# Cela permet à n'importe quel find_package() interne de trouver son bonheur
+file(GLOB ALL_OVERLAYS "${NUGET_OVERLAY_DIR}/*")
+foreach(OV_PATH ${ALL_OVERLAYS})
+    if(IS_DIRECTORY "${OV_PATH}")
+        list(APPEND CMAKE_PREFIX_PATH "${OV_PATH}")
+    endif()
+endforeach()
 
-if(EXISTS "${WIL_CONFIG}")
-    include("${WIL_CONFIG}")
-endif()
+# 3. On définit manuellement les variables _DIR prioritaires pour les plus pénibles
+# (Pour contrer les problèmes de casse : microsoft vs Microsoft)
+set(Microsoft.WindowsAppSDK.InteractiveExperiences_DIR "${NUGET_OVERLAY_DIR}/microsoft.windowsappsdk.interactiveexperiences")
+set(Microsoft.WindowsAppSDK.Foundation_DIR             "${NUGET_OVERLAY_DIR}/microsoft.windowsappsdk.foundation")
+set(Microsoft.WindowsAppSDK.Runtime_DIR                "${NUGET_OVERLAY_DIR}/microsoft.windowsappsdk.runtime")
 
-if(EXISTS "${CPPWINRT_CONFIG}")
-    include("${CPPWINRT_CONFIG}")
-    message(STATUS "CppWinRT Overlay loaded")
-    set(Microsoft.Windows.CppWinRT_DIR "${NUGET_OVERLAY_DIR}/microsoft.windows.cppwinrt" CACHE PATH "" FORCE)
-endif()
+# 4. On lance l'inclusion des têtes de pont
+# Celles-ci vont maintenant trouver Foundation et InteractiveExperiences automatiquement
+include("${NUGET_OVERLAY_DIR}/microsoft.windows.implementationlibrary/microsoft.windows.implementationlibrary-config.cmake")
+include("${NUGET_OVERLAY_DIR}/microsoft.windows.cppwinrt/microsoft.windows.cppwinrt-config.cmake")
+include("${NUGET_OVERLAY_DIR}/microsoft.windowsappsdk.ml/microsoft.windowsappsdk.ml-config.cmake")
 
-if(EXISTS "${ML_CONFIG}")
-    include("${ML_CONFIG}")
-    message(STATUS "ML Overlay loaded")
-endif()
+message(STATUS "NuGet setup: All components indexed.")
 
 set(ANIMA_FILES_TO_COPY "")
 foreach(TOOL ${ANIMA_REQUIRED_TOOLS})
