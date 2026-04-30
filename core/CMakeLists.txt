@@ -34,7 +34,7 @@ set(COMMON_SOURCES
 
 if(WIN32)
     set(OS_SOURCES "inference/Win/inference_win.cpp" "inference/Win/dml_ep_handler.cpp")
-    set(OS_HEADERS "inference/Win/dml_ep_handler.h" "inference/inference_win.h")
+    set(OS_HEADERS "inference/Win/dml_ep_handler.h" "inference/Win/inference_win.h")
 elseif(APPLE)
     set(OS_SOURCES "inference/Mac/inference_mac.cpp")
 else()
@@ -60,9 +60,22 @@ if(WIN32)
     target_include_directories(${CORE} PUBLIC "${DML_INCLUDE_DIR}")
 endif()
 
+# Platform specific backends and libraries
+if(WIN32)
+    target_link_libraries(${CORE} PUBLIC
+        zlibstatic       # Use the fetched static library on Windows
+        WindowsML::Api 
+        WindowsML::OnnxRuntime
+    )
+elseif(APPLE)
+    target_link_libraries(${CORE} PUBLIC 
+        ZLIB::ZLIB       # Use the system dynamic library on Mac
+        onnxruntime_lib
+    )
+endif()
+
 # Standard libraries used by everyone
 target_link_libraries(${CORE} PUBLIC
-    ZLIB::ZLIB
     niftiio
     znz
     spdlog

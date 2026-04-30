@@ -1,5 +1,5 @@
 #include "../inference.h"
-#include "inference_internal.h"
+#include "inference_win.h"
 
 #include "dml_ep_handler.h"
 #include <QDebug>
