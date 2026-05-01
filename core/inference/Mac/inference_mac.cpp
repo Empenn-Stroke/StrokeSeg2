@@ -26,12 +26,11 @@ void InferencePrivate::init(const QString& modelPath) {
 
         // --- Attempt to attach CoreML (Apple Neural Engine / GPU) ---
         uint32_t coreml_flags = 0; 
-        // Optional: Use COREML_FLAG_ENABLE_ON_SUBGRAPH to allow partial NPU execution 
-        // if some ONNX nodes aren't supported by CoreML.
+        coreml_flags |= COREML_FLAG_ENABLE_ON_SUBGRAPH;
 
         const OrtApi& api = Ort::GetApi();
-        OrtStatus* status = OrtSessionOptionsAppendExecutionProvider_CoreML(static_cast<OrtSessionOptions*>(options), coreml_flags);
-
+        OrtStatus* status = OrtSessionOptionsAppendExecutionProvider_CoreML(
+            static_cast<OrtSessionOptions*>(options), coreml_flags);
         if (status == nullptr) {
             qDebug() << "CoreML Execution Provider targeted successfully.";
         } else {
