@@ -20,8 +20,9 @@ set_target_properties(${GUI} PROPERTIES
 )
 
 # Handle the icon if it's in this folder
-if (WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/resources/appicon.rc")
-    target_sources(${PROJECT_NAME} PRIVATE resources/appicon.rc)
+if(MSVC)
+    set(RC_FLAGS "/I ${CMAKE_CURRENT_SOURCE_DIR}/resources")
+    set_target_properties(gui PROPERTIES COMPILE_FLAGS "${RC_FLAGS}")
 endif()
 
 # Requirements for the app

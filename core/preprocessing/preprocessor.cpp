@@ -8,7 +8,6 @@
 
 #include <qelapsedtimer.h>
 #include <QtDebug>
-#include <spdlog/spdlog.h>
 
 #include "managers/progressManager.h"
 
@@ -315,9 +314,17 @@ namespace preprocessing {
 
         // --- LOG DE LA BBOX ---
         auto &b = bbox_ptr ? *bbox_ptr : local_bbox;
-        spdlog::info("[BBOX] X: [{}, {}], Y: [{}, {}], Z: [{}, {}] (Size: {}x{}x{})", b[0][0],
-                     b[0][1], b[1][0], b[1][1], b[2][0], b[2][1], b[0][1] - b[0][0],
-                     b[1][1] - b[1][0], b[2][1] - b[2][0]);
+        qInfo().noquote() << QString(
+                                 "[BBOX] X: [%1, %2], Y: [%3, %4], Z: [%5, %6] (Size: %7x%8x%9)")
+                                 .arg(b[0][0])
+                                 .arg(b[0][1])
+                                 .arg(b[1][0])
+                                 .arg(b[1][1])
+                                 .arg(b[2][0])
+                                 .arg(b[2][1])
+                                 .arg(b[0][1] - b[0][0])
+                                 .arg(b[1][1] - b[1][0])
+                                 .arg(b[2][1] - b[2][0]);
 
         result.bbox = local_bbox;
 
@@ -351,12 +358,19 @@ namespace preprocessing {
         printAction("padding to target size (128)");
         auto [padded, p_info] = padVolume(res, 128);
 
-        spdlog::info("[PADDING] X: [low:{}, high:{}], Y: [low:{}, high:{}], Z: [low:{}, high:{}]",
-                     p_info[0][0], p_info[0][1], p_info[1][0], p_info[1][1], p_info[2][0],
-                     p_info[2][1]);
-        spdlog::info("[FINAL SHAPE] {}x{}x{}", padded.data.dimension(0), padded.data.dimension(1),
-                     padded.data.dimension(2));
+        qInfo().noquote()
+            << QString("[PADDING] X: [low:%1, high:%2], Y: [low:%3, high:%4], Z: [low:%5, high:%6]")
+                   .arg(p_info[0][0])
+                   .arg(p_info[0][1])
+                   .arg(p_info[1][0])
+                   .arg(p_info[1][1])
+                   .arg(p_info[2][0])
+                   .arg(p_info[2][1]);
 
+        qInfo().noquote() << QString("[FINAL SHAPE] %1x%2x%3")
+                                 .arg(padded.data.dimension(0))
+                                 .arg(padded.data.dimension(1))
+                                 .arg(padded.data.dimension(2));
         // Volume final avant inference
         NiftiVolume::saveNifti(debug_prefix + "_PREPROC.nii.gz", padded);
 

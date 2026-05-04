@@ -2,7 +2,6 @@
 
 #include <QString>
 #include <optional>
-#include <spdlog/spdlog.h>
 
 #include "utils/log.h"
 #include "managers/progressManager.h"
@@ -299,7 +298,7 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
     try {
         segmentation_as_nifti = m_resampler.resample(segmentation_as_nifti, target_spacing);
     } catch (const std::bad_alloc &e) {
-        spdlog::error("Resampling failed: Out of memory. Check dimensions!");
+        qCritical("Resampling failed: Out of memory. Check dimensions!");
         throw;
     }
 
@@ -340,7 +339,7 @@ void postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &dat
 
         ProgressManager::instance().report(93, 7, 100);
     } catch (const std::exception &e) {
-        spdlog::error("Critical error during inverse registration: {}", e.what());
+        qCritical("Critical error during inverse registration: %s", e.what());
         return;
     }
 }

@@ -65,9 +65,9 @@ target_link_libraries(${CORE} PUBLIC
     "${ZLIB_LIBRARY}"
     ${NIFTI_LIBS}
     Qt6::Core
-    eigen
-    #WindowsML::Api 
-    #WindowsML::OnnxRuntime
+    Eigen3::Eigen
+    Microsoft::WindowsAppSDK::ML
+    Microsoft::Windows::CppWinRT
     Configuration
 )
 

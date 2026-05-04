@@ -1,5 +1,6 @@
-#include "utils/log.h"
+#include "log.h"
+#include <QDebug>
 
 void printAction(const QString &actionName) {
-    spdlog::info("Starting {}...", actionName.toStdString());
+    qInfo().noquote() << QString("Starting %1...").arg(actionName);
 }
