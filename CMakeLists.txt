@@ -74,6 +74,17 @@ message(STATUS "Checking Nifti in: ${NIFTI_INCLUDE_DIR}")
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Concurrent)
 qt_standard_project_setup() # sets some variables to setup qt
 
+#5. ANIMA
+set(ANIMA_REQUIRED_TOOLS 
+    "animaApplyTransformSerie"
+    "animaConvertImage"
+    "animaCreateImage"
+    "animaDenseSVFBMRegistration"
+    "animaMaskImage"
+    "animaN4BiasCorrection"
+    "animaPyramidalBMRegistration"
+    "animaTransformSerieXmlGenerator"
+)
 
 set(ANIMA_FILES_TO_COPY "")
 foreach(TOOL ${ANIMA_REQUIRED_TOOLS})
