@@ -26,12 +26,12 @@ find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Concurrent)
 qt_standard_project_setup()
 
 if(MSVC)
-    string(REPLACE "/ZI" "/Zi" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-    string(REPLACE "/ZI" "/Zi" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
-    string(REPLACE "/ZI" "/Zi" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
-    add_compile_options(/Zm200 /bigobj)
-    add_compile_options(/O2 /arch:AVX2 /Oi /Ot /GL)
-    add_link_options(/LTCG)
+    #string(REPLACE "/ZI" "/Zi" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    #string(REPLACE "/ZI" "/Zi" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+    #string(REPLACE "/ZI" "/Zi" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+    #add_compile_options(/Zm200 /bigobj)
+    #add_compile_options(/O2 /arch:AVX2 /Oi /Ot /GL)
+    #add_link_options(/LTCG)
 endif()
 
 if(CMAKE_GENERATOR MATCHES "^Visual Studio")
@@ -41,7 +41,7 @@ if(CMAKE_GENERATOR MATCHES "^Visual Studio")
 endif()
 
 # 1. Eigen
-set(EIGEN_INSTALL_DIR "${CMAKE_BINARY_DIR}/../../bin/eigen") # À ajuster selon votre arborescence réelle
+set(EIGEN_INSTALL_DIR "${CMAKE_BINARY_DIR}/../../bin/eigen")
 list(APPEND CMAKE_PREFIX_PATH 
     "${EIGEN_INSTALL_DIR}"
     "${CMAKE_BINARY_DIR}/../../bin"
@@ -74,43 +74,6 @@ message(STATUS "Checking Nifti in: ${NIFTI_INCLUDE_DIR}")
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Concurrent)
 qt_standard_project_setup() # sets some variables to setup qt
 
-# --- NuGet Packages Configuration (Correction Définitive) ---
-
-get_filename_component(EXT_PROJS_ROOT "${CMAKE_BINARY_DIR}/../.." ABSOLUTE)
-set(NUGET_GEN_DIR "${EXT_PROJS_ROOT}/build/NuGetDeps/__nuget")
-set(NUGET_OVERLAY_DIR "${EXT_PROJS_ROOT}/source/NuGetCMakePackage/overlay")
-
-# 1. On mappe les racines (ROOT) pour que les overlays trouvent les DLL/LIB
-# On utilise les noms exacts vus sur tes captures d'écran
-set(Microsoft_Windows_ImplementationLibrary_ROOT "${NUGET_GEN_DIR}/Microsoft.Windows.ImplementationLibrary.1.0.250325.1")
-set(Microsoft_WindowsAppSDK_ML_ROOT              "${NUGET_GEN_DIR}/Microsoft.WindowsAppSDK.ML.1.8.2141")
-set(Microsoft_Windows_CppWinRT_ROOT              "${NUGET_GEN_DIR}/Microsoft.Windows.CppWinRT.2.0.250303.1")
-set(Microsoft_WindowsAppSDK_Runtime_ROOT         "${NUGET_GEN_DIR}/Microsoft.WindowsAppSDK.Runtime.1.8.260317003")
-set(Microsoft_WindowsAppSDK_Foundation_ROOT      "${NUGET_GEN_DIR}/Microsoft.WindowsAppSDK.Foundation.1.8.260222000")
-set(Microsoft_WindowsAppSDK_InteractiveExperiences_ROOT "${NUGET_GEN_DIR}/Microsoft.WindowsAppSDK.InteractiveExperiences.1.8.260125001")
-
-# 2. LA FORCE BRUTE : On injecte CHAQUE sous-dossier d'overlay dans le Prefix Path
-# Cela permet à n'importe quel find_package() interne de trouver son bonheur
-file(GLOB ALL_OVERLAYS "${NUGET_OVERLAY_DIR}/*")
-foreach(OV_PATH ${ALL_OVERLAYS})
-    if(IS_DIRECTORY "${OV_PATH}")
-        list(APPEND CMAKE_PREFIX_PATH "${OV_PATH}")
-    endif()
-endforeach()
-
-# 3. On définit manuellement les variables _DIR prioritaires pour les plus pénibles
-# (Pour contrer les problèmes de casse : microsoft vs Microsoft)
-set(Microsoft.WindowsAppSDK.InteractiveExperiences_DIR "${NUGET_OVERLAY_DIR}/microsoft.windowsappsdk.interactiveexperiences")
-set(Microsoft.WindowsAppSDK.Foundation_DIR             "${NUGET_OVERLAY_DIR}/microsoft.windowsappsdk.foundation")
-set(Microsoft.WindowsAppSDK.Runtime_DIR                "${NUGET_OVERLAY_DIR}/microsoft.windowsappsdk.runtime")
-
-# 4. On lance l'inclusion des têtes de pont
-# Celles-ci vont maintenant trouver Foundation et InteractiveExperiences automatiquement
-include("${NUGET_OVERLAY_DIR}/microsoft.windows.implementationlibrary/microsoft.windows.implementationlibrary-config.cmake")
-include("${NUGET_OVERLAY_DIR}/microsoft.windows.cppwinrt/microsoft.windows.cppwinrt-config.cmake")
-include("${NUGET_OVERLAY_DIR}/microsoft.windowsappsdk.ml/microsoft.windowsappsdk.ml-config.cmake")
-
-message(STATUS "NuGet setup: All components indexed.")
 
 set(ANIMA_FILES_TO_COPY "")
 foreach(TOOL ${ANIMA_REQUIRED_TOOLS})
@@ -145,6 +108,8 @@ add_compile_definitions(ANIMA_ROOT_PATH="${ANIMA_ROOT_PATH}")
 include(./Configuration.cmake)
 
 qt_add_executable(${PROJECT_NAME})
+
+
 
 # --- Targets ---
 add_subdirectory(${CMAKE_SOURCE_DIR}/${CORE})

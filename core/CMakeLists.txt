@@ -54,13 +54,20 @@ target_include_directories(${CORE} PUBLIC
 )
 
 
+
+set_property(TARGET ${CORE} PROPERTY VS_PROJECT_IMPORT 
+    "${CMAKE_BINARY_DIR}\\..\\..\\..\\nuget_packages\\Microsoft.ML.OnnxRuntime.DirectML.1.17.1\\build\\native\\Microsoft.ML.OnnxRuntime.DirectML.props"
+    "${CMAKE_BINARY_DIR}\\..\\..\\..\\nuget_packages\\Microsoft.Windows.CppWinRT.2.0.250303.1\\build\\native\\Microsoft.Windows.CppWinRT.props"
+    "${CMAKE_BINARY_DIR}\\..\\..\\..\\nuget_packages\\Microsoft.WindowsAppSDK.1.8.260317003\\build\\native\\Microsoft.WindowsAppSDK.props"
+)
+
 target_link_libraries(${CORE} PUBLIC
     "${ZLIB_LIBRARY}"
     ${NIFTI_LIBS}
     Qt6::Core
     eigen
-    Microsoft::WindowsML::Api 
-    Microsoft::WindowsML::OnnxRuntime
+    #WindowsML::Api 
+    #WindowsML::OnnxRuntime
     Configuration
 )
 
