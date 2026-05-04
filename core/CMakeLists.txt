@@ -54,17 +54,13 @@ target_include_directories(${CORE} PUBLIC
 )
 
 
+set(CMAKE_VS_NUGET_PACKAGE_RESTORE CACHE BOOL ON)
 
-set_property(TARGET ${CORE} PROPERTY VS_PROJECT_IMPORT 
-    #"${CMAKE_BINARY_DIR}\\..\\..\\..\\nuget_packages\\Microsoft.ML.OnnxRuntime.DirectML.1.17.1\\build\\native\\Microsoft.ML.OnnxRuntime.DirectML.props"
-    "${CMAKE_BINARY_DIR}\\..\\..\\..\\nuget_packages\\Microsoft.Windows.CppWinRT.2.0.250303.1\\build\\native\\Microsoft.Windows.CppWinRT.props"
-    "${CMAKE_BINARY_DIR}\\..\\..\\..\\nuget_packages\\Microsoft.WindowsAppSDK.1.8.260317003\\build\\native\\Microsoft.WindowsAppSDK.props"
-)
-
-set_property(TARGET ${TARGET_NAME} PROPERTY
-  VS_PACKAGE_REFERENCES "Microsoft.WindowsAppSDK.ML_1.8.2141"
-  VS_PACKAGE_REFERENCES "Microsoft.Windows.CppWinRT_2.0.250303.1"
-  VS_PACKAGE_REFERENCES "Microsoft.WindowsAppSDK_1.8.260317003")
+set_property(TARGET ${CORE} PROPERTY VS_PACKAGE_REFERENCES 
+  "Microsoft.WindowsAppSDK.ML_1.8.2141"
+  "Microsoft.ML.OnnxRuntime.DirectML_1.17.1"
+  "Microsoft.Windows.CppWinRT_2.0.250303.1"
+  "Microsoft.WindowsAppSDK_1.8.260317003")
 
 target_link_libraries(${CORE} PUBLIC
     "${ZLIB_LIBRARY}"

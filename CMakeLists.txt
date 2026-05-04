@@ -118,6 +118,8 @@ add_compile_definitions(ANIMA_ROOT_PATH="${ANIMA_ROOT_PATH}")
 
 include(./Configuration.cmake)
 
+target_sources(${PROJECT_NAME} PRIVATE "main.cpp")
+
 qt_add_executable(${PROJECT_NAME})
 
 
