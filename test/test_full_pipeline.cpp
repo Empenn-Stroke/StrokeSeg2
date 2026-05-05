@@ -33,7 +33,7 @@ private slots:
         // ---------------------------------------------------------
         qDebug() << "--- [STEP 1] Preprocessing ---";
         Resampling resampler;
-        QString atlasPath = Paths::atlasDir() + "/Reference_T1.nrrd";
+        QString atlasPath = Paths::atlasDir() + "/Reference_T1.nii.gz";
         BrainExtraction brainExtractor(wrapper, atlasPath);
         Preprocessor preproc(&resampler, &brainExtractor, wrapper);
 

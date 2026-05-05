@@ -15,6 +15,8 @@ class ProgressManager : public QObject {
   public:
     static ProgressManager &instance();
 
+    void setFileName(const QString &fileName);
+
     void report(double stepStart, double stepWeight, int internalPercentage,
                 const QString *status = nullptr);
 
@@ -32,6 +34,7 @@ class ProgressManager : public QObject {
     int m_dotCount = 0;
     QTimer *m_dotTimer;
     std::atomic<bool> m_interruptionRequested{false};
+    QString m_fileName;
 
   private:
     ProgressManager();

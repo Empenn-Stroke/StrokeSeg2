@@ -40,6 +40,7 @@ struct NiftiVolume {
     QString file_path; // Original file path (optional)
 
     static NiftiVolume loadNifti(const QString &path);
+    static NiftiVolume loadNiftiToRAS(const QString &path);
     static bool saveNifti(const QString &path, const NiftiVolume &vol);
 
     static bool saveNiftiWithReference(const QString &path, const NiftiVolume &vol,

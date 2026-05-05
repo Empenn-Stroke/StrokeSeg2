@@ -3,10 +3,10 @@
 #include <QString>
 #include <QStringList>
 
+#include <managers/configmanager.h>
+
 #ifndef CORE_POSTPROCESSING_VIEWER_H
 #define CORE_POSTPROCESSING_VIEWER_H
-
-class ConfigManager
 
 /**
 * @class Viewer
@@ -22,7 +22,7 @@ class Viewer
      * 
      * - Check if the default viewer is available; if not, calling for an update.
      */
-	Viewer();
+    Viewer(ConfigManager *config);
 
     /**
     * @brief Check if a viewer given is supported by the application and available on the path. If not raise an error based on the type of error. 

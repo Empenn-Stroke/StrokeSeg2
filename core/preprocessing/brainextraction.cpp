@@ -72,9 +72,8 @@ QString BrainExtraction::run(const QString &imgPath, const QString &prefix)
         command += m_pyramidOption;
         runCommand(command);
 
-        //ProgressManager::instance().report(0, 41, 7, new QString("Performing brain extraction"));
-
         qDebug() << "Rigid registration completed in" << timer.elapsed() / 1000.0 << "seconds";
+        timer.restart();
 
         // --- Affine registration ---
         emit progress(0.2f, "Affine registration");
@@ -86,9 +85,8 @@ QString BrainExtraction::run(const QString &imgPath, const QString &prefix)
         command += m_pyramidOption;
         runCommand(command);
 
-        //ProgressManager::instance().report(0, 41, 18);
-
         qDebug() << "Affine registration completed in" << timer.elapsed() / 1000.0 << "seconds";
+        timer.restart();
 
         // --- Base crop mask ---
         emit progress(0.3f, "Creating base crop mask");
@@ -98,9 +96,8 @@ QString BrainExtraction::run(const QString &imgPath, const QString &prefix)
                 << "-o" << (prefix + "_baseCropMask.nrrd");
         runCommand(command);
 
-        //ProgressManager::instance().report(0, 41, 19);
-
         qDebug() << "Base crop mask created in" << timer.elapsed() / 1000.0 << "seconds";
+        timer.restart();
 
         // --- Transform serie ---
         emit progress(0.4f, "Generating transform series");
@@ -109,9 +106,8 @@ QString BrainExtraction::run(const QString &imgPath, const QString &prefix)
                 << "-i" << (prefix + "_aff_tr.txt") << "-o" << (prefix + "_aff_tr.xml");
         runCommand(command);
 
-        //ProgressManager::instance().report(0, 41, 20);
-
         qDebug() << "Transform series generated in" << timer.elapsed() / 1000.0 << "seconds";
+        timer.restart();
 
         // --- Apply transform ---
         emit progress(0.5f, "Applying transform");
@@ -121,9 +117,8 @@ QString BrainExtraction::run(const QString &imgPath, const QString &prefix)
                 << "-g" << imgPath << "-o" << (prefix + "_cropMask.nrrd") << "-n" << "nearest";
         runCommand(command);
 
-        //ProgressManager::instance().report(0, 41, 21);
-
         qDebug() << "Transform applied in" << timer.elapsed() / 1000.0 << "seconds";
+        timer.restart();
 
         // --- Mask image ---
         emit progress(0.6f, "Masking image");
@@ -133,9 +128,8 @@ QString BrainExtraction::run(const QString &imgPath, const QString &prefix)
                 << (prefix + "_c.nrrd");
         runCommand(command);
 
-        //ProgressManager::instance().report(0, 41, 22);
-
         qDebug() << "Image masked in" << timer.elapsed() / 1000.0 << "seconds";
+        timer.restart();
 
         // --- Dense registration ---
         emit progress(0.7f, "Dense registration");
@@ -147,9 +141,8 @@ QString BrainExtraction::run(const QString &imgPath, const QString &prefix)
         command += m_pyramidOption;
         runCommand(command);
 
-        //ProgressManager::instance().report(0, 41, 97);
-
         qDebug() << "Dense registration completed in" << timer.elapsed() / 1000.0 << "seconds";
+        timer.restart();
 
         // --- Transform serie (non-linear) ---
         emit progress(0.8f, "Generating non-linear transform");
@@ -159,9 +152,8 @@ QString BrainExtraction::run(const QString &imgPath, const QString &prefix)
                 << (prefix + "_nl_tr.xml");
         runCommand(command);
 
-        //ProgressManager::instance().report(0, 41, 98);
-
         qDebug() << "Non-linear transform generated in" << timer.elapsed() / 1000.0 << "seconds";
+        timer.restart();
 
         // --- Apply ICC mask ---
         emit progress(0.9f, "Applying ICC mask");
@@ -171,9 +163,8 @@ QString BrainExtraction::run(const QString &imgPath, const QString &prefix)
                 << (prefix + "_rough_brainMask.nrrd") << "-n" << "nearest";
         runCommand(command);
 
-        //ProgressManager::instance().report(0, 41, 99);
-
         qDebug() << "ICC mask applied in" << timer.elapsed() / 1000.0 << "seconds";
+        timer.restart();
 
         // --- Final mask ---
         command.clear();
@@ -182,9 +173,8 @@ QString BrainExtraction::run(const QString &imgPath, const QString &prefix)
                 << (prefix + "_rough_masked.nrrd");
         runCommand(command);
 
-        //ProgressManager::instance().report(0, 41, 100);
-
         qDebug() << "Final mask created in" << timer.elapsed() / 1000.0 << "seconds";
+        timer.restart();
 
         // --- Convert outputs ---
         emit progress(0.95f, "Converting outputs");

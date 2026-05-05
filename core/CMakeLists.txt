@@ -4,27 +4,33 @@ set(HEADERS
     "utils/str.h" 
     "utils/NiftiVolume.h" 
     "utils/log.h"
+    "utils/dicomConverter.h"
     "preprocessing/preprocessor.h" 
     "preprocessing/resampling.h" 
     "preprocessing/brainextraction.h"
     "postprocessing/postprocessor.h" 
-    "managers/configmanager.h" 
+    "managers/configmanager.h"
     "managers/appconfig.h"
     "managers/progressManager.h"
-    "inference/inference.h")
+    "managers/logManager.h"
+    "inference/inference.h"
+    "workers/pipelineWorker.h")
 
 set(COMMON_SOURCES 
     "utils/animawrapper.cpp" 
     "utils/NiftiVolume.cpp" 
     "utils/log.cpp"
+    "utils/dicomConverter.cpp"
     "preprocessing/preprocessor.cpp" 
     "preprocessing/resampling.cpp" 
     "preprocessing/brainextraction.cpp"
     "postprocessing/postprocessor.cpp" 
     "managers/configmanager.cpp" 
     "managers/progressManager.cpp"
+    "managers/logManager.cpp"
     "inference/inference.cpp"
-    "inference/inference_internal.h")
+    "inference/inference_internal.h"
+    "workers/pipelineWorker.cpp")
 
 
 if(WIN32)

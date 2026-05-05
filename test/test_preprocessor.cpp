@@ -186,7 +186,7 @@ class TestPreprocessor : public QObject {
         // 2. Initialisation
         Resampling resampler;
         AnimaWrapper *realWrapper = new AnimaWrapper(this);
-        QString atlasImage = Paths::atlasDir() + "/Reference_T1.nrrd";
+        QString atlasImage = Paths::atlasDir() + "/Reference_T1.nii.gz";
         BrainExtraction brainExtractor(realWrapper, atlasImage);
         Preprocessor preproc(&resampler, &brainExtractor, realWrapper, true);
 

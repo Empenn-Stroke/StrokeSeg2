@@ -8,10 +8,12 @@ add_library(${GUI} STATIC
     "views/aboutWindow.cpp"
     "views/warningWindow.h"
     "views/warningWindow.cpp"
-    "models/modelManager.h"
-    "models/modelManager.cpp"
-    "workers/pipelineWorker.h"
-    "workers/pipelineWorker.cpp")
+    "views/modelManager.h"
+    "views/modelManager.cpp"
+    "views/niftiViewerWindow.h"
+    "views/niftiViewerWindow.cpp"
+    "views/ClickableLabel.h"
+    "views/ClickableLabel.cpp")
 
 set_target_properties(${GUI} PROPERTIES
     AUTOMOC ON
@@ -20,9 +22,8 @@ set_target_properties(${GUI} PROPERTIES
 )
 
 # Handle the icon if it's in this folder
-if(MSVC)
-    set(RC_FLAGS "/I ${CMAKE_CURRENT_SOURCE_DIR}/resources")
-    set_target_properties(gui PROPERTIES COMPILE_FLAGS "${RC_FLAGS}")
+if (WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/resources/appicon.rc")
+    target_sources(${PROJECT_NAME} PRIVATE resources/appicon.rc)
 endif()
 
 # Requirements for the app
@@ -33,12 +34,12 @@ target_include_directories(${GUI}
 PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/views
-    ${CMAKE_CURRENT_SOURCE_DIR}/models
     ${CMAKE_CURRENT_SOURCE_DIR}/workers
 
 PRIVATE
     ${CMAKE_SOURCE_DIR}/${COMMON}/
     ${CMAKE_SOURCE_DIR}/${CORE}/
+    ${CMAKE_SOURCE_DIR}/${CORE}/utils
 )
 
 target_link_libraries(${GUI} PUBLIC

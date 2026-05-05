@@ -122,6 +122,20 @@ target_sources(${PROJECT_NAME} PRIVATE "main.cpp")
 
 qt_add_executable(${PROJECT_NAME})
 
+if(WIN32)
+    add_executable(
+        ${PROJECT_NAME}
+        resources.qrc
+        main.cpp
+    )
+endif()
+
+if(MSVC)
+    set_target_properties(${PROJECT_NAME} PROPERTIES 
+        WIN32_EXECUTABLE TRUE
+        LINK_FLAGS "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup"
+    )
+endif()
 
 
 # --- Targets ---
@@ -129,17 +143,19 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/${CORE})
 add_subdirectory(${CMAKE_SOURCE_DIR}/${GUI})
 add_subdirectory(${CMAKE_SOURCE_DIR}/test)
 
-# --- DLL Copy Macro (Indispensable sur Windows) ---
-macro(post_build_runtime_dll_copy target_name)
-    if(WIN32)
-        # Note : Dans un Superbuild, TARGET_RUNTIME_DLLS peut ne pas voir 
-        # les DLLs des projets externes. On ajoute souvent une copie manuelle 
-        # depuis le dossier bin du superprojet si nécessaire.
-        add_custom_command(TARGET ${target_name} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            $<TARGET_RUNTIME_DLLS:${target_name}>
-            $<TARGET_FILE_DIR:${target_name}>
-            COMMAND_EXPAND_LISTS
-        )
-    endif()
-endmacro()
+target_link_libraries(${PROJECT_NAME} PUBLIC
+    ${GUI}
+)
+
+if(WIN32)
+    get_target_property(QT_QMAKE_EXECUTABLE Qt6::qmake IMPORTED_LOCATION)
+    get_filename_component(QT_BIN_DIR "${QT_QMAKE_EXECUTABLE}" DIRECTORY)
+    
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND "${QT_BIN_DIR}/windeployqt.exe"
+                --no-translations
+                --no-system-d3d-compiler
+                "$<TARGET_FILE:${PROJECT_NAME}>"
+        VERBATIM
+    )
+endif()

@@ -14,22 +14,22 @@ QString Viewer::itkSnapExe() const
 
 }
 
-Viewer::Viewer() : m_viewers(m_config.get("viewers", "").split(',')) 
-{
-    const QString defaultViewer = m_config.get("viewer", "");
+Viewer::Viewer(ConfigManager *config)
+    : m_config(config), m_viewers(m_config->get("viewers", "itksnap").toStringList()) {
+    const QString defaultViewer = m_config->get("viewer", "itksnap").toString();
 
 	if (defaultViewer.isEmpty()) {
         UpdatePath(); 
     } else {
         // Check if there are new viewers
-        QString path = m_config.get(defaultViewer, "");
+        QString path = m_config->get(defaultViewer, "").toString();
         if (path.isEmpty()) {
             UpdatePath();
         } else {
             // Create QStringList with empty viewers
             QStringList noPathViewers;
             for (const QString &v : m_viewers) {
-                if (m_config.get(v, "").isEmpty()) {
+                if (m_config->get(v, "").toString().isEmpty()) {
                     noPathViewers.append(v);
                 }
             }
@@ -40,8 +40,8 @@ Viewer::Viewer() : m_viewers(m_config.get("viewers", "").split(','))
                     path = QStandardPaths::findExecutable(v);
                 }
                 if (!path.isEmpty()) {
-                    m_config.set(v, path);
-                    m_config.save();
+                    m_config->set(v, path);
+                    m_config->save();
                 }
             }
         }
@@ -50,17 +50,17 @@ Viewer::Viewer() : m_viewers(m_config.get("viewers", "").split(','))
 
 void Viewer::CheckViewers(const QString &viewer) 
 {
-    m_viewers = m_config.get("viewers", "").split(',');
+    m_viewers = m_config->get("viewers", "").toString().split(',');
     for (const QString &v : m_viewers) {
         m_viewers.append(v);
     }
-    if (!viewers.contains(viewer)) {
+    if (!m_viewers.contains(viewer)) {
         throw std::runtime_error(QString("Viewer '%1' is not in the allowed list of viewers: %2")
                                      .arg(viewer)
-                                     .arg(viewers)
+                                     .arg(m_viewers.join(", "))
                                      .toStdString());
     }
-    QString path = m_config.get(viewer, "");
+    QString path = m_config->get(viewer, "").toString();
     if (path.isEmpty()) {
         if (viewer == "itksnap") {
             path = QStandardPaths::findExecutable(itkSnapExe());
@@ -73,54 +73,64 @@ void Viewer::CheckViewers(const QString &viewer)
                                             .toStdString());
         }
     }
-    m_config.set(viewer, path);
-    m_config.set("viewer", viewer);
-    m_config.save();
+    m_config->set(viewer, path);
+    m_config->set("viewer", viewer);
+    m_config->save();
 }
 
 void Viewer::UpdatePath() 
 {
     bool exist = false;
     for (const QString &v : m_viewers) {
+        QString foundPath;
         if (v == "itksnap") {
-            path = QStandardPaths::findExecutable(itkSnapExe());
+            foundPath = QStandardPaths::findExecutable(itkSnapExe());
         } else {
-            path = QStandardPaths::findExecutable(v);
+            foundPath = QStandardPaths::findExecutable(v);
         }
-        if (!path.isEmpty()) {
-            m_config.set(v, path);
-            m_conifg.set("viewer", v);
+        
+        if (!foundPath.isEmpty()) {
+            m_config->set(v, foundPath);
+            m_config->set("viewer", v);
             exist = true;
         }
     }
     if (!exist) {
-        m_config.set("viewer", "");
+        m_config->set("viewer", "");
     }
-    m_config.save();
-} 
+    m_config->save();
+}
 
-void Viewer::Run(const QString &imgPath, const QString &segPath) 
-{
+void Viewer::Run(const QString &imgPath, const QString &segPath) {
+    QGuiApplication::setOverrideCursor(Qt::WaitCursor);
 
-    const QString defaultViewer = m_config.get("viewer", "");
-    QString path = m_config.get(viewer, "");
-    QStringList = command;
+    const QString viewerName = m_config->get("viewer", "itksnap").toString();
+    QString exePath = m_config->get(viewerName, "").toString();
 
-    if (defaultViewer == "itksnap") {
-        command.append(QStringList{path, "-g", imgPath, "-s", segPath});
+    if (exePath.isEmpty()) {
+        exePath = QStandardPaths::findExecutable(itkSnapExe());
+    }
+
+    if (exePath.isEmpty()) {
+        qCritical() << "Impossible de trouver l'exécutable pour le viewer:" << viewerName;
+        return;
+    }
+    QGuiApplication::setOverrideCursor(Qt::WaitCursor);
+
+    QStringList arguments;
+    if (viewerName == "itksnap") {
+        arguments << "-g" << QDir::toNativeSeparators(imgPath) << "-s"
+                  << QDir::toNativeSeparators(segPath);
     } else {
-        command.append(QStringList{path, imgPath, segPath});
+        arguments << QDir::toNativeSeparators(imgPath) << QDir::toNativeSeparators(segPath);
     }
 
-    try :
-        QProcess *process = new QProcess();
-        process->setStandardOutputFile(QProcess::nullDevice()); // ignore stdout
-        process->setStandardErrorFile(QProcess::nullDevice()); // ignore stderr
-        process->start(defaultViewer, command);
-    catch : 
-        UpdatePath();
-        qCritical() << QString("Failed to execute command %1: %2")
-                                .arg(command)
-                                .arg(error); 
+    bool success = QProcess::startDetached(exePath, arguments);
+
+    QGuiApplication::restoreOverrideCursor();
+
+    if (!success) {
+        qCritical() << "Échec du lancement du viewer à l'emplacement :" << exePath;
+    }
 }
 

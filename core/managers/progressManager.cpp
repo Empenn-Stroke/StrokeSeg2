@@ -5,12 +5,22 @@ ProgressManager &ProgressManager::instance() {
     return inst;
 }
 
+void ProgressManager::setFileName(const QString &fileName) {
+    m_fileName = fileName;
+}
+
 void ProgressManager::report(double stepStart, double stepWeight, int internalPercentage,
-                                    const QString *status) {
+                             const QString *status) {
     int global = static_cast<int>(stepStart + (stepWeight * internalPercentage / 100.0));
     emit progressUpdated(global);
     if (status && !status->isEmpty()) {
-        m_baseStatus = *status;
+        QString displayFileName = m_fileName;
+        if (displayFileName.length() > 30) {
+            displayFileName = m_fileName.left(15) + "..." + m_fileName.right(12);
+        }
+
+        m_baseStatus = displayFileName + " : " + *status;
+
         emit progressStatusChanged(m_baseStatus + QString(".").repeated(m_dotCount));
     }
 

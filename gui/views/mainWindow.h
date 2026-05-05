@@ -32,12 +32,13 @@
 #include "aboutWindow.h"
 #include "models/modelManager.h"
 #include "warningWindow.h"
+#include <workers/pipelineWorker.h>
 
 class MainWindow : public QMainWindow {
 	Q_OBJECT
 
 public:
-    MainWindow(QWidget *parent=0);
+    explicit MainWindow(const PipelineParams &opts, QWidget *parent = 0);
     ~MainWindow();
 
 protected:
@@ -57,11 +58,16 @@ private:
     QCheckBox *m_toggleView;
     QCheckBox *m_toggleOpenFolder;
     QCheckBox *m_toggleOutput;
-    QCheckBox *m_skipBrainExtract;
+    QCheckBox *m_skipPreProcessing;
+    QCheckBox *m_skipInference;
+    QCheckBox *m_skipPostProcessing;
     QCheckBox *m_savePMap;
-    QCheckBox *m_savePreprocessing;
+    QCheckBox *m_savePreProcessing;
     QComboBox *m_mode;
-    QSlider *m_thresholdSlider; QLineEdit *m_threshold;
+
+    QSlider *m_thresholdSlider; 
+    QLineEdit *m_threshold;
+    QWidget *m_thresholdContainer;
 
     QStackedWidget *m_stackedArea;
     QToolButton *m_fileButton;
@@ -72,6 +78,7 @@ private:
 
     QPushButton *m_modelManager;
     QPushButton *m_resetSettings;
+    QPushButton *m_terminalButton;
 
     QPointer<GuideWindow> guide;
     QPointer<AboutWindow> about;
@@ -79,10 +86,13 @@ private:
     WarningWindow *warning = nullptr;
     bool showWarning = true;
 
+    PipelineParams m_params;
+
 
   private slots:
     void chooseDestination();
     void chooseFile();
+    bool isSupportedFormat(const QString &filePath);
 
     double sliderValueToReal(int sliderValue);
     int realToSliderValue(double realValue);
@@ -98,6 +108,8 @@ private:
 
     void saveSettings();
     void loadSettings();
+
+    void toggleConsole();
 
     void closeEvent(QCloseEvent *event) override;
 

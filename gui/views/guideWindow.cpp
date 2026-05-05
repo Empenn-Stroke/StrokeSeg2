@@ -15,7 +15,7 @@ GuideWindow::GuideWindow(QWidget *parent) : QWidget(parent) {
     this->setObjectName("guideWindow");
 
     QVBoxLayout *windowLayout = new QVBoxLayout(this);
-    windowLayout->setContentsMargins(15, 15, 15, 15);
+    windowLayout->setContentsMargins(0, 0, 0, 0);
     windowLayout->setSpacing(0);
 
     auto *shadow = new QGraphicsDropShadowEffect(this);

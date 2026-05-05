@@ -52,7 +52,7 @@ namespace preprocessing {
         ~Preprocessor() = default;
 
         PreprocessedVolume preprocess(const QString &t1_path, const QString &flair_path,
-                                      const QString &temp_dir, bool bet_only);
+                                      const QString &temp_dir, bool bet_only, bool mni = false);
 
       private:
         Resampling m_resampler;
@@ -60,7 +60,7 @@ namespace preprocessing {
         AnimaWrapper *m_wrapper;
         bool m_save_intermediary_steps;
         ConfigManager &m_config = ConfigManager::instance();
-        QString m_atlasImage = Paths::atlasDir() + "/Reference_T1.nrrd";
+        QString m_atlasImage = Paths::atlasDir().filePath("Reference_T1.nii.gz");
 
       private:
         
@@ -68,6 +68,9 @@ namespace preprocessing {
 
         Eigen::Tensor<uint8_t, 3, Eigen::ColMajor>
         buildMask(const Eigen::Tensor<float, 4, Eigen::ColMajor> &data);
+
+        std::array<std::array<int, 2>, 3>
+        computeBBox(const Eigen::Tensor<uint8_t, 3, Eigen::ColMajor> &mask);
 
         std::array<std::array<int, 2>, 3>
         computeBBox(const Eigen::Tensor<uint8_t, 3, Eigen::ColMajor> &mask);
