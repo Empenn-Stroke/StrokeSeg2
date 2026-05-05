@@ -49,6 +49,7 @@ target_include_directories(${CORE} PUBLIC
     ${CMAKE_SOURCE_DIR}/${CORE}/
     ${CMAKE_SOURCE_DIR}/${COMMON}/
     "${ONNX_INCLUDE_DIR}"
+    "${DML_INCLUDE_DIR}"
     "${IMPLEMENTATION_LIB_INCLUDE_DIR}"
     ${NIFTI_INCLUDE_DIR}
 )
