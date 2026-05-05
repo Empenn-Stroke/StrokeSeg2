@@ -118,17 +118,13 @@ add_compile_definitions(ANIMA_ROOT_PATH="${ANIMA_ROOT_PATH}")
 
 include(./Configuration.cmake)
 
-target_sources(${PROJECT_NAME} PRIVATE "main.cpp")
-
-qt_add_executable(${PROJECT_NAME})
-
-if(WIN32)
-    add_executable(
+qt_add_executable(
         ${PROJECT_NAME}
         resources.qrc
         main.cpp
-    )
-endif()
+)
+
+target_sources(${PROJECT_NAME} PRIVATE "main.cpp")
 
 if(MSVC)
     set_target_properties(${PROJECT_NAME} PROPERTIES 

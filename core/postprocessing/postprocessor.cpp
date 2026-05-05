@@ -2,7 +2,6 @@
 
 #include <QString>
 #include <optional>
-#include <spdlog/spdlog.h>
 
 #include "utils/log.h"
 #include "managers/progressManager.h"
@@ -289,7 +288,7 @@ NiftiVolume postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor
     try {
         segmentation_as_nifti = m_resampler.resample(segmentation_as_nifti, preproc_volume.spacing);
     } catch (const std::bad_alloc &e) {
-        spdlog::error("Resampling failed: Out of memory. Check dimensions!");
+        qCritical("Resampling failed: Out of memory. Check dimensions!");
         throw;
     }
 
