@@ -10,6 +10,18 @@ extern "C" {
 #include <nifti1_io.h>
 }
 
+/**
+ * @brief Load a NIFTI file from disk.
+ *
+ * Reads a NIFTI-1 file and converts its voxel data into a floating-point
+ * Eigen tensor. Supported input datatypes include INT16, UINT8, FLOAT32, etc.
+ *
+ * @param path Path to the input NIFTI file.
+ * @return NiftiVolume Loaded volume with voxel data and spacing initialized.
+ *
+ * @throws std::runtime_error If the file cannot be read or if the datatype
+ * is not supported.
+ */
 NiftiVolume NiftiVolume::loadNifti(const QString &path) {
     nifti_image *nim = nifti_image_read(path.toStdString().c_str(), 1);
     if (!nim)
@@ -52,6 +64,18 @@ NiftiVolume NiftiVolume::loadNifti(const QString &path) {
     return vol;
 }
 
+/**
+ * @brief Load a NIFTI file from disk.
+ *
+ * Reads a NIFTI-1 file and converts its voxel data into a floating-point
+ * Eigen tensor oriented in RAS. Supported input datatypes include INT16, UINT8, FLOAT32, etc.
+ *
+ * @param path Path to the input NIFTI file.
+ * @return NiftiVolume Loaded volume with voxel data and spacing initialized.
+ *
+ * @throws std::runtime_error If the file cannot be read or if the datatype
+ * is not supported.
+ */
 NiftiVolume NiftiVolume::loadNiftiToRAS(const QString &path) {
     nifti_image *nim = nifti_image_read(path.toStdString().c_str(), 1);
     if (!nim)
@@ -150,6 +174,18 @@ NiftiVolume NiftiVolume::loadNiftiToRAS(const QString &path) {
     return vol;
 }
 
+/**
+ * @brief Save a NIFTI file to disk.
+ *
+ * Writes the provided NiftiVolume to a NIFTI-1 file. The voxel spacing
+ * metadata is preserved. Data are saved as FLOAT32.
+ *
+ * @param path Output file path.
+ * @param vol Volume to save.
+ * * @return bool True if the file was saved successfully.
+ *
+ * @throws std::runtime_error If the file cannot be written.
+ */
 bool NiftiVolume::saveNifti(const QString &path, const NiftiVolume &vol) {
     nifti_image *nim = nifti_simple_init_nim();
     if (!nim)
@@ -256,10 +292,34 @@ bool NiftiVolume::saveNiftiWithReference(const QString &path, const NiftiVolume 
     return true;
 }
 
+/**
+ * @brief Vectorizes the volume tensor into a contiguous 1D array.
+ *
+ * The returned vector contains all tensor elements flattened in memory order
+ * (column-major/Fortran-style by default in this configuration).
+ *
+ * This operation performs a copy of the underlying data.
+ *
+ * @return std::vector<float> Flattened tensor data
+ *
+ * @note The output order is consistent with NIfTI's [X][Y][Z][C] storage.
+ * Ensure compatibility with downstream libraries (e.g. ONNX, NumPy).
+ */
 std::vector<float> NiftiVolume::toVector() const {
     return std::vector<float>(data.data(), data.data() + data.size());
 }
 
+/**
+ * @brief Returns the shape of the volume tensor.
+ *
+ * The shape corresponds to the tensor dimensions in the following order:
+ * - shape[0] = size along X
+ * - shape[1] = size along Y
+ * - shape[2] = size along Z
+ * - shape[3] = number of channels (C)
+ *
+ * @return std::vector<int64_t> Tensor dimensions (X, Y, Z, C)
+ */
 std::vector<int64_t> NiftiVolume::getShape() const {
     return {static_cast<int64_t>(data.dimension(0)), static_cast<int64_t>(data.dimension(1)),
             static_cast<int64_t>(data.dimension(2)), static_cast<int64_t>(data.dimension(3))};

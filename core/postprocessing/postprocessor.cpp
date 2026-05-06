@@ -15,6 +15,12 @@ namespace {
         std::optional<Eigen::Tensor<float, 3, Eigen::ColMajor>> pmap;
     };
 
+    /// @brief Save the nifti image. The name is dynamically constructed.
+    /// @param dir Directory where the image will be saved
+    /// @param data Image data
+    /// @param base_name Base name of the image without extension
+    /// @param suffix filename suffix. Note however that this is not the extension
+    /// @return Path to the saved file
     QString save_img(QString dir, const Eigen::Vector3f &spacing, const NiftiVolume::Tensor4f &data,
                      QString base_name, QString suffix) {
         QString output_path = dir + "/" + base_name + "_" + suffix + ".nii.gz";
@@ -25,6 +31,17 @@ namespace {
         return output_path;
     }
 
+    /// @brief Convert the output of the model into a segmentation based on the given threshhold.
+    /// Can also return a probability map if requested.
+    /// - Extract lesion channel
+    /// - Apply a softmax to the lesion channel
+    /// - Calculate the binary mask with the threshold param
+    /// - Return the segmentation; and the pmap if requested
+    ///
+    /// @param data Model output. Shape is expected to be (C, X, Y, Z)
+    /// @param threshold Threshold to create the binary mask
+    /// @param save_pmap If true, save probability map alongside the segmentation
+    /// @return Segmentation struct
     Segmentation convert_to_segmentation(NiftiVolume::Tensor4f data, float threshold,
                                          bool save_pmap) {
         // --- BUG FIX: Use both channels for competitive Softmax ---
@@ -44,6 +61,10 @@ namespace {
         };
     }
 
+    /// @brief Remove specified padding from a segmentation. The padding is represented by an array
+    /// of pairs representing the intervals to keep for each dimension.
+    /// @param segmentation Segmentation data. This will be modified.
+    /// @param padding Padding to use
     Segmentation remove_padding(const Segmentation &segmentation,
                                 const std::array<std::array<int, 2>, 3> &padding) {
         std::array<int, 3> offsets{};
@@ -62,6 +83,12 @@ namespace {
         };
     }
 
+    /// @brief Place the cropped data back into a full-size volume. Then, transpose the volume axes
+    /// from (X, Y, Z) to (Z, Y, X)
+    /// @param segmentation Segmentation data. This will be modified (re-allocated so that the size
+    /// of its volumes fits the full size)
+    /// @param bbox Bounding box coordinates used for cropping
+    /// @param original_shape Original shape of the image before preprocessing
     Segmentation uncrop_from_bbox(const Segmentation &segmentation,
                                   const std::array<std::array<int, 2>, 3> &bbox,
                                   const Eigen::Vector3i &original_shape) {
@@ -95,6 +122,11 @@ namespace {
         return full_volume;
     }
 
+    /// @brief Convert a segmentation result into a NiftiVolume instance. The segmentation will be
+    /// expanded into a higher dimension, resulting in a single-channel 3D volume.
+    /// @param segmentation Segmentation struct
+    /// @param spacing
+    /// @return NiftiVolume instance
     NiftiVolume segmentation_to_nifti_volume(const Segmentation &segmentation,
                                              Eigen::Vector3f spacing) {
         auto &seg = segmentation.seg;
@@ -108,6 +140,9 @@ namespace {
         };
     }
 
+    /// @brief Get data from NiftiVolume as a Tensor3f
+    /// @param volume NiftiVolume instance
+    /// @return data as Tensor3f
     Eigen::Tensor<float, 3, Eigen::ColMajor> nifti_volume_to_tensor3f(const NiftiVolume &volume) {
         return volume.data.chip<3>(0);
     }
@@ -143,6 +178,17 @@ namespace {
     }
 }; // namespace
 
+/**
+ * @brief Apply postprocessing pipeline on the data produced by the inference step:
+ *
+ * - Convert the pmap to segmentation data. The pmap can also be returned as is
+ * - Remove padding
+ * - Uncrop
+ * - Resample to the original spacing
+ * - Save image
+ * - Register to reference only if the inverse transformation was applied during
+ *   preprocessing
+ */
 NiftiVolume postprocessing::Postprocessor::postprocess(
     const NiftiVolume::Tensor4f &data, const PreprocessedVolume &preproc_volume,
     const std::array<std::array<int, 2>, 3> &bbox, float segmentation_threshold, bool save_pmap,

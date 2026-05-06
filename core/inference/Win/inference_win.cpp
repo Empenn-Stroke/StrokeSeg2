@@ -103,6 +103,24 @@ inline bool InferencePrivate::attemptOpenVINO(Ort::SessionOptions &options) {
     }
 }
 
+/**
+ * @brief Attempts to configure the DirectML (DML) Execution Provider for ONNX Runtime.
+ *
+ * This method checks for the availability of the DirectML API and attempts to attach a 
+ * hardware accelerator to the provided session options. It uses the DML2 API and 
+ * follows a strict hardware priority sequence:
+ *   1. **NPU (Neural Processing Unit):** Targeted first, optimized for minimum power consumption.
+ *   2. **GPU (Graphics Processing Unit):** Targeted second, optimized for high performance.
+ *
+ * If the DML API is unavailable, or if both NPU and GPU initialization fail, the function 
+ * logs the failure and falls back to CPU execution.
+ *
+ * @param options A reference to the ONNX Runtime session options (`Ort::SessionOptions`) 
+ *                that will be modified if a DML device is successfully appended.
+ *
+ * @return `true` if either the NPU or GPU was successfully configured as the execution provider.
+ * @return `false` if the DML API is missing, or if no compatible NPU/GPU could be targeted.
+ */
 inline bool InferencePrivate::attemptDML(Ort::SessionOptions &options) {
     const OrtDmlApi *dmlApi = nullptr;
     if (Ort::GetApi().GetExecutionProviderApi(

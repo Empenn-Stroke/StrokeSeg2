@@ -15,7 +15,7 @@ namespace preprocessing {
 
     /**
      * @brief Identifies non-zero voxels to create a binary mask.
-     * --- BUG FIX: Removed the 1% threshold to match Python's exact != 0 logic ---
+     * @param data Volume to mask.
      */
     Eigen::Tensor<uint8_t, 3, Eigen::ColMajor>
     Preprocessor::buildMask(const Eigen::Tensor<float, 4, Eigen::ColMajor> &data) {
@@ -36,6 +36,12 @@ namespace preprocessing {
 
     /**
      * @brief Applies z-score normalization to the input volume.
+     * Compute mean and standard deviation to transform intensities : 
+     * $z = \frac{x - \mu}{\sigma}$.
+     * @param vol Volume to normalize. The operation is performed in-place.
+     * @param seg Optional segmentation mask. If provided, only voxels corresponding to the
+     * specified label (nonzero_label) will be considered for mean and standard deviation
+     * calculation.
      * --- BUG FIX: Normalizes ONLY the brain voxels, keeping the background at 0.0 ---
      */
     void Preprocessor::zScoreNormalize(NiftiVolume &vol, const NiftiVolume *seg) {
@@ -79,8 +85,12 @@ namespace preprocessing {
     }
 
     /**
+     * @brief Identifies non-zero voxels in the input volume to create a binary mask of active
+     * regions.
+     * @param vol Input volume
+     * @return output binary mask where voxels with intensity above a certain threshold (1% of the
+     * maximum
      * @brief Adds padding to the volume to fit minimum sizes.
-     * --- BUG FIX: Pad with 0.0f to match Python's np.pad(constant_values=0) ---
      */
     std::pair<NiftiVolume, std::vector<std::array<int, 2>>>
     Preprocessor::padVolume(const NiftiVolume &vol, int min_size = 128, int div = 32) {
@@ -118,6 +128,12 @@ namespace preprocessing {
         return {padded, p_info};
     }
 
+    /*
+     * @brief Compute the bounding box of the non-zero region in the binary mask.
+     * @param mask Binary mask indicating active regions (non-zero voxels).
+     * @return Array of pairs representing the minimum and maximum indices along each dimension (X,
+     * Y, Z)
+    */
     std::array<std::array<int, 2>, 3>
     Preprocessor::computeBBox(const Eigen::Tensor<uint8_t, 3, Eigen::ColMajor> &mask) {
         auto x_any = mask.any(Eigen::array<int, 2>{1, 2});
@@ -147,6 +163,18 @@ namespace preprocessing {
         return {rx, ry, rz};
     }
 
+    /**
+     * @brief Reduce the volume to the bounding box of non-zero voxels, effectively cropping out
+     * irrelevant background.
+     * @param vol Source volume to crop. The operation is performed in-place.
+     * @param seg Segmentation volume corresponding to the input volume. If provided, it will be
+     * cropped
+     * @param nonzero_label Label in the segmentation to consider as "non-zero" for cropping. Only
+     * voxels with this label
+     * @param bbox_out Optional output parameter to receive the bounding box coordinates used for
+     * cropping.
+     * @return Pair containing the cropped volume and the corresponding cropped segmentation
+     */
     std::pair<NiftiVolume, NiftiVolume>
     Preprocessor::cropToNonZero(const NiftiVolume &vol, const NiftiVolume *seg, int nonzero_label,
                                 std::array<std::array<int, 2>, 3> *bbox_out) {
@@ -170,7 +198,12 @@ namespace preprocessing {
 
         return {cropped, cropped};
     }
-
+    /*
+     * @brief Correct inhomogeneity luminance fields in the volume.
+     * @param input_path input volume file path.
+     * @param prefix output volume file prefix.
+     * @return Output volume file path.
+     */
     QString Preprocessor::biasCorrect(const QString &input_path, const QString &prefix) {
         QString outDir = QFileInfo(input_path).absolutePath();
         QString cleanPrefix = QFileInfo(prefix).fileName();
@@ -190,6 +223,14 @@ namespace preprocessing {
         return output_path;
     }
 
+    /**
+     * @brief Spatially aligns volume over a reference atlas (MNI)
+     * @param input_path Volume path to register.
+     * @param mni_image_path reference target (atlas).
+     * @param base_path_prefix Workspace directory.
+     * @param prefix_label Label to identify output file.
+     * @return Pair including [Path to registered image, Path to transformation matrix].
+     */
     std::pair<QString, QString> Preprocessor::registerToReference(const QString &input_path,
                                                                   const QString &ref_path,
                                                                   const QString &base_path_prefix,
@@ -219,6 +260,17 @@ namespace preprocessing {
         return std::pair<QString, QString>(output_path, trsf_path);
     }
 
+    /**
+     * @brief Performs the complete preprocessing pipeline on a single modality, including bias
+     * correction, registration to MNI space, cropping, resampling, normalization, and padding.
+     * @param modality_path Path to the input image modality (e.g., T1 or FLAIR).
+     * @param is_MNI Defines if the input image is already in MNI space, in which case bias
+     * correction and registration
+     * @param bbox_ptr Coordinates of the bounding box used for cropping. If provided, it will be
+     * filled with the coordinates of the cropping box. If nullptr, the cropping box will be
+     * computed but not returned.
+     * @return PreprocessedVolume for this modality.
+     */
     PreprocessedVolume
     Preprocessor::preprocessModality(const QString &modality_path, bool is_MNI,
                                      std::array<std::array<int, 2>, 3> *bbox_ptr) {
@@ -320,6 +372,14 @@ namespace preprocessing {
         return result;
     }
 
+    /**
+     * @brief Exécute le pipeline complet sur une paire de modalités (T1 et FLAIR).
+     * @param t1_path Chemin vers l'image T1.
+     * @param flair_path Chemin vers l'image FLAIR.
+     * @param temp_dir Répertoire temporaire pour les fichiers intermédiaires.
+     * @param bet_only Si vrai, arrête le traitement après l'extraction du cerveau.
+     * @return PreprocessedVolume Objet contenant les volumes finaux et leurs métadonnées.
+     */
     PreprocessedVolume Preprocessor::preprocess(const QString &t1_path, const QString &flair_path,
                                                 const QString &temp_dir, bool bet_only, bool mni) {
         QElapsedTimer bet_timer;
@@ -391,10 +451,19 @@ namespace preprocessing {
         return t1_res;
     }
 
+    /**
+     * @brief Utilitaire de log pour afficher l'étape en cours.
+     * @param actionName Nom de l'action de prétraitement.
+     */
     void Preprocessor::printAction(const QString &actionName) {
         spdlog::info("Starting {}...", actionName.toStdString());
     }
-
+    
+    /**
+     * @brief Déplace le fichier final vers le répertoire de sortie définitif.
+     * @param img_path Chemin actuel du fichier.
+     * @return Nouveau chemin du fichier.
+     */
     QString Preprocessor::moveToOutput(const QString &img_path) {
         if (img_path.isEmpty() || !QFile::exists(img_path)) {
             return img_path;

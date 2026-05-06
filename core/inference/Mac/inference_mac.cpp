@@ -2,17 +2,34 @@
 #include "inference_mac.h" 
 #include <QString>
 #include <QDebug>
-
-// Include the CoreML provider factory for Apple Silicon acceleration
 #include <coreml_provider_factory.h> 
 
-// 1. Initialize the unique_ptr to prevent the segfault!
 Inference::Inference() : d(std::make_unique<InferencePrivate>()) {}
 
-// 2. Destructor
 Inference::~Inference() = default;
 
-// 3. The Mac-specific Initialization
+/**
+ * @brief Initializes the ONNX Runtime session specifically for macOS environments.
+ *
+ * This method sets up the `Ort::Env` and configures session options optimized for macOS.
+ * It primarily attempts to enable hardware acceleration by attaching the CoreML 
+ * Execution Provider (EP), which leverages Apple Silicon (Apple Neural Engine / GPU). 
+ * The `COREML_FLAG_ENABLE_ON_SUBGRAPH` flag is used to allow partial acceleration 
+ * even if the entire model isn't CoreML-compatible.
+ * 
+ * If CoreML initialization fails, the function logs the error and safely falls back 
+ * to CPU execution.
+ *
+ * @param modelPath The file path to the ONNX model, provided as a `QString`. 
+ *                  This is converted to a standard UTF-8 C-string to comply with 
+ *                  macOS POSIX path standards.
+ *
+ * @exception Ort::Exception Caught internally and logged if ONNX Runtime fails to build the session.
+ * @exception std::exception Caught internally and logged for standard C++ errors.
+ * 
+ * @note In the event of an exception during initialization, the internal session 
+ *       pointer (`m_session`) is safely reset to null.
+ */
 void InferencePrivate::init(const QString& modelPath) {
     qDebug() << "Initializing ONNX Runtime on macOS...";
 
