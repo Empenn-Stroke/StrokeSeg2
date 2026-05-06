@@ -22,6 +22,8 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 
+add_compile_definitions(ANIMA_RELATIVE_PATH="anima")
+
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Concurrent)
 qt_standard_project_setup()
 
@@ -61,45 +63,6 @@ find_package(microsoft.windows.ai.machinelearning REQUIRED)
 message(STATUS "Searching for Microsoft.Windows.AI.MachineLearning in: ${WINML_DIR}")
 message(STATUS "Build dir" ${CMAKE_BINARY_DIR})
 
-#5. ANIMA
-set(ANIMA_REL_PATH "./anima")
-
-set(ANIMA_REQUIRED_TOOLS 
-    "animaApplyTransformSerie"
-    "animaConvertImage"
-    "animaCreateImage"
-    "animaDenseSVFBMRegistration"
-    "animaMaskImage"
-    "animaN4BiasCorrection"
-    "animaPyramidalBMRegistration"
-    "animaTransformSerieXmlGenerator"
-)
-
-set(ANIMA_FILES_TO_COPY "")
-foreach(TOOL ${ANIMA_REQUIRED_TOOLS})
-    if(WIN32)
-        set(BIN_PATH "${ANIMA_PATH}/${TOOL}.exe")
-    else()
-        set(BIN_PATH "${ANIMA_PATH}/${TOOL}")
-    endif()
-        list(APPEND ANIMA_FILES_TO_COPY "${BIN_PATH}")
-endforeach()
-
-set(ANIMA_RUNTIME_DESTINATION "${CMAKE_BINARY_DIR}/${ANIMA_REL_PATH}")
-
-add_compile_definitions(ANIMA_RELATIVE_PATH="${ANIMA_RUNTIME_DESTINATION}")
-
-message(STATUS "ANIMA runtime destination: ${ANIMA_RUNTIME_DESTINATION}")
-
-file(MAKE_DIRECTORY "${ANIMA_RUNTIME_DESTINATION}")
-foreach(FILE_PATH ${ANIMA_FILES_TO_COPY})
-    if(EXISTS "${FILE_PATH}")
-        file(COPY "${FILE_PATH}" DESTINATION "${ANIMA_RUNTIME_DESTINATION}")
-    else()
-        message(WARNING "ANIMA binary not found at path : ${FILE_PATH}")
-    endif()
-endforeach()
-
 # --- Definitions & Configuration ---
 set(CORE "core")
 set(GUI "gui")
@@ -137,6 +100,36 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     ${GUI}
 )
 
+#5. ANIMA
+set(ANIMA_REQUIRED_TOOLS 
+    "animaApplyTransformSerie"
+    "animaConvertImage"
+    "animaCreateImage"
+    "animaDenseSVFBMRegistration"
+    "animaMaskImage"
+    "animaN4BiasCorrection"
+    "animaPyramidalBMRegistration"
+    "animaTransformSerieXmlGenerator"
+)
+
+set(ANIMA_FILES_TO_COPY "")
+foreach(TOOL ${ANIMA_REQUIRED_TOOLS})
+    if(WIN32)
+        set(BIN_PATH "${ANIMA_PATH}/${TOOL}.exe")
+    else()
+        set(BIN_PATH "${ANIMA_PATH}/${TOOL}")
+    endif()
+    list(APPEND ANIMA_FILES_TO_COPY "${BIN_PATH}")
+endforeach()
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>/anima"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${ANIMA_FILES_TO_COPY}
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/anima"
+    COMMENT "Copie des outils ANIMA dans le dossier de l'exécutable ($<CONFIG>)"
+)
+
 if(WIN32)
     get_target_property(QT_QMAKE_EXECUTABLE Qt6::qmake IMPORTED_LOCATION)
     get_filename_component(QT_BIN_DIR "${QT_QMAKE_EXECUTABLE}" DIRECTORY)
@@ -151,6 +144,7 @@ if(WIN32)
 
     set(WINML_DLL_FILES
         "${WINML_BINARY_DIR}/Microsoft.Windows.AI.MachineLearning.dll"
+        "${WINML_BINARY_DIR}/onnxruntime.dll"
         "${WINML_DIRECTML_DLL}"
         "${WINML_ONNXRUNTIME_PROVIDERS_SHARED_DLL}"
     )

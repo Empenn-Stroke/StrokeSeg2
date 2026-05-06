@@ -25,11 +25,11 @@ namespace Paths {
     }
 
     inline QDir baseDir() {
-        return QDir(QFileInfo(__FILE__).absolutePath()).filePath("../../..");
+        return QDir(QCoreApplication::applicationDirPath());
     }
 
     inline QDir animaRootPath() {
-        return QDir(QCoreApplication::applicationDirPath()).filePath(ANIMA_RELATIVE_PATH);
+        return QDir(baseDir().filePath(ANIMA_RELATIVE_PATH));
     }
 
     inline QDir modelDir() {
