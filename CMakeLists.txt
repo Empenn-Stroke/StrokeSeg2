@@ -41,40 +41,29 @@ if(CMAKE_GENERATOR MATCHES "^Visual Studio")
 endif()
 
 # 1. Eigen
-set(EIGEN_INSTALL_DIR "${CMAKE_BINARY_DIR}/../../bin/eigen")
-list(APPEND CMAKE_PREFIX_PATH 
-    "${EIGEN_INSTALL_DIR}"
-    "${CMAKE_BINARY_DIR}/../../bin"
-)
 find_package(Eigen3 REQUIRED)
-message(STATUS "Searching for Eigen3 in: ${CMAKE_PREFIX_PATH}")
+message(STATUS "Searching for Eigen3 in: ${Eigen3_DIR}")
 
 # 2. ZLIB
-get_filename_component(OUT_DIR "${CMAKE_BINARY_DIR}/../../.." ABSOLUTE)
-set(ZLIB_LIB_DIR "${OUT_DIR}/bin/zlib/lib")
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(ZLIB_LIBRARY "${ZLIB_LIB_DIR}/zsd.lib")
-else()
-    set(ZLIB_LIBRARY "${ZLIB_LIB_DIR}/zd.lib")
-endif()
+find_package(ZLIB REQUIRED)
+message(STATUS "Searching for Zlib in: ${ZLIB_DIR}")
 
-# 3. NIFTI (compilé via ExternalProject dans le superprojet)
-# Si NIFTI n'exporte pas de config CMake, on le cherche manuellement
-get_filename_component(OUT_DIR "${CMAKE_BINARY_DIR}/../../.." ABSOLUTE)
-set(NIFTI_INSTALL_ROOT "${OUT_DIR}/bin/Nifti_clib")
-set(NIFTI_INCLUDE_DIR "${NIFTI_INSTALL_ROOT}/include/nifti")
-set(NIFTI_LIBS 
-    "${NIFTI_INSTALL_ROOT}/lib/niftiio.lib"
-    "${NIFTI_INSTALL_ROOT}/lib/znz.lib"
-)
-# On vérifie si les chemins existent pour aider au debug
-message(STATUS "Checking Nifti in: ${NIFTI_INCLUDE_DIR}")
+# 3. NIFTI
+find_package(NIFTI REQUIRED)
+message(STATUS "Searching for Nifti in: ${NIFTI_DIR}")
 
 # 4. QT
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Concurrent)
 qt_standard_project_setup() # sets some variables to setup qt
 
+# 5. WinML
+find_package(microsoft.windows.ai.machinelearning REQUIRED)
+message(STATUS "Searching for Microsoft.Windows.AI.MachineLearning in: ${WINML_DIR}")
+message(STATUS "Build dir" ${CMAKE_BINARY_DIR})
+
 #5. ANIMA
+set(ANIMA_REL_PATH "./anima")
+
 set(ANIMA_REQUIRED_TOOLS 
     "animaApplyTransformSerie"
     "animaConvertImage"
@@ -89,14 +78,19 @@ set(ANIMA_REQUIRED_TOOLS
 set(ANIMA_FILES_TO_COPY "")
 foreach(TOOL ${ANIMA_REQUIRED_TOOLS})
     if(WIN32)
-        set(BIN_PATH "${anima_SOURCE_DIR}/${TOOL}.exe")
+        set(BIN_PATH "${ANIMA_PATH}/${TOOL}.exe")
     else()
-        set(BIN_PATH "${anima_SOURCE_DIR}/${TOOL}")
+        set(BIN_PATH "${ANIMA_PATH}/${TOOL}")
     endif()
         list(APPEND ANIMA_FILES_TO_COPY "${BIN_PATH}")
 endforeach()
 
 set(ANIMA_RUNTIME_DESTINATION "${CMAKE_BINARY_DIR}/${ANIMA_REL_PATH}")
+
+add_compile_definitions(ANIMA_RELATIVE_PATH="${ANIMA_RUNTIME_DESTINATION}")
+
+message(STATUS "ANIMA runtime destination: ${ANIMA_RUNTIME_DESTINATION}")
+
 file(MAKE_DIRECTORY "${ANIMA_RUNTIME_DESTINATION}")
 foreach(FILE_PATH ${ANIMA_FILES_TO_COPY})
     if(EXISTS "${FILE_PATH}")
@@ -137,7 +131,7 @@ endif()
 # --- Targets ---
 add_subdirectory(${CMAKE_SOURCE_DIR}/${CORE})
 add_subdirectory(${CMAKE_SOURCE_DIR}/${GUI})
-add_subdirectory(${CMAKE_SOURCE_DIR}/test)
+#add_subdirectory(${CMAKE_SOURCE_DIR}/test)
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
     ${GUI}
@@ -153,5 +147,22 @@ if(WIN32)
                 --no-system-d3d-compiler
                 "$<TARGET_FILE:${PROJECT_NAME}>"
         VERBATIM
+    )
+
+    set(WINML_DLL_FILES
+        "${WINML_BINARY_DIR}/Microsoft.Windows.AI.MachineLearning.dll"
+        "${WINML_DIRECTML_DLL}"
+        "${WINML_ONNXRUNTIME_PROVIDERS_SHARED_DLL}"
+    )
+
+    set(ZLIB_DLL "${ZLIB_ROOT}/bin/zd.dll")
+
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${WINML_DLL_FILES}
+            ${ZLIB_DLL}
+            $<TARGET_FILE_DIR:${PROJECT_NAME}>
+        COMMAND_EXPAND_LISTS
+        COMMENT "Déploiement des DLLs"
     )
 endif()

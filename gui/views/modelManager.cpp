@@ -68,13 +68,8 @@ ModelManager::ModelManager(QWidget *parent) : QWidget(parent) {
     m_mainAreaLayout->setContentsMargins(12, 13, 12, 12);
     m_mainAreaLayout->setSpacing(8);
 
-<<<<<<<< HEAD:gui/models/modelManager.cpp
-    QDir modelsDir = QDir("C:/ProgramData/StrokeSeg/Model");
-    QStringList entries = modelsDir.entryList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
-========
     QDir modelsDir = Paths::modelDir();
     QStringList entries = modelsDir.entryList({"*.onnx"}, QDir::Files | QDir::NoDotAndDotDot);
->>>>>>>> dev:gui/views/modelManager.cpp
 
     for (const QString &entry : entries) {
 
@@ -167,27 +162,19 @@ bool ModelManager::nativeEvent(const QByteArray &eventType, void *message, qintp
 }
 
 void ModelManager::importModel() {
-<<<<<<<< HEAD:gui/models/modelManager.cpp
-    QString filename =
-        QFileDialog::getOpenFileName(this, "Choose file", "C:/ProgramData/StrokeSeg/Model", "ONNX Model (*.onnx);;All files (*)");
-========
+
     QString filename = QFileDialog::getOpenFileName(this, "Choose file", Paths::modelDir().absolutePath(),
                                                     "ONNX Model (*.onnx);;All files (*)");
->>>>>>>> dev:gui/views/modelManager.cpp
 
     if (filename.isEmpty())
         return;
 
     // ---- Find the path ----
-<<<<<<<< HEAD:gui/models/modelManager.cpp
     QString programDataPath = qgetenv("PROGRAMDATA");
     if (programDataPath.isEmpty()) {
         programDataPath = "C:/ProgramData"; // Fallback manuel si la variable est vide
     }
-    QDir dir(programDataPath + "/StrokeSeg/Model");
-========
     QDir dir(Paths::modelDir());
->>>>>>>> dev:gui/views/modelManager.cpp
 
     if (!dir.exists()) {
         if (!dir.mkpath(".")) {

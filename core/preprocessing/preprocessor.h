@@ -72,9 +72,6 @@ namespace preprocessing {
         std::array<std::array<int, 2>, 3>
         computeBBox(const Eigen::Tensor<uint8_t, 3, Eigen::ColMajor> &mask);
 
-        std::array<std::array<int, 2>, 3>
-        computeBBox(const Eigen::Tensor<uint8_t, 3, Eigen::ColMajor> &mask);
-
         std::pair<NiftiVolume, NiftiVolume>
         cropToNonZero(const NiftiVolume &vol, const NiftiVolume *seg = nullptr,
                       int nonzero_label = 1, std::array<std::array<int, 2>, 3> *bbox_out = nullptr);

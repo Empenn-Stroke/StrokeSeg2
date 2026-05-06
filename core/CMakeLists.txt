@@ -61,29 +61,13 @@ target_include_directories(${CORE} PUBLIC
 )
 
 
-set(CMAKE_VS_NUGET_PACKAGE_RESTORE CACHE BOOL ON)
-
-set_property(TARGET ${CORE} PROPERTY VS_PACKAGE_REFERENCES 
-  "Microsoft.WindowsAppSDK.ML_1.8.2141"
-  "Microsoft.ML.OnnxRuntime.DirectML_1.17.1"
-  "Microsoft.Windows.CppWinRT_2.0.250303.1"
-  "Microsoft.WindowsAppSDK_1.8.260317003")
+if(WIN32)    
+    target_link_libraries(${CORE} PRIVATE WindowsML::WindowsML)
+endif()
 
 target_link_libraries(${CORE} PUBLIC
-    "${ZLIB_LIBRARY}"
-    ${NIFTI_LIBS}
+    NIFTI::niftiio
     Qt6::Core
     Eigen3::Eigen
     Configuration
 )
-
-add_custom_command(TARGET ${CORE} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${ML_DLL_PATH}/onnxruntime.dll"
-    "${ML_DLL_PATH}/onnxruntime_providers_shared.dll"
-    "${ML_DLL_PATH}/DirectML.dll"
-    "${ML_DLL_PATH}/Microsoft.Windows.AI.MachineLearning.dll"
-    $<TARGET_FILE_DIR:strokeseg2-app>
-)
-
-#add_dependencies(${CORE} zlib)

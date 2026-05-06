@@ -888,25 +888,25 @@ void MainWindow::onPipelineFinished(bool success, QString message, QString final
     m_consoleLabel->setText(message);
 
     sender()->deleteLater();
-    connect(watcher, &QFutureWatcher<std::vector<float>>::finished, this, [this, watcher,destinationPath]() {
+
     if (success) {
         if (m_toggleOpenFolder->isChecked()) {
             QDesktopServices::openUrl(QUrl::fromLocalFile(m_destination->text()));
         }
-        } else {
+
         if (m_toggleView->isChecked() && !finalPath.isEmpty()) {
             // We pass the original MRI (m_params.t1Path) AND the generated mask (finalPath)
             QString baseImagePath;
-            // ITK
+
             if (m_params.betOnly) {
                 finalPath = "";
-                baseImagePath = m_params.outputDir + "/" +
-                                QFileInfo(m_params.t1Path).baseName() + "_BET.nii.gz";
+                baseImagePath = m_params.outputDir + "/" + QFileInfo(m_params.t1Path).baseName() +
+                                "_BET.nii.gz";
             }
 
             if (m_params.mni) {
-                baseImagePath = m_params.outputDir + "/" +
-                                "MNI_" + QFileInfo(m_params.t1Path).baseName() + "_BET.nii.gz";
+                baseImagePath = m_params.outputDir + "/" + "MNI_" +
+                                QFileInfo(m_params.t1Path).baseName() + "_BET.nii.gz";
             } else {
                 baseImagePath = m_params.t1Path;
             }
@@ -924,13 +924,9 @@ void MainWindow::onPipelineFinished(bool success, QString message, QString final
     } else {
         QMessageBox::critical(this, "Pipeline Error", message);
     }
-
-        m_stackedArea->setCurrentIndex(0);
-        m_runButton->setEnabled(true);
-        watcher->deleteLater();
-    });
-    watcher->setFuture(worker);
 }
+
+
 
 void MainWindow::saveSettings() {
     QSettings settings;

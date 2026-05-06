@@ -30,7 +30,7 @@
 #include <managers/configmanager.h>
 #include "guideWindow.h"
 #include "aboutWindow.h"
-#include "models/modelManager.h"
+#include "modelManager.h"
 #include "warningWindow.h"
 #include <workers/pipelineWorker.h>
 

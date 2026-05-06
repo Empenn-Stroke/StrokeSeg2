@@ -1,7 +1,7 @@
 #include <QtTest>
 #include <QDir>
 #include <preprocessing/preprocessor.h>
-#include <inference/inferenceengine.h>
+#include <inference/inference.h>
 #include <postprocessing/postprocessor.h>
 #include <utils/niftiVolume.h>
 #include <utils/env_path.h>
