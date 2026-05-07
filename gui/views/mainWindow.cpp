@@ -732,7 +732,7 @@ void MainWindow::refreshModelsList() {
     QString currentModel = m_model->currentText();
     m_model->clear();
 
-    QDir modelsDir("C:/ProgramData/StrokeSeg/Model");
+    QDir modelsDir(Paths::modelDir());
     QStringList entries = modelsDir.entryList(QDir::Files | QDir::NoDotAndDotDot);
 
     for (const QString &entry : entries) {

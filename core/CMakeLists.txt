@@ -63,9 +63,8 @@ endif()
 # Platform specific backends and libraries
 if(WIN32)
     target_link_libraries(${CORE} PUBLIC
-        zlibstatic       # Use the fetched static library on Windows
-        WindowsML::Api 
-        WindowsML::OnnxRuntime
+        ZLIB::ZLIB       # Use the fetched static library on Windows
+        WindowsML::WindowsML
     )
 elseif(APPLE)
     target_link_libraries(${CORE} PUBLIC 
@@ -74,14 +73,11 @@ elseif(APPLE)
     )
 endif()
 
-
-if(WIN32)    
-    target_link_libraries(${CORE} PRIVATE WindowsML::WindowsML)
-endif()
-
 target_link_libraries(${CORE} PUBLIC
+    Qt6::Core            
+    Qt6::Gui             
+    Qt6::Concurrent
     NIFTI::niftiio
-    spdlog
     Eigen3::Eigen
     Configuration
 )

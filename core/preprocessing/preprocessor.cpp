@@ -523,13 +523,11 @@ namespace preprocessing {
             return dst;
         }
 
-            // Au lieu de throw, on log une erreur pour ne pas stopper tout le pipeline
+        QFile::remove(dst);
+        if (!QFile::copy(img_path, dst)) {
             qCritical() << "Failed to copy file from" << img_path << "to" << dst;
-            spdlog::error("Failed to copy file from {} to {}", img_path.toStdString(),
-                          dst.toStdString());
             return img_path;
         }
-
         return dst;
     }
 

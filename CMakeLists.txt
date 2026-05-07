@@ -22,7 +22,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 
-add_compile_definitions(ANIMA_RELATIVE_PATH="anima")
+add_compile_definitions(ANIMA_RELATIVE_PATH="Anima")
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Concurrent)
 qt_standard_project_setup()
@@ -123,25 +123,15 @@ foreach(TOOL ${ANIMA_REQUIRED_TOOLS})
 endforeach()
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>/anima"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ANIMA_RELATIVE_PATH}"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${ANIMA_FILES_TO_COPY}
-        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/anima"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ANIMA_RELATIVE_PATH}"
     COMMENT "Copie des outils ANIMA dans le dossier de l'exécutable ($<CONFIG>)"
 )
 
-if(WIN32)
-    get_target_property(QT_QMAKE_EXECUTABLE Qt6::qmake IMPORTED_LOCATION)
-    get_filename_component(QT_BIN_DIR "${QT_QMAKE_EXECUTABLE}" DIRECTORY)
-    
-    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND "${QT_BIN_DIR}/windeployqt.exe"
-                --no-translations
-                --no-system-d3d-compiler
-                "$<TARGET_FILE:${PROJECT_NAME}>"
-        VERBATIM
-    )
-
+# WinML / Zlib DLLs deployment
+if(WIN32)    
     set(WINML_DLL_FILES
         "${WINML_BINARY_DIR}/Microsoft.Windows.AI.MachineLearning.dll"
         "${WINML_BINARY_DIR}/onnxruntime.dll"
@@ -149,7 +139,11 @@ if(WIN32)
         "${WINML_ONNXRUNTIME_PROVIDERS_SHARED_DLL}"
     )
 
-    set(ZLIB_DLL "${ZLIB_ROOT}/bin/zd.dll")
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        set(ZLIB_DLL "${ZLIB_ROOT}/bin/zd.dll")
+    else()
+        set(ZLIB_DLL "${ZLIB_ROOT}/bin/z.dll")
+    endif()
 
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -160,3 +154,35 @@ if(WIN32)
         COMMENT "Déploiement des DLLs"
     )
 endif()
+
+# Qt deployment
+
+get_target_property(QT_QMAKE_EXECUTABLE Qt6::qmake IMPORTED_LOCATION)
+get_filename_component(QT_BIN_DIR "${QT_QMAKE_EXECUTABLE}" DIRECTORY)
+
+if(WIN32) 
+    set(QT_DEPLOY_BIN "${QT_BIN_DIR}/windeployqt.exe")
+elseif(APPLE)
+    set(QT_DEPLOY_BIN "${QT_BIN_DIR}/macdeployqt")
+else()
+    set(QT_DEPLOY_BIN "${QT_BIN_DIR}/linuxdeployqt")
+endif()
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND "${QT_DEPLOY_BIN}"
+                --no-translations
+                --no-system-d3d-compiler
+                "$<TARGET_FILE:${PROJECT_NAME}>"
+        VERBATIM
+)
+
+set(PROGRAM_DIR "${CMAKE_BINARY_DIR}/../../../bin/Program/StrokeSeg2")
+
+make_directory(${PROGRAM_DIR})
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory 
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>" 
+        "${PROGRAM_DIR}"
+    COMMENT "Envoi de l'application vers le dossier central du Superprojet"
+)
