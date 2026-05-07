@@ -1,5 +1,4 @@
 #include <onnxruntime_cxx_api.h>
-#include <dml_provider_factory.h>
 
 using OrtFloat16 = Ort::Float16_t;
 

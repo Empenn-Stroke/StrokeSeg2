@@ -1,7 +1,7 @@
 #include <QtTest>
 #include <QDir>
 #include <preprocessing/preprocessor.h>
-#include <inference/inference.h>
+#include "inference/inference.h"
 #include <postprocessing/postprocessor.h>
 #include <utils/niftiVolume.h>
 #include <utils/env_path.h>
@@ -101,7 +101,8 @@ private slots:
                 0.5f,   // threshold
                 true,   // save_pmap
                 outputDir, 
-                preprocResult.trsf_path
+                preprocResult.trsf_path,
+                false
             );
         } catch (const std::exception &e) {
             QFAIL(qPrintable(QString("Postprocessing failed: %1").arg(e.what())));

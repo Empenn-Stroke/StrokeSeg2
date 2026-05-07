@@ -1,5 +1,12 @@
 #include "inference.h"
-#include "inference_internal.h"
+
+#ifdef _WIN32
+#include "Win/inference_win.h"
+#elif defined(__APPLE__)
+#include "Mac/inference_mac.h"
+#else
+#include "Linux/inference_linux.h" // Todo Axel :)
+#endif
 
 #include <QDebug>
 #include <QElapsedTimer>
@@ -11,7 +18,7 @@
  *        output as a NiftiVolume.
  * @param modelPath The full path to the ONNX model file to use for inference (including the .onnx
  *        extension).
- * @param imagePath The full path to the input image file (e.g., a NIfTI file) to run inference on.
+ * @param image The ptr to the NiftiVolume image.
  * @param destinationPath The full path where the output NIfTI file should be saved (including the
  *        .nii or .nii.gz extension).
  * @param inputName The name of the input tensor in the ONNX model that corresponds to the input
@@ -28,6 +35,7 @@
  * tensor names, postprocess the output as needed, and return it as a NiftiVolume. The output will
  * also be saved to disk at destinationPath.
  */
+
 NiftiVolume Inference::run(const QString &modelPath, NiftiVolume &image,
                            const QString &destinationPath, const QString &inputName,
                            const QString &outputName) {
@@ -38,7 +46,6 @@ NiftiVolume Inference::run(const QString &modelPath, NiftiVolume &image,
         return {};
     }
 
-    // --- Prepare input and output names for ONNX Runtime ---
     std::string inputNameStr = inputName.toStdString();
     std::string outputNameStr = outputName.toStdString();
     const char *inputNames[] = {inputNameStr.c_str()};
@@ -51,14 +58,14 @@ NiftiVolume Inference::run(const QString &modelPath, NiftiVolume &image,
 
     qDebug() << "Shape (X:" << X << ", Y:" << Y << ", Z:" << Z << ", C:" << C << ")";
 
-    // --- Initialize ONNX Runtime session and tensors for future computation ---
     if (!d->m_session) {
         d->init(modelPath);
     }
 
     Ort::IoBinding io_binding(*d->m_session);
 
-    Eigen::Tensor<OrtFloat16, 4, Eigen::ColMajor> full_volume_f16 = image.data.cast<OrtFloat16>();
+    // --- BUG FIX: Use Eigen::half to properly cast to float16 without truncating to 0 ---
+    Eigen::Tensor<Eigen::half, 4, Eigen::ColMajor> full_volume_f16 = image.data.cast<Eigen::half>();
     image.data = Eigen::Tensor<float, 4, Eigen::ColMajor>();
 
     std::array<int, 3> patch_size = {128, 128, 128};
@@ -78,10 +85,8 @@ NiftiVolume Inference::run(const QString &modelPath, NiftiVolume &image,
     Eigen::Tensor<float, 4, Eigen::ColMajor> g_norm =
         gaussian.reshape(Eigen::array<int, 4>{128, 128, 128, 1}).broadcast(bcast_norm);
 
-    // --- Prepare memory info once outside the loop ---
     Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
 
-    // Pre allocating memory to avoid
     const int64_t patch_elements = 128 * 128 * 128 * C;
     std::vector<OrtFloat16> input_buffer(patch_elements);
 
@@ -111,7 +116,7 @@ NiftiVolume Inference::run(const QString &modelPath, NiftiVolume &image,
         for (int y : steps[1]) {
             for (int z : steps[2]) {
                 patch_cpt++;
-                
+
                 QString status =
                     QString("Processing patch %1/%2").arg(patch_cpt).arg(total_patches);
 
@@ -121,33 +126,31 @@ NiftiVolume Inference::run(const QString &modelPath, NiftiVolume &image,
                 qDebug() << "Processing patch (" << patch_cpt << "/" << total_patches
                          << ") at (X:" << x << ", Y:" << y << ", Z:" << z << ")";
 
-                Eigen::TensorMap<Eigen::Tensor<OrtFloat16, 4, Eigen::ColMajor>> input_map(
-                    input_buffer.data(), 128, 128, 128, C);
-
-                // --- Extract patch and prepare input tensor ---
                 Eigen::array<int, 4> offset = {x, y, z, 0};
                 Eigen::array<int, 4> extent = {128, 128, 128, C};
 
-                input_map = full_volume_f16.slice(offset, extent);
+                // --- BUG FIX: Slice using Eigen::half and map safely ---
+                Eigen::Tensor<Eigen::half, 4, Eigen::ColMajor> patch =
+                    full_volume_f16.slice(offset, extent);
+                Eigen::TensorMap<Eigen::Tensor<Eigen::half, 4, Eigen::ColMajor>> input_map(
+                    reinterpret_cast<Eigen::half *>(input_buffer.data()), 128, 128, 128, C);
 
-                // --- Create input tensor for ONNX Runtime ---
-                std::vector<int64_t> patch_shape = {1, C, 128, 128, 128};
+                input_map = patch;
 
                 io_binding.BindInput(inputNameStr.c_str(), input_tensor);
 
-                // --- Run inference ---
-                // auto output_tensors = m_session->Run(Ort::RunOptions{nullptr}, inputNames,
-                //                                     &input_tensor, 1, outputNames, 1);
-
                 d->m_session->Run(Ort::RunOptions{nullptr}, io_binding);
 
-                Eigen::TensorMap<Eigen::Tensor<OrtFloat16, 4, Eigen::ColMajor>> output_map_res(
-                    output_buffer.data(), 128, 128, 128, num_classes);
+                // --- BUG FIX: Safely map output buffer from ONNX back to Eigen::half ---
+                Eigen::TensorMap<Eigen::Tensor<Eigen::half, 4, Eigen::ColMajor>> output_map_res(
+                    reinterpret_cast<Eigen::half *>(output_buffer.data()), 128, 128, 128,
+                    num_classes);
 
-                // --- Accumulate results ---
+                Eigen::Tensor<Eigen::half, 4, Eigen::ColMajor> out_patch = output_map_res;
+
                 output_accum.slice(Eigen::array<int, 4>{x, y, z, 0},
                                    Eigen::array<int, 4>{128, 128, 128, num_classes}) +=
-                    output_map_res.cast<float>() * g_out;
+                    out_patch.cast<float>() * g_out;
 
                 norm_map.slice(Eigen::array<int, 4>{x, y, z, 0},
                                Eigen::array<int, 4>{128, 128, 128, 1}) += g_norm;
@@ -162,12 +165,10 @@ NiftiVolume Inference::run(const QString &modelPath, NiftiVolume &image,
     qDebug() << "Normalizing...";
     output_accum /= norm_map.broadcast(Eigen::array<int, 4>{1, 1, 1, num_classes});
 
-    qDebug() << "Extracting class 1 and reshaping to 3D...";
-
-    Eigen::Tensor<float, 3, Eigen::ColMajor> final_tensor_3d = output_accum.chip(1, 3);
-
+    // --- BUG FIX: Keep both channels (Do NOT chip the tensor). Let postprocessor handle the
+    // softmax ---
     NiftiVolume outputVol = image;
-    outputVol.data = final_tensor_3d.reshape(Eigen::array<int, 4>{X, Y, Z, 1});
+    outputVol.data = output_accum;
 
     qDebug() << "[FINAL CHECK] Dimensions to save:" << outputVol.data.dimension(0) << "x"
              << outputVol.data.dimension(1) << "x" << outputVol.data.dimension(2) << "x"
@@ -177,7 +178,6 @@ NiftiVolume Inference::run(const QString &modelPath, NiftiVolume &image,
 
     return outputVol;
 }
-
 
 /* @brief Slice a 3D image volume into overlapping patches based on the specified image size,
  * patch size, and step size.
@@ -200,37 +200,24 @@ NiftiVolume Inference::run(const QString &modelPath, NiftiVolume &image,
  * where patches would be extracted from the image volume.
  */
 inline std::vector<std::vector<int>> Inference::sliceVolume(std::array<int, 3> image_size,
-                                                                   std::array<int, 3> patch_size,
-                                                                   float step_size) {
+                                                            std::array<int, 3> patch_size,
+                                                            float step_size) {
     std::vector<std::vector<int>> steps;
-
-    // --- For each dimension, calculate the starting indices for patches ---
     for (int i = 0; i < 3; ++i) {
         std::vector<int> steps_here;
         int img_dim = image_size[i];
         int pat_dim = patch_size[i];
-
-        // If the patch size is larger than the image dimension, we just take one patch starting
-        // at 0 (after preprocessing, image should be at least the dimension of the patch, but
-        // we keep this check for safety)
         if (img_dim <= pat_dim) {
             steps_here.push_back(0);
-
-            // Otherwise, we calculate the steps based on the step size and ensure we cover the
-            // entire dimension
         } else {
             float target_step = pat_dim * step_size;
             int num_steps = std::ceil((img_dim - pat_dim) / target_step) + 1;
-
             float actual_step = static_cast<float>(img_dim - pat_dim) / (num_steps - 1);
-
             for (int j = 0; j < num_steps; ++j) {
                 int start_idx = std::round(actual_step * j);
-
                 if (start_idx + pat_dim > img_dim) {
                     start_idx = img_dim - pat_dim;
                 }
-
                 if (steps_here.empty() || start_idx != steps_here.back()) {
                     steps_here.push_back(start_idx);
                 }
@@ -267,7 +254,7 @@ inline std::vector<std::vector<int>> Inference::sliceVolume(std::array<int, 3> i
  */
 inline Eigen::Tensor<float, 3, Eigen::ColMajor>
 Inference::compute_gaussian(const std::array<int, 3> &patch_size, float sigma_scale,
-                                   float value_scaling_factor) {
+                            float value_scaling_factor) {
     const int nX = patch_size[0];
     const int nY = patch_size[1];
     const int nZ = patch_size[2];
@@ -288,10 +275,8 @@ Inference::compute_gaussian(const std::array<int, 3> &patch_size, float sigma_sc
 
     Eigen::array<int, 3> reshapeX = {nX, 1, 1};
     Eigen::array<int, 3> bcastX = {1, nY, nZ};
-
     Eigen::array<int, 3> reshapeY = {1, nY, 1};
     Eigen::array<int, 3> bcastY = {nX, 1, nZ};
-
     Eigen::array<int, 3> reshapeZ = {1, 1, nZ};
     Eigen::array<int, 3> bcastZ = {nX, nY, 1};
 
@@ -305,9 +290,7 @@ Inference::compute_gaussian(const std::array<int, 3> &patch_size, float sigma_sc
     if (max_val > 0.0f) {
         float factor = value_scaling_factor / max_val;
         float min_val = factor * 1e-4f;
-
         gaussian_map = (gaussian_map * factor).cwiseMax(min_val);
     }
-
     return gaussian_map;
 }

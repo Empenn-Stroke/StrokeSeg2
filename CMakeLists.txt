@@ -12,12 +12,12 @@ project(strokeseg2-app
 )
 
 # --- Configuration des Chemins de Recherche ---
-# On dit à CMake de chercher les paquets dans le dossier d'installation du Superprojet
+# On dit Ã  CMake de chercher les paquets dans le dossier d'installation du Superprojet
 if(NOT CMAKE_PREFIX_PATH)
     set(CMAKE_PREFIX_PATH "${CMAKE_BINARY_DIR}/bin")
 endif()
 
-# --- Setup Qt (Généralement trouvé sur le système) ---
+# --- Setup Qt (GÃ©nÃ©ralement trouvÃ© sur le systÃ¨me) ---
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
@@ -67,7 +67,7 @@ message(STATUS "Build dir" ${CMAKE_BINARY_DIR})
 set(CORE "core")
 set(GUI "gui")
 
-# Récupération de ANIMA_ROOT_PATH passé par le Superprojet
+# RÃ©cupÃ©ration de ANIMA_ROOT_PATH passÃ© par le Superprojet
 if(NOT ANIMA_ROOT_PATH)
     set(ANIMA_ROOT_PATH "./anima" CACHE PATH "Path to anima")
 endif()
@@ -127,7 +127,7 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${ANIMA_FILES_TO_COPY}
         "$<TARGET_FILE_DIR:${PROJECT_NAME}>/anima"
-    COMMENT "Copie des outils ANIMA dans le dossier de l'exécutable ($<CONFIG>)"
+    COMMENT "Copie des outils ANIMA dans le dossier de l'exÃ©cutable ($<CONFIG>)"
 )
 
 if(WIN32)
@@ -157,6 +157,6 @@ if(WIN32)
             ${ZLIB_DLL}
             $<TARGET_FILE_DIR:${PROJECT_NAME}>
         COMMAND_EXPAND_LISTS
-        COMMENT "Déploiement des DLLs"
+        COMMENT "DÃ©ploiement des DLLs"
     )
 endif()

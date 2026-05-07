@@ -29,15 +29,14 @@ set(COMMON_SOURCES
     "managers/progressManager.cpp"
     "managers/logManager.cpp"
     "inference/inference.cpp"
-    "inference/inference_internal.h"
     "workers/pipelineWorker.cpp")
 
 
 if(WIN32)
-    set(OS_SOURCES "inference/Win/inference.cpp" "inference/Win/dml_ep_handler.cpp")
-    set(OS_HEADERS "inference/Win/dml_ep_handler.h")
+    set(OS_SOURCES "inference/Win/inference_win.cpp" "inference/Win/dml_ep_handler.cpp")
+    set(OS_HEADERS "inference/Win/dml_ep_handler.h" "inference/Win/inference_win.h")
 elseif(APPLE)
-    set(OS_SOURCES "inference/Mac/inference.cpp")
+    set(OS_SOURCES "inference/Mac/inference_mac.cpp")
 else()
     set(OS_SOURCES "inference/Linux/inference.cpp")
 endif()
@@ -55,10 +54,25 @@ target_include_directories(${CORE} PUBLIC
     ${CMAKE_SOURCE_DIR}/${CORE}/
     ${CMAKE_SOURCE_DIR}/${COMMON}/
     "${ONNX_INCLUDE_DIR}"
-    "${DML_INCLUDE_DIR}"
-    "${IMPLEMENTATION_LIB_INCLUDE_DIR}"
-    ${NIFTI_INCLUDE_DIR}
 )
+
+if(WIN32)
+    target_include_directories(${CORE} PUBLIC "${DML_INCLUDE_DIR}")
+endif()
+
+# Platform specific backends and libraries
+if(WIN32)
+    target_link_libraries(${CORE} PUBLIC
+        zlibstatic       # Use the fetched static library on Windows
+        WindowsML::Api 
+        WindowsML::OnnxRuntime
+    )
+elseif(APPLE)
+    target_link_libraries(${CORE} PUBLIC 
+        ZLIB::ZLIB       # Use the system dynamic library on Mac
+        onnxruntime_lib
+    )
+endif()
 
 
 if(WIN32)    
@@ -67,7 +81,29 @@ endif()
 
 target_link_libraries(${CORE} PUBLIC
     NIFTI::niftiio
-    Qt6::Core
+    spdlog
     Eigen3::Eigen
     Configuration
 )
+
+# Platform specific ML backends
+if(WIN32)
+    target_link_libraries(${CORE} PUBLIC
+        WindowsML::Api 
+        WindowsML::OnnxRuntime
+    )
+elseif(APPLE)
+    # This links to the imported library you created in the root CMakeLists.txt
+    target_link_libraries(${CORE} PUBLIC onnxruntime_lib)
+endif()
+
+if(WIN32)
+    add_custom_command(TARGET ${CORE} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${ML_DLL_PATH}/onnxruntime.dll"
+        "${ML_DLL_PATH}/onnxruntime_providers_shared.dll"
+        "${ML_DLL_PATH}/DirectML.dll"
+        "${ML_DLL_PATH}/Microsoft.Windows.AI.MachineLearning.dll"
+        $<TARGET_FILE_DIR:strokeseg2-app>
+    )
+endif()

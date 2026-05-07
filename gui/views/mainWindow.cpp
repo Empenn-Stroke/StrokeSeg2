@@ -17,7 +17,7 @@
 #include <QtConcurrent>
 #include <utils/env_path.h>
 #include <managers/progressManager.h>
-#include "NiftiViewerWindow.h"
+#include "niftiViewerWindow.h"
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -603,17 +603,25 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
         }
     }
 
-    if (obj == m_fileButton) {
+if (obj == m_fileButton) {
         if (event->type() == QEvent::DragEnter) {
             auto *dragEvent = static_cast<QDragEnterEvent *>(event);
-            
             if (dragEvent->mimeData()->hasUrls()) {
                 m_fileButton->setProperty("dragging", true);
                 m_fileButton->update();
                 dragEvent->acceptProposedAction();
                 return true;
             }
-        } else if (event->type() == QEvent::DragLeave) {
+        } 
+        else if (event->type() == QEvent::DragMove) {
+            auto *dragEvent = static_cast<QDragMoveEvent *>(event);
+            if (dragEvent->mimeData()->hasUrls()) {
+                dragEvent->acceptProposedAction();
+                return true;
+            }
+        }
+        // -----------------------------------
+        else if (event->type() == QEvent::DragLeave) {
             m_fileButton->setProperty("dragging", false);
             m_fileButton->update();
             return true;
@@ -651,8 +659,7 @@ void MainWindow::chooseFile() {
 
     QString filters = "Medical Images (*.nii *.nii.gz *.nrrd *.dcm);;All files (*)";
 
-    QString filePath = QFileDialog::getOpenFileName(this, "Choose file", lastDirFile, filters);
-
+    QString filePath = QFileDialog::getOpenFileName(nullptr, "Choose file", lastDirFile, filters);
     if (!filePath.isEmpty()) {
         m_fileLabel->setText(QFileInfo(filePath).fileName());
         m_fileChosen = new QString(filePath);
@@ -679,7 +686,7 @@ void MainWindow::chooseDestination() {
     QString lastDest = settings.value("lastDestPath", QDir::homePath()).toString();
 
     QString folderPath = QFileDialog::getExistingDirectory(
-        this,"Choose output folder", lastDest,QFileDialog::ShowDirsOnly);
+        nullptr, "Choose output folder", lastDest, QFileDialog::ShowDirsOnly);
 
     if (!folderPath.isEmpty()) {
         m_destination->setText(folderPath);
@@ -709,6 +716,8 @@ void MainWindow::openModelManager() {
     if (modelManager.isNull()) {
         modelManager = new ModelManager(this);
         connect(modelManager, &ModelManager::modelsChanged, this, &MainWindow::refreshModelsList);
+        
+        modelManager->setWindowFlag(Qt::Window); 
     }
 
     modelManager->show();
@@ -827,10 +836,12 @@ void MainWindow::setInputsEnabled(bool enabled) {
     m_fileButton->setEnabled(enabled);
 }
 
-void MainWindow::Process() {
 
-    if (*m_fileChosen == "Choose File")
+void MainWindow::Process() {
+    if (m_fileChosen == nullptr || m_fileChosen->isEmpty()) {
+        m_consoleLabel->setText("Please choose a file first.");
         return;
+    }
 
     if (m_destination->text().isEmpty()) {
         m_consoleLabel->setText("Please select an output folder.");
@@ -958,7 +969,7 @@ void MainWindow::loadSettings() {
     m_suffix->setText(settings.value("suffix", "").toString());
     m_destination->setText(settings.value("destination", "").toString());
 
-    // On restaure l'index du modèle seulement s'il est valide
+    // On restaure l'index du modï¿½le seulement s'il est valide
     int modelIdx = settings.value("modelIndex", 0).toInt();
     if (modelIdx < m_model->count())
         m_model->setCurrentIndex(modelIdx);
