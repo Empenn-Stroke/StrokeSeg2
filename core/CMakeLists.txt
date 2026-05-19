@@ -1,6 +1,5 @@
 set(HEADERS 
-    "utils/animawrapper.h" 
-    "utils/env_path.h" 
+    "utils/animawrapper.h"
     "utils/str.h" 
     "utils/NiftiVolume.h" 
     "utils/log.h"
@@ -34,7 +33,7 @@ set(COMMON_SOURCES
 
 if(WIN32)
     set(OS_SOURCES "inference/Win/inference_win.cpp" "inference/Win/dml_ep_handler.cpp")
-    set(OS_HEADERS "inference/Win/dml_ep_handler.h" "inference/Win/inference_win.h")
+    set(OS_HEADERS "inference/Win/dml_ep_handler.h" "inference/Win/inference_win.h" "utils/env_path.h")
 elseif(APPLE)
     set(OS_SOURCES "inference/Mac/inference_mac.cpp")
 else()
@@ -60,20 +59,8 @@ if(WIN32)
     target_include_directories(${CORE} PUBLIC "${DML_INCLUDE_DIR}")
 endif()
 
-# Platform specific backends and libraries
-if(WIN32)
-    target_link_libraries(${CORE} PUBLIC
-        ZLIB::ZLIB       # Use the fetched static library on Windows
-        WindowsML::WindowsML
-    )
-elseif(APPLE)
-    target_link_libraries(${CORE} PUBLIC 
-        ZLIB::ZLIB       # Use the system dynamic library on Mac
-        onnxruntime_lib
-    )
-endif()
-
 target_link_libraries(${CORE} PUBLIC
+    ZLIB::ZLIB
     Qt6::Core            
     Qt6::Gui             
     Qt6::Concurrent
@@ -82,24 +69,14 @@ target_link_libraries(${CORE} PUBLIC
     Configuration
 )
 
-# Platform specific ML backends
 if(WIN32)
     target_link_libraries(${CORE} PUBLIC
         WindowsML::Api 
         WindowsML::OnnxRuntime
+        WindowsML::WindowsML
     )
 elseif(APPLE)
-    # This links to the imported library you created in the root CMakeLists.txt
-    target_link_libraries(${CORE} PUBLIC onnxruntime_lib)
-endif()
-
-if(WIN32)
-    add_custom_command(TARGET ${CORE} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${ML_DLL_PATH}/onnxruntime.dll"
-        "${ML_DLL_PATH}/onnxruntime_providers_shared.dll"
-        "${ML_DLL_PATH}/DirectML.dll"
-        "${ML_DLL_PATH}/Microsoft.Windows.AI.MachineLearning.dll"
-        $<TARGET_FILE_DIR:strokeseg2-app>
+    target_link_libraries(${CORE} PUBLIC
+        ONNXRuntime::Core
     )
 endif()

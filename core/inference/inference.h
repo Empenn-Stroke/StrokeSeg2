@@ -9,7 +9,7 @@
     #include <dml_provider_factory.h>
 #endif
 
-#include <onnxruntime_cxx_api.h>#include <onnxruntime_cxx_api.h>
+#include <onnxruntime_cxx_api.h>
 
 #include "utils/niftiVolume.h"
 

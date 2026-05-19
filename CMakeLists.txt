@@ -22,19 +22,8 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 
-add_compile_definitions(ANIMA_RELATIVE_PATH="Anima")
-
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Concurrent)
 qt_standard_project_setup()
-
-if(MSVC)
-    #string(REPLACE "/ZI" "/Zi" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-    #string(REPLACE "/ZI" "/Zi" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
-    #string(REPLACE "/ZI" "/Zi" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
-    #add_compile_options(/Zm200 /bigobj)
-    #add_compile_options(/O2 /arch:AVX2 /Oi /Ot /GL)
-    #add_link_options(/LTCG)
-endif()
 
 if(CMAKE_GENERATOR MATCHES "^Visual Studio")
     file(WRITE "${CMAKE_BINARY_DIR}/Directory.Build.rsp" "-m -graphBuild:true -p:UseMultiToolTask=true -nodeReuse:false -terminalLogger:auto")
@@ -58,20 +47,24 @@ message(STATUS "Searching for Nifti in: ${NIFTI_DIR}")
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Concurrent)
 qt_standard_project_setup() # sets some variables to setup qt
 
-# 5. WinML
-find_package(microsoft.windows.ai.machinelearning REQUIRED)
-message(STATUS "Searching for Microsoft.Windows.AI.MachineLearning in: ${WINML_DIR}")
-message(STATUS "Build dir" ${CMAKE_BINARY_DIR})
+# 5. WinML/ONNX Runtime
+if (WIN32)
+    find_package(microsoft.windows.ai.machinelearning REQUIRED)
+    message(STATUS "Searching for Microsoft.Windows.AI.MachineLearning in: ${WINML_DIR}")
+    message(STATUS "Build dir: ${CMAKE_BINARY_DIR}")
+else ()
+    find_package(ONNXRuntime REQUIRED)
+endif()
 
 # --- Definitions & Configuration ---
 set(CORE "core")
 set(GUI "gui")
 
-# Récupération de ANIMA_ROOT_PATH passé par le Superprojet
-if(NOT ANIMA_ROOT_PATH)
-    set(ANIMA_ROOT_PATH "./anima" CACHE PATH "Path to anima")
+# Récupération de ANIMA_RELATIVE_PATH passé par le Superprojet
+if(NOT ANIMA_RELATIVE_PATH)
+    set(ANIMA_RELATIVE_PATH "./anima" CACHE PATH "Path to anima")
 endif()
-add_compile_definitions(ANIMA_ROOT_PATH="${ANIMA_ROOT_PATH}")
+add_compile_definitions(ANIMA_RELATIVE_PATH="${ANIMA_RELATIVE_PATH}")
 
 include(./Configuration.cmake)
 
@@ -122,11 +115,26 @@ foreach(TOOL ${ANIMA_REQUIRED_TOOLS})
     list(APPEND ANIMA_FILES_TO_COPY "${BIN_PATH}")
 endforeach()
 
+set(MACOS_CHMOD_COMMAND "")
+if(APPLE)
+    set(MACOS_CHMOD_COMMAND COMMAND chmod +x 
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ANIMA_RELATIVE_PATH}/animaApplyTransformSerie"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ANIMA_RELATIVE_PATH}/animaConvertImage"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ANIMA_RELATIVE_PATH}/animaCreateImage"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ANIMA_RELATIVE_PATH}/animaDenseSVFBMRegistration"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ANIMA_RELATIVE_PATH}/animaMaskImage"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ANIMA_RELATIVE_PATH}/animaN4BiasCorrection"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ANIMA_RELATIVE_PATH}/animaPyramidalBMRegistration"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ANIMA_RELATIVE_PATH}/animaTransformSerieXmlGenerator"
+    )
+endif()
+
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E echo "DEBUG DESTINATION ANIMA : $<TARGET_FILE_DIR:${PROJECT_NAME}>/${ANIMA_RELATIVE_PATH}"
     COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ANIMA_RELATIVE_PATH}"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${ANIMA_FILES_TO_COPY}
-        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ANIMA_RELATIVE_PATH}"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ANIMA_RELATIVE_PATH}/"
     COMMENT "Copie des outils ANIMA dans le dossier de l'exécutable ($<CONFIG>)"
 )
 
@@ -139,42 +147,58 @@ if(WIN32)
         "${WINML_ONNXRUNTIME_PROVIDERS_SHARED_DLL}"
     )
 
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        set(ZLIB_DLL "${ZLIB_ROOT}/bin/zd.dll")
-    else()
-        set(ZLIB_DLL "${ZLIB_ROOT}/bin/z.dll")
-    endif()
+    set(ZLIB_DLL_DYNAMIC "$<IF:$<CONFIG:Debug>,${ZLIB_ROOT}/bin/zd.dll,${ZLIB_ROOT}/bin/z.dll>")
 
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             ${WINML_DLL_FILES}
-            ${ZLIB_DLL}
-            $<TARGET_FILE_DIR:${PROJECT_NAME}>
+            "${ZLIB_DLL_DYNAMIC}"
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
         COMMAND_EXPAND_LISTS
-        COMMENT "Déploiement des DLLs"
+        COMMENT "Déploiement des DLLs (Configuration : $<CONFIG>)"
     )
 endif()
 
-# Qt deployment
 
+# if(WIN32)
+#     add_custom_command(TARGET ${CORE} POST_BUILD
+#         COMMAND ${CMAKE_COMMAND} -E copy_if_different
+#         "${ML_DLL_PATH}/onnxruntime.dll"
+#         "${ML_DLL_PATH}/onnxruntime_providers_shared.dll"
+#         "${ML_DLL_PATH}/DirectML.dll"
+#         "${ML_DLL_PATH}/Microsoft.Windows.AI.MachineLearning.dll"
+#         $<TARGET_FILE_DIR:strokeseg2-app>
+#     )
+# else()
+#     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+#         COMMAND ${CMAKE_COMMAND} -E copy_if_different
+#             "${ONNX_LIB}"
+#             "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+#         COMMENT "Déploiement de la bibliothèque ONNX Runtime"
+#     )
+# 
+# endif()
+
+# --- Qt Deployment ---
 get_target_property(QT_QMAKE_EXECUTABLE Qt6::qmake IMPORTED_LOCATION)
 get_filename_component(QT_BIN_DIR "${QT_QMAKE_EXECUTABLE}" DIRECTORY)
 
-if(WIN32) 
-    set(QT_DEPLOY_BIN "${QT_BIN_DIR}/windeployqt.exe")
-elseif(APPLE)
-    set(QT_DEPLOY_BIN "${QT_BIN_DIR}/macdeployqt")
-else()
-    set(QT_DEPLOY_BIN "${QT_BIN_DIR}/linuxdeployqt")
-endif()
-
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND "${QT_DEPLOY_BIN}"
+if(WIN32)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND "${QT_BIN_DIR}/windeployqt.exe"
                 --no-translations
                 --no-system-d3d-compiler
                 "$<TARGET_FILE:${PROJECT_NAME}>"
         VERBATIM
-)
+        COMMENT "Déploiement Qt (Windows)"
+    )
+elseif(APPLE)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND "${QT_BIN_DIR}/macdeployqt" "$<TARGET_FILE_DIR:${PROJECT_NAME}>/../.."
+        COMMENT "Déploiement Qt (macOS)"
+    )
+endif()
 
 set(PROGRAM_DIR "${CMAKE_BINARY_DIR}/../../../bin/Program/StrokeSeg2")
 
@@ -182,7 +206,7 @@ make_directory(${PROGRAM_DIR})
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory 
-        "$<TARGET_FILE_DIR:${PROJECT_NAME}>" 
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
         "${PROGRAM_DIR}"
     COMMENT "Envoi de l'application vers le dossier central du Superprojet"
 )
