@@ -77,6 +77,6 @@ if(WIN32)
     )
 elseif(APPLE)
     target_link_libraries(${CORE} PUBLIC
-        ONNXRuntime::Core
+        onnxruntime::onnxruntime
     )
 endif()
