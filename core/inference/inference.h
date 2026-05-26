@@ -3,11 +3,15 @@
 #include <memory>
 
 #include <QString>
-#define ENABLE_NPU_ADAPTER_ENUMERATION
-#include <onnxruntime_cxx_api.h>
-#include <dml_provider_factory.h>
 
-#include "utils/NiftiVolume.h"
+#ifdef _WIN32
+    #define ENABLE_NPU_ADAPTER_ENUMERATION
+    #include <dml_provider_factory.h>
+#endif
+
+#include <onnxruntime_cxx_api.h>
+
+#include "utils/niftiVolume.h"
 
 class InferencePrivate;
 

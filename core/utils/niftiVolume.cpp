@@ -64,7 +64,6 @@ NiftiVolume NiftiVolume::loadNifti(const QString &path) {
     return vol;
 }
 
-
 /**
  * @brief Load a NIFTI file from disk.
  *
@@ -90,7 +89,6 @@ NiftiVolume NiftiVolume::loadNiftiToRAS(const QString &path) {
     const int nz = nim->nz;
     const int nt = (nim->nt > 1) ? nim->nt : 1;
 
-    // We store the raw spacing here temporarily, as we might need to shuffle it later
     Eigen::Vector3f raw_spacing(nim->dx > 0 ? nim->dx : 1.0f, nim->dy > 0 ? nim->dy : 1.0f,
                                 nim->dz > 0 ? nim->dz : 1.0f);
 
@@ -98,7 +96,6 @@ NiftiVolume NiftiVolume::loadNiftiToRAS(const QString &path) {
     std::vector<float> floatBuffer(totalVoxels);
     const void *srcData = nim->data;
 
-    // 1. Cast all supported NIFTI datatypes into our floatBuffer
     if (nim->datatype == NIFTI_TYPE_FLOAT32) {
         std::memcpy(floatBuffer.data(), srcData, totalVoxels * sizeof(float));
     } else {
@@ -113,14 +110,13 @@ NiftiVolume NiftiVolume::loadNiftiToRAS(const QString &path) {
                 floatBuffer[i] = static_cast<float>(static_cast<const uint8_t *>(srcData)[i]);
         }
     }
-    // Get orientation
+
     mat44 mat;
     if (nim->qform_code > 0) {
         mat = nim->qto_xyz;
     } else if (nim->sform_code > 0) {
         mat = nim->sto_xyz;
     } else {
-        // Fallback: If no spatial info is present, mock an identity matrix using spacing
         mat.m[0][0] = nim->dx;
         mat.m[0][1] = 0;
         mat.m[0][2] = 0;
@@ -142,26 +138,23 @@ NiftiVolume NiftiVolume::loadNiftiToRAS(const QString &path) {
     int codes[3] = {0, 0, 0};
     nifti_mat44_to_orientation(mat, &codes[0], &codes[1], &codes[2]);
 
-    // If orientation is missing, assume it's already RAS
     if (codes[0] == 0 || codes[1] == 0 || codes[2] == 0) {
-        codes[0] = NIFTI_L2R; // 1
-        codes[1] = NIFTI_P2A; // 3
-        codes[2] = NIFTI_I2S; // 5
+        codes[0] = NIFTI_L2R;
+        codes[1] = NIFTI_P2A;
+        codes[2] = NIFTI_I2S;
     }
 
-    // Target standard is RAS
     int target_codes[3] = {NIFTI_L2R, NIFTI_P2A, NIFTI_I2S};
 
-    Eigen::array<int, 4> shuffle_dims = {0, 1, 2, 3}; // Setup for X, Y, Z, Time
+    Eigen::array<int, 4> shuffle_dims = {0, 1, 2, 3};
     Eigen::array<bool, 4> reverse_dims = {false, false, false, false};
 
-    for (int i = 0; i < 3; ++i) {     // i = Target axes
-        for (int j = 0; j < 3; ++j) { // j = Original axes
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
             if ((codes[j] - 1) / 2 == (target_codes[i] - 1) / 2) {
                 shuffle_dims[i] = j;
 
                 if (codes[j] != target_codes[i]) {
-                    // Direction is backwards, flag for flip
                     reverse_dims[j] = true;
                 }
                 break;
@@ -169,14 +162,11 @@ NiftiVolume NiftiVolume::loadNiftiToRAS(const QString &path) {
         }
     }
 
-    // 2. Load data into a temporary tensor in its raw, uncorrected format
     Eigen::Tensor<float, 4, Eigen::ColMajor> origData(nx, ny, nz, nt);
     std::memcpy(origData.data(), floatBuffer.data(), totalVoxels * sizeof(float));
 
-    // 3. Apply the flip (reverse) and axis reordering (shuffle) directly into the final volume
     vol.data = origData.reverse(reverse_dims).shuffle(shuffle_dims);
 
-    // 4. Update the final spacing to match the new axis order
     vol.spacing = Eigen::Vector3f(raw_spacing[shuffle_dims[0]], raw_spacing[shuffle_dims[1]],
                                   raw_spacing[shuffle_dims[2]]);
 
@@ -237,7 +227,6 @@ bool NiftiVolume::saveNifti(const QString &path, const NiftiVolume &vol) {
     nifti_image_write(nim);
     nifti_image_free(nim);
 
-    // --- RELECTURE DEBUG ---
     nifti_image *check = nifti_image_read(path.toStdString().c_str(), 0);
     if (check) {
         qDebug() << "[SAVE CHECK] Saving NIfTI to" << path << "with dimensions:" << nx << ny << nz
@@ -270,6 +259,14 @@ bool NiftiVolume::saveNiftiWithReference(const QString &path, const NiftiVolume 
     nim->dim[4] = nt;
     nim->nt = nt;
     nim->nvox = static_cast<size_t>(nx) * ny * nz * nt;
+
+    // --- BUG FIX: Add missing spatial dimension metadata ---
+    nim->pixdim[1] = vol.spacing.x();
+    nim->pixdim[2] = vol.spacing.y();
+    nim->pixdim[3] = vol.spacing.z();
+    nim->dx = vol.spacing.x();
+    nim->dy = vol.spacing.y();
+    nim->dz = vol.spacing.z();
 
     nim->datatype = NIFTI_TYPE_FLOAT32;
     nim->nbyper = sizeof(float);
@@ -324,10 +321,6 @@ std::vector<float> NiftiVolume::toVector() const {
  * @return std::vector<int64_t> Tensor dimensions (X, Y, Z, C)
  */
 std::vector<int64_t> NiftiVolume::getShape() const {
-    return {
-        static_cast<int64_t>(data.dimension(0)), // X
-        static_cast<int64_t>(data.dimension(1)), // Y
-        static_cast<int64_t>(data.dimension(2)), // Z
-        static_cast<int64_t>(data.dimension(3))  // C
-    };
+    return {static_cast<int64_t>(data.dimension(0)), static_cast<int64_t>(data.dimension(1)),
+            static_cast<int64_t>(data.dimension(2)), static_cast<int64_t>(data.dimension(3))};
 }

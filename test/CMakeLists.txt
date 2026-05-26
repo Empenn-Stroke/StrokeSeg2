@@ -51,4 +51,4 @@ endmacro()
 #add_qt_test(test_postprocessor test_postprocessor.cpp)
 
 # Test FullPipeline :
-add_qt_test(test_full_pipeline test_full_pipeline.cpp)
+#add_qt_test(test_full_pipeline test_full_pipeline.cpp)

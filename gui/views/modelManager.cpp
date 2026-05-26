@@ -3,6 +3,7 @@
 #include <QDir>
 #include <QToolButton>
 #include <QFileDialog>
+#include <QtGlobal>
 
 #include <utils/env_path.h>
 
@@ -154,21 +155,35 @@ bool ModelManager::eventFilter(QObject *obj, QEvent *event) {
 }
 
 bool ModelManager::nativeEvent(const QByteArray &eventType, void *message, qintptr *result) {
+    #ifdef Q_OS_WIN
     MSG *msg = static_cast<MSG *>(message);
     if (msg->message == WM_WINDOWPOSCHANGED) {
-        this->update(); // Redessine quand la position change au niveau système
     }
+    #elif defined(Q_OS_MAC)
+    #endif
     return QWidget::nativeEvent(eventType, message, result);
 }
 
 void ModelManager::importModel() {
-    QString filename = QFileDialog::getOpenFileName(this, "Choose file", Paths::modelDir().absolutePath(),
-                                                    "ONNX Model (*.onnx);;All files (*)");
+    QString filename = QFileDialog::getOpenFileName(
+        nullptr, 
+        "Choose file", 
+        Paths::modelDir().absolutePath(),
+        "ONNX Model (*.onnx);;All files (*)",
+        nullptr,
+        QFileDialog::DontUseNativeDialog
+    );
+
+    //QString filename = QFileDialog::getOpenFileName(this, "Choose file", Paths::modelDir().absolutePath(), "ONNX Model (*.onnx);;All files (*)");
 
     if (filename.isEmpty())
         return;
 
     // ---- Find the path ----
+    QString programDataPath = qgetenv("PROGRAMDATA");
+    if (programDataPath.isEmpty()) {
+        programDataPath = "C:/ProgramData"; // Fallback manuel si la variable est vide
+    }
     QDir dir(Paths::modelDir());
 
     if (!dir.exists()) {

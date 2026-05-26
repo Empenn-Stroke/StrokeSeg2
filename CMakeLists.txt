@@ -1,25 +1,28 @@
-cmake_minimum_required(VERSION 3.31) # support for CXX20
+cmake_minimum_required(VERSION 3.31)
 
-cmake_policy(SET CMP0141 NEW) # MSVC debug information format flags are selected by an abstraction.
-cmake_policy(SET CMP0117 NEW) # MSVC RTTI flag /GR is not added to CMAKE_CXX_FLAGS by default.
+# --- Policies & System Setup ---
+cmake_policy(SET CMP0141 NEW)
+cmake_policy(SET CMP0117 NEW)
 cmake_policy(SET CMP0174 NEW)
-
 set(CMAKE_SYSTEM_VERSION "10.0.18362.0")
 
+project(strokeseg2-app
+    VERSION 0.0.1
+    LANGUAGES CXX
+)
+
+# --- Configuration des Chemins de Recherche ---
+if(NOT CMAKE_PREFIX_PATH)
+    set(CMAKE_PREFIX_PATH "${CMAKE_BINARY_DIR}/bin")
+endif()
+
+# --- Setup Qt & Dépendances ---
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 
-if(MSVC)
-    string(REPLACE "/ZI" "/Zi" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-    string(REPLACE "/ZI" "/Zi" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
-    string(REPLACE "/ZI" "/Zi" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
-
-    add_compile_options(/Zm200 /bigobj)
-
-    add_compile_options(/O2 /arch:AVX2 /Oi /Ot /GL)
-    add_link_options(/LTCG)
-endif()
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Concurrent)
+qt_standard_project_setup()
 
 if(CMAKE_GENERATOR MATCHES "^Visual Studio")
     file(WRITE "${CMAKE_BINARY_DIR}/Directory.Build.rsp" "-m -graphBuild:true -p:UseMultiToolTask=true -nodeReuse:false -terminalLogger:auto")
@@ -27,103 +30,103 @@ if(CMAKE_GENERATOR MATCHES "^Visual Studio")
     file(WRITE "${CMAKE_BINARY_DIR}/Directory.Build.targets" "<Project></Project>")
 endif()
 
-if(WIN32)  
-    set(ENV{WindowsSdkDir} "C:/Program Files (x86)/Windows Kits/10")
+# 1. Eigen
+find_package(Eigen3 REQUIRED)
+message(STATUS "Searching for Eigen3 in: ${Eigen3_DIR}")
 
-    if(NOT EXISTS "$ENV{WindowsSdkDir}/Platforms/UAP/10.0.26100.0/Platform.xml")
-        message("$ENV{WindowsSdkDir}/Platforms/UAP/10.0.26100.0/Platform.xml")
-        message(FATAL_ERROR "Windows SDK UWP 10.0.26100.0 non trouv�.")
+# 2. ZLIB
+find_package(ZLIB REQUIRED)
+message(STATUS "Searching for Zlib in: ${Zlib_DIR}")
+
+# 3. NIFTI
+find_package(NIFTI REQUIRED)
+message(STATUS "Searching for Nifti in: ${NIFTI_DIR}")
+
+# 4. WinML/ONNX Runtime
+if (WIN32)
+    find_package(microsoft.windows.ai.machinelearning REQUIRED)
+    message(STATUS "Searching for Microsoft.Windows.AI.MachineLearning in: ${WINML_DIR}")
+    message(STATUS "Build dir: ${CMAKE_BINARY_DIR}")
+else ()
+    find_package(onnxruntime REQUIRED)
+    if(TARGET onnxruntime::onnxruntime)
+        get_target_property(ORT_WRONG_INCLUDE_DIR onnxruntime::onnxruntime INTERFACE_INCLUDE_DIRECTORIES)
+        get_filename_component(ORT_CORRECT_INCLUDE_DIR "${ORT_WRONG_INCLUDE_DIR}" DIRECTORY)
+        set_target_properties(onnxruntime::onnxruntime PROPERTIES
+            INTERFACE_INCLUDE_DIRECTORIES "${ORT_CORRECT_INCLUDE_DIR}"
+        )
     endif()
 endif()
 
-set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
-
-project(strokeseg2-app
-  VERSION 0.0.1
-  LANGUAGES CXX
-)
-
-include(FetchContent)
-
-# VARS #############################################################################################
-
+# --- Definitions & Configuration ---
 set(CORE "core")
 set(GUI "gui")
-set(COMMON "common")
 
-set(ANIMA_REL_PATH "anima")
+# [CORRECTION] Gestion propre et conforme de l'arborescence selon l'OS
+if(NOT ANIMA_RELATIVE_PATH)
+    if(APPLE)
+        set(ANIMA_RELATIVE_PATH "." CACHE PATH "Path to anima sur macOS")
+    else()
+        set(ANIMA_RELATIVE_PATH "./anima" CACHE PATH "Path to anima")
+    endif()
+endif()
+add_compile_definitions(ANIMA_RELATIVE_PATH="${ANIMA_RELATIVE_PATH}")
 
-add_compile_definitions(ANIMA_RELATIVE_PATH="${ANIMA_REL_PATH}")
+include(./Configuration.cmake)
 
-# DEPENDENCIES #####################################################################################
-
-# SPDLOG
-FetchContent_Declare(
-    spdlog
-    GIT_REPOSITORY https://github.com/gabime/spdlog.git
-    GIT_TAG v1.16.0
-)
-FetchContent_MakeAvailable(spdlog)
-
-# EIGEN
-FetchContent_Declare(
-     eigen
-     GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
-     GIT_TAG 5.0.0
-)
-FetchContent_MakeAvailable(eigen)
-
-# QT
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Concurrent)
-qt_standard_project_setup() # sets some variables to setup qt
-
-# ZLIB
-FetchContent_Declare(
-  zlib
-  GIT_REPOSITORY https://github.com/madler/zlib.git
-  GIT_TAG v1.2.13
-)
-FetchContent_MakeAvailable(zlib)
-
-set(ZLIB_INCLUDE_DIR ${zlib_SOURCE_DIR})
-set(ZLIB_LIBRARY zlib)
-set(ZLIB_FOUND TRUE)
-
-include_directories(${zlib_SOURCE_DIR})
-include_directories(${zlib_BINARY_DIR})
-
-
-# NIFTI
-set(NIFTI_INSTALL_EXPORT_NAME "NIFTI_SKIP_EXPORT" CACHE STRING "")
-set(NIFTI_INSTALL_LIBRARY_DIR "nifti_skip" CACHE PATH "")
-set(NIFTI_INSTALL_INCLUDE_DIR "nifti_skip" CACHE PATH "")
-set(NIFTI_INSTALL_RUNTIME_DIR "nifti_skip" CACHE PATH "")
-set(NIFTI_INSTALL_ARCHIVE_DIR "nifti_skip" CACHE PATH "")
-set(NIFTI_BUILD_SHARED_LIBS OFF CACHE BOOL "")
-
-FetchContent_Declare(
-  nifti
-  GIT_REPOSITORY https://github.com/NIFTI-Imaging/nifti_clib.git
-  GIT_TAG master
-)
-FetchContent_MakeAvailable(nifti)
-
-# NuGetCMakePackage
-FetchContent_Declare(
-  NuGetCMakePackage
-  GIT_REPOSITORY https://github.com/mschofie/NuGetCMakePackage
-  GIT_TAG b13e013481605d134f498fd9fc3a123c416da197
+qt_add_executable(
+        ${PROJECT_NAME}
+        resources.qrc
+        main.cpp
 )
 
-# Anima
-if(WIN32)
-    set(ANIMA_URL "https://github.com/Inria-Empenn/Anima-Public/releases/download/v4.2/Anima-Windows-4.2.zip")
-elseif(APPLE)
-    set(ANIMA_URL "https://github.com/Inria-Empenn/Anima-Public/releases/download/v4.2/Anima-macOS-4.2.zip")
-else()
-    set(ANIMA_URL "https://github.com/Inria-Empenn/Anima-Public/releases/download/v4.2/Anima-Ubuntu-4.2.zip")
+if(APPLE)
+    # Force la création du Bundle .app au lieu d'un binaire nu
+    set_target_properties(${PROJECT_NAME} PROPERTIES MACOSX_BUNDLE TRUE)
 endif()
 
+if(MSVC)
+    set_target_properties(${PROJECT_NAME} PROPERTIES 
+        WIN32_EXECUTABLE TRUE
+        LINK_FLAGS "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup"
+    )
+endif()
+
+# --- Targets ---
+add_subdirectory(${CMAKE_SOURCE_DIR}/${CORE})
+add_subdirectory(${CMAKE_SOURCE_DIR}/${GUI})
+
+target_link_libraries(${PROJECT_NAME} PUBLIC
+    ${GUI}
+)
+
+# =====================================================================
+# ÉTAPES POST-BUILD
+# =====================================================================
+
+# 1. Déploiement des DLLs (Spécifique Windows)
+if(WIN32)    
+    set(WINML_DLL_FILES
+        "${WINML_BINARY_DIR}/Microsoft.Windows.AI.MachineLearning.dll"
+        "${WINML_BINARY_DIR}/onnxruntime.dll"
+        "${WINML_DIRECTML_DLL}"
+        "${WINML_ONNXRUNTIME_PROVIDERS_SHARED_DLL}"
+    )
+
+    set(ZLIB_DLL_DYNAMIC "$<IF:$<CONFIG:Debug>,${ZLIB_ROOT}/bin/zd.dll,${ZLIB_ROOT}/bin/z.dll>")
+
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${WINML_DLL_FILES}
+            "${ZLIB_DLL_DYNAMIC}"
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+        COMMAND_EXPAND_LISTS
+        COMMENT "Déploiement des DLLs (Configuration : $<CONFIG>)"
+    )
+endif()
+
+# 2. Copie d'ANIMA (On le fait AVANT macdeployqt pour qu'il puisse tout signer ensemble)
 set(ANIMA_REQUIRED_TOOLS 
     "animaApplyTransformSerie"
     "animaConvertImage"
@@ -135,150 +138,77 @@ set(ANIMA_REQUIRED_TOOLS
     "animaTransformSerieXmlGenerator"
 )
 
-FetchContent_Declare(
-    Anima
-    URL ${ANIMA_URL}
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-)
-
-FetchContent_MakeAvailable(Anima)
-
 set(ANIMA_FILES_TO_COPY "")
 foreach(TOOL ${ANIMA_REQUIRED_TOOLS})
     if(WIN32)
-        set(BIN_PATH "${anima_SOURCE_DIR}/${TOOL}.exe")
+        set(BIN_PATH "${ANIMA_PATH}/${TOOL}.exe")
     else()
-        set(BIN_PATH "${anima_SOURCE_DIR}/${TOOL}")
+        set(BIN_PATH "${ANIMA_PATH}/${TOOL}")
     endif()
-    
     list(APPEND ANIMA_FILES_TO_COPY "${BIN_PATH}")
 endforeach()
 
-set(ANIMA_RUNTIME_DESTINATION "${CMAKE_BINARY_DIR}/${ANIMA_REL_PATH}")
-file(MAKE_DIRECTORY "${ANIMA_RUNTIME_DESTINATION}")
+set(MACOS_CHMOD_COMMAND "")
+if(APPLE)
+    set(MACOS_CHMOD_COMMAND COMMAND chmod +x 
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ANIMA_RELATIVE_PATH}/animaApplyTransformSerie"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ANIMA_RELATIVE_PATH}/animaConvertImage"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ANIMA_RELATIVE_PATH}/animaCreateImage"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ANIMA_RELATIVE_PATH}/animaDenseSVFBMRegistration"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ANIMA_RELATIVE_PATH}/animaMaskImage"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ANIMA_RELATIVE_PATH}/animaN4BiasCorrection"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ANIMA_RELATIVE_PATH}/animaPyramidalBMRegistration"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ANIMA_RELATIVE_PATH}/animaTransformSerieXmlGenerator"
+    )
+endif()
 
-foreach(FILE_PATH ${ANIMA_FILES_TO_COPY})
-    if(EXISTS "${FILE_PATH}")
-        file(COPY "${FILE_PATH}" DESTINATION "${ANIMA_RUNTIME_DESTINATION}")
-    else()
-        message(WARNING "ANIMA binary not found at path : ${FILE_PATH}")
-    endif()
-endforeach()
-
-# DCM2NIIX
-include(FetchContent)
-
-FetchContent_Declare(
-    dcm2niix_bin
-    URL https://github.com/rordenlab/dcm2niix/releases/download/v1.0.20240202/dcm2niix_win.zip
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E echo "DEBUG DESTINATION ANIMA : $<TARGET_FILE_DIR:${PROJECT_NAME}>/${ANIMA_RELATIVE_PATH}"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ANIMA_RELATIVE_PATH}"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${ANIMA_FILES_TO_COPY}
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ANIMA_RELATIVE_PATH}/"
+    ${MACOS_CHMOD_COMMAND}
+    COMMENT "Copie des outils ANIMA dans le dossier de l'exécutable ($<CONFIG>)"
 )
 
-FetchContent_MakeAvailable(dcm2niix_bin)
-
-set(DCM2NIIX_EXE_PATH "${dcm2niix_bin_SOURCE_DIR}/dcm2niix.exe")
-
-if(EXISTS "${DCM2NIIX_EXE_PATH}")
-    file(COPY "${DCM2NIIX_EXE_PATH}" DESTINATION "${ANIMA_RUNTIME_DESTINATION}")
-    message(STATUS "dcm2niix binary ready: ${DCM2NIIX_EXE_PATH}")
-else()
-    message(WARNING "dcm2niix.exe not found after extraction from: ${DCM2NIIX_URL}")
-endif()
-
-# Adding specific dependencies depending on the operating system
-if(WIN32)
-    FetchContent_MakeAvailable(NuGetCMakePackage)
-
-    add_nuget_packages(
-        PACKAGES
-            Microsoft.Windows.CppWinRT 2.0.250303.1
-            Microsoft.Windows.ImplementationLibrary 1.0.250325.1
-            Microsoft.WindowsAppSDK 1.8.260317003
-    )
-
-    set(CPPWINRT_VERSION "2.0.250303.1" CACHE STRING "Version of CppWinRT")
-    set(CPPWINRT_SYSTEM_VERSION ${CPPWINRT_VERSION} CACHE STRING "System version of CppWinRT")
-    set(CPP_WINRT_VERSION ${CPPWINRT_VERSION})
-    set(WIN_APP_SDK_VERSION "1.8.260317003")
-
-    set(NUGET_PACKAGES_DIR "${CMAKE_BINARY_DIR}/packages")
-    file(MAKE_DIRECTORY "${NUGET_PACKAGES_DIR}")
-
-    set(WinAppSDK_ML_CONFIG_DIR "${CMAKE_BINARY_DIR}/__nuget/Microsoft.WindowsAppSDK.ML.1.8.2141/build/cmake")
-    list(APPEND CMAKE_PREFIX_PATH "${WinAppSDK_ML_CONFIG_DIR}")
-    
-    find_package(microsoft.windows.ai.machinelearning CONFIG REQUIRED)
-    find_package(Microsoft.Windows.ImplementationLibrary CONFIG REQUIRED)
-else()
-    if(APPLE)
-        set(ONNX_URL "https://github.com/microsoft/onnxruntime/releases/download/v1.24.4/onnxruntime-osx-arm64-1.24.4.tgz")
-    else()
-        set(ONNX_URL "https://github.com/microsoft/onnxruntime/releases/download/v1.24.4/onnxruntime-linux-x64-gpu-1.24.4.tgz")
-    endif()
-
-    FetchContent_Declare(
-        onnxruntime
-        URL ${ONNX_URL}
-    )
-
-    FetchContent_MakeAvailable(onnxruntime)
-
-    include_directories(${onnxruntime_SOURCE_DIR}/include)
-    
-    add_library(onnxruntime_lib SHARED IMPORTED)
-    if(APPLE)
-        set_target_properties(onnxruntime_lib PROPERTIES 
-            IMPORTED_LOCATION "${onnxruntime_SOURCE_DIR}/lib/libonnxruntime.dylib")
-    else()
-        set_target_properties(onnxruntime_lib PROPERTIES 
-            IMPORTED_LOCATION "${onnxruntime_SOURCE_DIR}/lib/libonnxruntime.so")
-    endif()
-endif()
-
-set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-set_property(DIRECTORY APPEND PROPERTY VS_SOLUTION_ITEMS
-    .clangd
-    .editorconfig
-    .gitignore
-    CMakePresets.json
-    readme.md
-)
-
-include(./Configuration.cmake)
+# 3. Outils de Déploiement Qt (Signe aussi ANIMA sur Mac maintenant qu'il est bien placé)
+get_target_property(QT_QMAKE_EXECUTABLE Qt6::qmake IMPORTED_LOCATION)
+get_filename_component(QT_BIN_DIR "${QT_QMAKE_EXECUTABLE}" DIRECTORY)
 
 if(WIN32)
-    add_executable(
-        ${PROJECT_NAME}
-        resources.qrc
-        main.cpp
-    )
-endif()
-
-if(MSVC)
-    set_target_properties(${PROJECT_NAME} PROPERTIES 
-        WIN32_EXECUTABLE TRUE
-        LINK_FLAGS "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup"
-    )
-endif()
-
-# TARGETS ##########################################################################################
-
-add_subdirectory(${CMAKE_SOURCE_DIR}/${CORE})
-add_subdirectory(${CMAKE_SOURCE_DIR}/${GUI})
-add_subdirectory(${CMAKE_SOURCE_DIR}/test)
-
-target_link_libraries(${PROJECT_NAME} PUBLIC
-    ${GUI}
-)
-
-if(WIN32)
-    get_target_property(QT_QMAKE_EXECUTABLE Qt6::qmake IMPORTED_LOCATION)
-    get_filename_component(QT_BIN_DIR "${QT_QMAKE_EXECUTABLE}" DIRECTORY)
-    
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND "${QT_BIN_DIR}/windeployqt.exe"
                 --no-translations
                 --no-system-d3d-compiler
                 "$<TARGET_FILE:${PROJECT_NAME}>"
         VERBATIM
+        COMMENT "Déploiement Qt (Windows)"
+    )
+elseif(APPLE)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND "${QT_BIN_DIR}/macdeployqt" "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>"
+        COMMENT "Déploiement Qt (macOS)"
+    )
+endif()
+
+# 4. Envoi vers le dossier central du Superprojet
+set(PROGRAM_DIR "${CMAKE_BINARY_DIR}/../../../bin/Program/StrokeSeg2")
+
+if(APPLE)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${PROGRAM_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory 
+            "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>"
+            "${PROGRAM_DIR}/${PROJECT_NAME}.app"
+        COMMENT "Envoi du Bundle .app vers le dossier central du Superprojet"
+    )
+else()
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${PROGRAM_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory 
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+            "${PROGRAM_DIR}"
+        COMMENT "Envoi de l'application vers le dossier central du Superprojet"
     )
 endif()

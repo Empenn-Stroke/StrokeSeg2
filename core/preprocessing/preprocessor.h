@@ -8,11 +8,8 @@
 #include <utility>
 #include <vector>
 
-#include <spdlog/spdlog.h>
-#include <QObject>
-
 #include "brainextraction.h"
-#include "preprocvolume.h"
+#include "preprocVolume.h"
 #include "resampling.h"
 
 #include <utils/animawrapper.h>

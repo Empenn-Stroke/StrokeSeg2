@@ -2,17 +2,14 @@
 
 #include <QString>
 #include <optional>
-#include <spdlog/spdlog.h>
 
-#include "utils/log.h"
 #include "managers/progressManager.h"
+#include "utils/log.h"
 
-namespace 
-{
+namespace {
     using namespace postprocessing;
 
-    struct Segmentation 
-    {
+    struct Segmentation {
         Eigen::Tensor<float, 3, Eigen::ColMajor> seg;
         std::optional<Eigen::Tensor<float, 3, Eigen::ColMajor>> pmap;
     };
@@ -23,11 +20,8 @@ namespace
     /// @param base_name Base name of the image without extension
     /// @param suffix filename suffix. Note however that this is not the extension
     /// @return Path to the saved file
-    QString save_img(QString dir, const Eigen::Vector3f &spacing,
-                     const NiftiVolume::Tensor4f &data,
-                     QString base_name,
-                     QString suffix) 
-    {
+    QString save_img(QString dir, const Eigen::Vector3f &spacing, const NiftiVolume::Tensor4f &data,
+                     QString base_name, QString suffix) {
         QString output_path = dir + "/" + base_name + "_" + suffix + ".nii.gz";
         NiftiVolume output;
         output.data = data;
@@ -48,25 +42,17 @@ namespace
     /// @param save_pmap If true, save probability map alongside the segmentation
     /// @return Segmentation struct
     Segmentation convert_to_segmentation(NiftiVolume::Tensor4f data, float threshold,
-                                         bool save_pmap) 
-    {
-        // extract lesion
-        Eigen::Tensor<float, 3, Eigen::ColMajor> lesion = data.chip<3>(0);
+                                         bool save_pmap) {
+        // --- BUG FIX: Use both channels for competitive Softmax ---
+        Eigen::Tensor<float, 3, Eigen::ColMajor> bg_logits = data.chip<3>(0);
+        Eigen::Tensor<float, 3, Eigen::ColMajor> lesion_logits = data.chip<3>(1);
 
-        // softmax
-        // we first substract the maximum value to each element to prevent exponential overflow
-        //auto lesion_shifted = lesion - lesion.maximum();
-        //auto lesion_exp_sum = lesion_shifted.sum();
-        //Eigen::Tensor<float, 3, Eigen::ColMajor> pmap = lesion.unaryExpr([&](float val) {
-        //    return exp(val) / lesion_exp_sum; //
-        //});
-
-        // Sigmoid (since we only have one channel, softmax is equivalent to sigmoid)
         Eigen::Tensor<float, 3, Eigen::ColMajor> pmap =
-            lesion.unaryExpr([](float val) { return 1.0f / (1.0f + std::exp(-val)); });
+            (lesion_logits - bg_logits).unaryExpr([](float val) {
+                return 1.0f / (1.0f + std::exp(-val));
+            });
 
-        // calculate segmentation of lesion (channel 1)
-        Eigen::Tensor<float, 3, Eigen::ColMajor> seg = (lesion >= threshold).cast<float>();
+        Eigen::Tensor<float, 3, Eigen::ColMajor> seg = (pmap >= threshold).cast<float>();
 
         return {
             .seg = seg,
@@ -79,9 +65,7 @@ namespace
     /// @param segmentation Segmentation data. This will be modified.
     /// @param padding Padding to use
     Segmentation remove_padding(const Segmentation &segmentation,
-                                const std::array<std::array<int, 2>, 3> &padding) 
-    {
-        // calculate offsets and extents (offset and length of slices)
+                                const std::array<std::array<int, 2>, 3> &padding) {
         std::array<int, 3> offsets{};
         std::array<int, 3> extents{};
         for (int i = 0; i < padding.size(); i++) {
@@ -89,7 +73,6 @@ namespace
             extents[i] = padding[i][1] - padding[i][0];
         }
 
-        // apply slices
         return {
             .seg = segmentation.seg.slice(offsets, extents),
             .pmap = (segmentation.pmap.has_value())
@@ -107,9 +90,7 @@ namespace
     /// @param original_shape Original shape of the image before preprocessing
     Segmentation uncrop_from_bbox(const Segmentation &segmentation,
                                   const std::array<std::array<int, 2>, 3> &bbox,
-                                  const Eigen::Vector3i &original_shape) 
-    {
-        // create full volume
+                                  const Eigen::Vector3i &original_shape) {
         Segmentation full_volume{
             .seg = Eigen::Tensor<float, 3, Eigen::ColMajor>(original_shape[0], original_shape[1],
                                                             original_shape[2]),
@@ -125,7 +106,6 @@ namespace
             full_volume.pmap->setZero();
         }
 
-        // place cropped data inside full volume
         std::array<int, 3> offsets{};
         std::array<int, 3> extents{};
         for (int i = 0; i < bbox.size(); i++) {
@@ -147,8 +127,7 @@ namespace
     /// @param spacing
     /// @return NiftiVolume instance
     NiftiVolume segmentation_to_nifti_volume(const Segmentation &segmentation,
-                                             Eigen::Vector3f spacing) 
-    {
+                                             Eigen::Vector3f spacing) {
         auto &seg = segmentation.seg;
         Eigen::array<Eigen::Index, 4> new_shape{seg.dimension(0), seg.dimension(1),
                                                 seg.dimension(2), 1};
@@ -163,8 +142,7 @@ namespace
     /// @brief Get data from NiftiVolume as a Tensor3f
     /// @param volume NiftiVolume instance
     /// @return data as Tensor3f
-    Eigen::Tensor<float, 3, Eigen::ColMajor> nifti_volume_to_tensor3f(const NiftiVolume &volume) 
-    {
+    Eigen::Tensor<float, 3, Eigen::ColMajor> nifti_volume_to_tensor3f(const NiftiVolume &volume) {
         return volume.data.chip<3>(0);
     }
 
@@ -197,8 +175,8 @@ namespace
                                      ": " + wrapper->lastStderr().toStdString());
         }
     }
-}; // namespace
 
+}; // namespace
 
 /**
  * @brief Apply postprocessing pipeline on the data produced by the inference step:
@@ -211,13 +189,10 @@ namespace
  * - Register to reference only if the inverse transformation was applied during
  *   preprocessing
  */
-NiftiVolume postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor4f &data,
-                                                        const PreprocessedVolume &preproc_volume,
-                                                        const std::array<std::array<int, 2>, 3> &bbox,
-                                                        float segmentation_threshold, bool save_pmap,
-                                                        QString dir, QString trsf_path, bool mni) 
-{
-
+NiftiVolume postprocessing::Postprocessor::postprocess(
+    const NiftiVolume::Tensor4f &data, const PreprocessedVolume &preproc_volume,
+    const std::array<std::array<int, 2>, 3> &bbox, float segmentation_threshold, bool save_pmap,
+    QString dir, QString trsf_path, bool mni) {
     Eigen::Vector3f debug_spacing = preproc_volume.spacing;
 
     // --- Step 1: Convert to segmentation ---
@@ -226,8 +201,7 @@ NiftiVolume postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor
 
     printAction("Convert to segmentation");
     Segmentation segmentation = convert_to_segmentation(data, segmentation_threshold, save_pmap);
-    
-    // DEBUG SAVE 1
+
     if (m_save_intermediary_steps) {
         save_img(dir, debug_spacing, segmentation_to_nifti_volume(segmentation, debug_spacing).data,
                  QFileInfo(preproc_volume.original_t1_path).baseName(), "after_convert");
@@ -238,8 +212,7 @@ NiftiVolume postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor
     // --- Step 2: Remove padding ---
     printAction("Remove padding");
     segmentation = remove_padding(segmentation, preproc_volume.padding);
-    
-    // DEBUG SAVE 2
+
     if (m_save_intermediary_steps) {
         save_img(dir, debug_spacing, segmentation_to_nifti_volume(segmentation, debug_spacing).data,
                  QFileInfo(preproc_volume.original_t1_path).baseName(), "after_unpad");
@@ -247,12 +220,11 @@ NiftiVolume postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor
 
     ProgressManager::instance().report(93, 7, 20, new QString("Returning to initial dimensions"));
 
-    // --- Step 3: Uncrop ---
     printAction("Uncrop");
     segmentation = uncrop_from_bbox(segmentation, bbox, preproc_volume.original_shape);
 
     NiftiVolume segmentation_as_nifti = segmentation_to_nifti_volume(segmentation, debug_spacing);
-    
+
     // DEBUG SAVE 3
     if (m_save_intermediary_steps) {
         save_img(dir, debug_spacing, segmentation_as_nifti.data,
@@ -274,15 +246,17 @@ NiftiVolume postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor
     segmentation_as_nifti.data = temp_shuffled;
 
     try {
-        segmentation_as_nifti = m_resampler.resample(segmentation_as_nifti, preproc_volume.spacing);
+        // --- BUG FIX: Target exactly 1.0f MNI spacing to avoid Anima physical distortions ---
+        segmentation_as_nifti =
+            m_resampler.resample(segmentation_as_nifti, Eigen::Vector3f(1.0f, 1.0f, 1.0f));
     } catch (const std::bad_alloc &e) {
-        spdlog::error("Resampling failed: Out of memory. Check dimensions!");
+        qCritical("Resampling failed: Out of memory. Check dimensions!");
         throw;
     }
 
     Eigen::Tensor<float, 4, Eigen::ColMajor> temp_back =
         segmentation_as_nifti.data.shuffle(Eigen::array<int, 4>{1, 2, 3, 0});
-    
+
     segmentation_as_nifti.data = temp_back;
 
     segmentation.seg = nifti_volume_to_tensor3f(segmentation_as_nifti);
@@ -299,7 +273,8 @@ NiftiVolume postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor
 
     // Copy save the data of the segmentation in MNI space, using the reference T1 header to ensure
     // correct orientation and spacing metadata.
-    NiftiVolume::saveNiftiWithReference(tmp_mni_path, segmentation_as_nifti, Paths::atlasDir().filePath("Reference_T1.nii.gz"));
+    NiftiVolume::saveNiftiWithReference(tmp_mni_path, segmentation_as_nifti,
+                                        Paths::atlasDir().filePath("Reference_T1.nii.gz"));
 
     if (mni) {
         return segmentation_as_nifti;
@@ -330,15 +305,14 @@ NiftiVolume postprocessing::Postprocessor::postprocess(const NiftiVolume::Tensor
 
             QString final_pmap_path = dir + "/" + base_name + "_pmap.nii.gz";
             applyInverseRegistration(m_wrapper, tmp_pmap_mni, trsf_path,
-                                     preproc_volume.original_t1_path,
-                                     final_pmap_path, "linear");
+                                     preproc_volume.original_t1_path, final_pmap_path, "linear");
 
             QFile::remove(tmp_pmap_mni);
         }
         return NiftiVolume::loadNifti(final_patient_seg_path);
 
-    } catch (const std::exception &e) { 
-        spdlog::error("Critical error during inverse registration: {}", e.what());
+    } catch (const std::exception &e) {
+        qCritical("Critical error during inverse registration: %s", e.what());
         return NiftiVolume();
     }
 }

@@ -1,15 +1,28 @@
 #include "mainWindow.h"
+#include "warningWindow.h"
 #include <QApplication>
 #include <QCommandLineParser>
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QTextStream>
-#include <Windows.h>
+#include <managers/logManager.h>
+#include <workers/pipelineWorker.h>
+#include <QtGlobal>
+
+#ifdef Q_OS_WIN
+    #include <Windows.h>
+    #include <io.h>
+    #include <fcntl.h>
+#endif
+
 #include <managers/logManager.h>
 #include <workers/pipelineWorker.h>
 
 void ensureConsole() {
+#ifdef Q_OS_WIN
+    // This logic is specifically for Windows GUI applications 
+    // to show output in a command prompt.
     if (AttachConsole(ATTACH_PARENT_PROCESS) || AllocConsole()) {
         FILE *out = nullptr;
         FILE *err = nullptr;
@@ -17,6 +30,10 @@ void ensureConsole() {
         freopen_s(&err, "CONOUT$", "w", stderr);
         std::ios::sync_with_stdio();
     }
+#else
+    // On macOS and Linux, if the app is run from a terminal, 
+    // stdout/stderr are already connected. No extra steps needed.
+#endif
 }
 
 int main(int argc, char *argv[]) {
