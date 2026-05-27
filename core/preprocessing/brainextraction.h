@@ -6,7 +6,7 @@
 #include "utils/animawrapper.h"
 #include "utils/env_path.h"
 
-#include <Qdir>
+#include <QDir>
 #include <stdexcept>
 
 #ifndef CORE_PREPROCESSING_BRAINEXTRACTION_H

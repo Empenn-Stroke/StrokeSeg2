@@ -76,6 +76,8 @@ include(./Configuration.cmake)
 
 qt_add_executable(
         ${PROJECT_NAME}
+        MACOSX_BUNDLE
+        "gui/ressouces/StrokeSeg2.icns"
         resources.qrc
         main.cpp
 )
@@ -206,9 +208,12 @@ if(APPLE)
 else()
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory "${PROGRAM_DIR}"
-        COMMAND ${CMAKE_COMMAND} -E copy_directory 
-            "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
-            "${PROGRAM_DIR}"
-        COMMENT "Envoi de l'application vers le dossier central du Superprojet"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different 
+            "$<TARGET_FILE:${PROJECT_NAME}>"
+            "${PROGRAM_DIR}/"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>/anima"
+            "${PROGRAM_DIR}/anima"
+        COMMENT "Envoi de l'application et d'ANIMA vers le dossier central du Superprojet"
     )
 endif()

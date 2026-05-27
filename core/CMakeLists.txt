@@ -1,7 +1,7 @@
 set(HEADERS 
     "utils/animawrapper.h"
     "utils/str.h" 
-    "utils/NiftiVolume.h" 
+    "utils/niftiVolume.h" 
     "utils/log.h"
     "utils/dicomConverter.h"
     "preprocessing/preprocessor.h" 
@@ -17,7 +17,7 @@ set(HEADERS
 
 set(COMMON_SOURCES 
     "utils/animawrapper.cpp" 
-    "utils/NiftiVolume.cpp" 
+    "utils/niftiVolume.cpp" 
     "utils/log.cpp"
     "utils/dicomConverter.cpp"
     "preprocessing/preprocessor.cpp" 
@@ -37,7 +37,7 @@ if(WIN32)
 elseif(APPLE)
     set(OS_SOURCES "inference/Mac/inference_mac.cpp")
 else()
-    set(OS_SOURCES "inference/Linux/inference.cpp")
+    set(OS_SOURCES "inference/Linux/inference_linux.cpp")
 endif()
 
 add_library(${CORE})
@@ -75,7 +75,7 @@ if(WIN32)
         WindowsML::OnnxRuntime
         WindowsML::WindowsML
     )
-elseif(APPLE)
+else()
     target_link_libraries(${CORE} PUBLIC
         onnxruntime::onnxruntime
     )

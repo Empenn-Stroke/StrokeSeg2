@@ -70,8 +70,42 @@ namespace Paths {
     }
 
 #elif defined(Q_OS_LINUX)
+    inline QDir roaming() {
+        // Pointe vers ~/.config/StrokeSeg2 (Standard XDG)
+        return QDir(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation));
+    }
 
+    inline QDir local() {
+        // Pointe vers ~/.local/share/StrokeSeg2
+        return QDir(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation));
+    }
+
+    inline QDir modelDir() {
+        // Mode Dev : Vérifie d'abord si le dossier existe à côté du binaire de build
+        QDir devDir(QCoreApplication::applicationDirPath() + "/AppData/Models");
+        if (devDir.exists()) return devDir;
+
+        return QDir(local()).filePath("Models/");
+    }
+
+    inline QDir atlasDir() {
+        // Mode Dev : Piège le dossier AppData/Atlas généré par CMake dans out/bin/
+        QDir devDir(QCoreApplication::applicationDirPath() + "/AppData/Atlas");
+        if (devDir.exists()) return devDir;
+
+        return QDir(local()).filePath("Atlas/");
+    }
+
+    inline QDir configPath() {
+        return QDir(roaming()).filePath("config.ini");
+    }
+
+    inline QDir defaultOutputDir() {
+        return QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation))
+            .filePath(app_name);
+    }
 #endif
+
     inline QDir baseDir() {
         return QDir(QCoreApplication::applicationDirPath());
     }
