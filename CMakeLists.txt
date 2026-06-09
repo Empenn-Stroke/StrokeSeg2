@@ -77,7 +77,7 @@ include(./Configuration.cmake)
 qt_add_executable(
         ${PROJECT_NAME}
         MACOSX_BUNDLE
-        "gui/ressouces/StrokeSeg2.icns"
+        "gui/resources/StrokeSeg2.icns"
         resources.qrc
         main.cpp
 )
