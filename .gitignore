@@ -12,8 +12,6 @@ _deps
 CMakeUserPresets.json
 CMakePresets.json
 
-test/test_data
-
 # CLion
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
@@ -456,4 +454,3 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
-/CMakeSettings.json
