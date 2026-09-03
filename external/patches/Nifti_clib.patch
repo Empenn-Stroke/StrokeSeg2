@@ -1,0 +1,6 @@
+--- a/znzlib/CMakeLists.txt
++++ b/znzlib/CMakeLists.txt
+@@ -10,2 +10,3 @@
+ target_compile_definitions(${NIFTI_ZNZLIB_NAME} PUBLIC  ${ZNZ_COMPILE_DEF})
++target_include_directories(${NIFTI_ZNZLIB_NAME} PUBLIC  ${ZLIB_INCLUDE_DIR})
+ # Set library version if building shared libs.
