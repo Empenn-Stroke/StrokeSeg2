@@ -1,0 +1,8 @@
+Checks: '-*,readability-identifier-naming'
+CheckOptions:
+  - key:             readability-identifier-naming.VariableCase
+    value:           lowerCamelCase
+  - key:             readability-identifier-naming.FunctionCase
+    value:           lowerCamelCase
+  - key:             readability-identifier-naming.ParameterCase
+    value:           lowerCamelCase
