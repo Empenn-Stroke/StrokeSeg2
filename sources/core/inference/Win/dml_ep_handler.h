@@ -11,7 +11,8 @@
  * This class is responsible for registering available DML providers and handling the
  * asynchronous operations related to provider management.
  */
-class DMLEpHandler {
+class DMLEpHandler
+{
   public:
     /**
      * @brief Register available DML execution providers.
