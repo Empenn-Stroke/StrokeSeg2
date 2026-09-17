@@ -61,22 +61,7 @@ class AnimaWrapper : public QObject {
      */
     QString lastStderr() const { return m_stderr; }
 
-signals:
-    /**
-     * @brief Signal emitted when new log data is available.
-     *
-     * @param message A QString containing the log message.
-     */
-    void logAvailable(const QString &message);
-
-    /**
-     * @brief Signal emitted when an error occurs during process execution.
-     *
-     * @param error A QString containing the error message.
-     */
-    void errorOccurred(const QString &error);
-
-protected:
+  protected:
     /**
      * @brief The QProcess object used to execute external commands.
      */
@@ -92,24 +77,20 @@ protected:
      */
     QString m_stderr;
 
-private slots:
+  signals:
     /**
-     * @brief Slot called when the process has finished executing.
+     * @brief Signal emitted when new log data is available.
      *
-     * @param exitCode The exit code of the process.
-     * @param exitStatus The exit status of the process.
+     * @param message A QString containing the log message.
      */
-    void onProcessFinished(int exitCode, QProcess::ExitStatus exitStatus);
+    void logAvailable(const QString &message);
 
     /**
-     * @brief Slot called when there is new standard output available from the process.
+     * @brief Signal emitted when an error occurs during process execution.
+     *
+     * @param error A QString containing the error message.
      */
-    void onProcessReadyReadStandardOutput();
-
-    /**
-     * @brief Slot called when there is new standard error available from the process.
-     */
-    void onProcessReadyReadStandardError();
+    void errorOccurred(const QString &error);
 };
 
 #endif // CORE_UTILS_ANIMAWRAPPER_H
