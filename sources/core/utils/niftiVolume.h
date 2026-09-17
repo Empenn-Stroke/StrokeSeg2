@@ -41,14 +41,53 @@ struct NiftiVolume {
 
     QString file_path; // Original file path (optional)
 
+    /**
+     * @brief Loads a NIFTI volume from a file.
+     *
+     * @param path The path to the NIFTI file.
+     * @return A NiftiVolume object containing the loaded data.
+     */
     static NiftiVolume loadNifti(const QString &path);
+
+    /**
+     * @brief Loads a NIFTI volume from a file and transforms it to RAS orientation.
+     *
+     * @param path The path to the NIFTI file.
+     * @return A NiftiVolume object containing the loaded and transformed data.
+     */
     static NiftiVolume loadNiftiToRAS(const QString &path);
+
+    /**
+     * @brief Saves a NIFTI volume to a file.
+     *
+     * @param path The path to the output NIFTI file.
+     * @param vol The NiftiVolume object to save.
+     * @return True if the save operation was successful, false otherwise.
+     */
     static bool saveNifti(const QString &path, const NiftiVolume &vol);
 
+    /**
+     * @brief Saves a NIFTI volume to a file with a reference NIFTI file.
+     *
+     * @param path The path to the output NIFTI file.
+     * @param vol The NiftiVolume object to save.
+     * @param refPath The path to the reference NIFTI file.
+     * @return True if the save operation was successful, false otherwise.
+     */
     static bool saveNiftiWithReference(const QString &path, const NiftiVolume &vol,
                                 const QString &refPath);
 
+    /**
+     * @brief Converts the NiftiVolume data to a vector.
+     *
+     * @return A vector containing the voxel intensities.
+     */
     std::vector<float> toVector() const;
 
+    /**
+     * @brief Retrieves the shape of the NiftiVolume data.
+     *
+     * @return A vector containing the dimensions of the tensor (X, Y, Z, C).
+     */
     std::vector<int64_t> getShape() const;
 };
