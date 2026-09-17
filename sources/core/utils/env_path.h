@@ -30,57 +30,38 @@ namespace Paths {
      * @brief Get the local directory path.
      * @return QDir object representing the local directory.
      */
-    inline QDir local() 
-    {
-        return QDir(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation));
-    }
+    inline QDir local()  { return QDir(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation)); }
 
     /**
      * @brief Get the ProgramData directory path.
      * @return QDir object representing the ProgramData directory.
      */
-    inline QDir programData() 
-    {
-        QString path = qEnvironmentVariable("ProgramData");
-        return path.isEmpty() ? QDir("C:/ProgramData") : QDir(path);
+    inline QDir programData()  { return qEnvironmentVariable("ProgramData").isEmpty() ? QDir("C:/ProgramData") : QDir(qEnvironmentVariable("ProgramData"));
     }
 
     /**
      * @brief Get the models directory path.
      * @return QDir object representing the models directory.
      */
-    inline QDir modelDir() 
-    {
-        return QDir(programData()).filePath(appName + "/Models/");
-    }
+    inline QDir modelDir() { return QDir(programData()).filePath(appName + "/Models/"); }
 
     /**
      * @brief Get the atlas directory path.
      * @return QDir object representing the atlas directory.
      */
-    inline QDir atlasDir() 
-    {
-        return QDir(programData()).filePath(appName + "/Atlas/");
-    }
+    inline QDir atlasDir() { return QDir(programData()).filePath(appName + "/Atlas/"); 
 
     /**
      * @brief Get the configuration path.
      * @return QDir object representing the configuration path.
      */
-    inline QDir configPath() 
-    {
-        return QDir(roaming()).filePath(appName + "/config.ini");
-    }
+    inline QDir configPath() { return QDir(roaming()).filePath(appName + "/config.ini"); }
 
     /**
      * @brief Get the default output directory path.
      * @return QDir object representing the default output directory.
      */
-    inline QDir defaultOutputDir() 
-    {
-        return QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation))
-            .filePath(appName);
-    }
+    inline QDir defaultOutputDir() { return QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)).filePath(appName); }
 
 #elif defined(Q_OS_MAC)
     /**
@@ -168,43 +149,26 @@ namespace Paths {
      * @brief Get the configuration path.
      * @return QDir object representing the configuration path.
      */
-    inline QDir configPath() 
-    {
-        QDir result = QDir(roaming()).filePath("config.ini");
-        return result;
-    }
+    inline QDir configPath() { return QDir(roaming()).filePath("config.ini"); }
 
     /**
      * @brief Get the default output directory path.
      * @return QDir object representing the default output directory.
      */
-    inline QDir defaultOutputDir() 
-    {
-        QDir result = QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation))
-                      .filePath(appName);
-        return result;
-    }
+    inline QDir defaultOutputDir() { return QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)).filePath(appName); }
 
 #elif defined(Q_OS_LINUX)
     /**
      * @brief Get the roaming directory path.
      * @return QDir object representing the roaming directory.
      */
-    inline QDir roaming() 
-    {
-        QDir result = QDir(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation));
-        return result;
-    }
+    inline QDir roaming() { return QDir(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)); }
 
     /**
      * @brief Get the local directory path.
      * @return QDir object representing the local directory.
      */
-    inline QDir local() 
-    {
-        QDir result = QDir(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation));
-        return result;
-    }
+    inline QDir local() { return QDir(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation)); }
 
     /**
      * @brief Get the models directory path.
@@ -265,22 +229,13 @@ namespace Paths {
      * @brief Get the configuration path.
      * @return QDir object representing the configuration path.
      */
-    inline QDir configPath() 
-    {
-        QDir result = QDir(roaming()).filePath("config.ini");
-        return result;
-    }
+    inline QDir configPath() { return QDir(roaming()).filePath("config.ini"); }
 
     /**
      * @brief Get the default output directory path.
      * @return QDir object representing the default output directory.
      */
-    inline QDir defaultOutputDir() 
-    {
-        QDir result = QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation))
-                      .filePath(appName);
-        return result;
-    }
+    inline QDir defaultOutputDir() { return QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)).filePath(appName); }
 
 #endif
 
@@ -288,18 +243,12 @@ namespace Paths {
      * @brief Get the base directory path.
      * @return QDir object representing the base directory.
      */
-    inline QDir baseDir() 
-    {
-        return QDir(QCoreApplication::applicationDirPath());
-    }
+    inline QDir baseDir() { return QDir(QCoreApplication::applicationDirPath()); }
 
     /**
      * @brief Get the Anima root directory path.
      * @return QDir object representing the Anima root directory.
      */
-    inline QDir animaRootPath() 
-    {
-        return QDir(baseDir().filePath(ANIMA_RELATIVE_PATH));
-    }
+    inline QDir animaRootPath() { return QDir(baseDir().filePath(ANIMA_RELATIVE_PATH)); }
 
 } // namespace Paths

@@ -24,7 +24,8 @@ namespace preprocessing {
      * - Slice-by-slice resampling along the axis with the lowest resolution.
      * - Fully compatible with Eigen::Tensor<float,4,Eigen::RowMajor> via NiftiVolume.
      */
-    class Resampler {
+    class Resampler
+    {
     public:
         /**
          * @brief Default constructor.
@@ -39,13 +40,9 @@ namespace preprocessing {
          * @param is_segmentation Indicates whether the volume is a segmentation.
          * @return Resampled NiftiVolume.
          */
-        NiftiVolume resample(const NiftiVolume &in, const Eigen::Vector3f &new_spacing,
-                             bool is_segmentation = false);
+        NiftiVolume resample(const NiftiVolume &in, const Eigen::Vector3f &new_spacing, bool is_segmentation = false);
 
       private:
-        /// Threshold to detect if an axis is low-resolution and should be resampled separately
-        float separate_z_anisotropy_threshold = 3.0f;
-
         /**
          * @brief Determine if a separate axis should be resampled.
          *
@@ -95,8 +92,7 @@ namespace preprocessing {
          * @param axis Axis along which to interpolate.
          * @return Interpolated value.
          */
-        float bilinear_2d(const NiftiVolume &vol, int c, float x, float y, int slice,
-                          int axis) const;
+        float bilinear_2d(const NiftiVolume &vol, int c, float x, float y, int slice, int axis) const;
 
         /**
          * @brief Perform 1D nearest neighbor interpolation.
@@ -109,8 +105,7 @@ namespace preprocessing {
          * @param axis Axis along which to interpolate.
          * @return Interpolated value.
          */
-        float nearest_1d(const Eigen::Tensor<float, 4, Eigen::RowMajor> &t, int c, int i, int j,
-                         float pos, int axis) const;
+        float nearest_1d(const Eigen::Tensor<float, 4, Eigen::RowMajor> &t, int c, int i, int j, float pos, int axis) const;
 
         /**
          * @brief Perform 1D vote nearest neighbor interpolation.
@@ -123,8 +118,7 @@ namespace preprocessing {
          * @param axis Axis along which to interpolate.
          * @return Interpolated value.
          */
-        float vote_nearest_1d(const Eigen::Tensor<float, 4, Eigen::RowMajor> &t, int c, int i,
-                              int j, float pos, int axis) const;
+        float vote_nearest_1d(const Eigen::Tensor<float, 4, Eigen::RowMajor> &t, int c, int i, int j, float pos, int axis) const;
 
         /**
          * @brief Generate indices for resampling.
@@ -135,6 +129,9 @@ namespace preprocessing {
          * @return Array of indices.
          */
         Eigen::ArrayXi generate_indices(int new_dim, float ratio, int max_val);
+
+    private:
+        float separate_z_anisotropy_threshold = 3.0f; /// Threshold to detect if an axis is low-resolution and should be resampled separately
     };
 
 } // namespace preprocessing

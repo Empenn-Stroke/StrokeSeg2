@@ -13,11 +13,12 @@
 /**
  * @brief A class for managing application configuration settings.
  *
- * This class provides a singleton instance for managing configuration settings
+ * This class is a singleton instance for managing configuration settings
  * using QSettings. It allows setting and getting configuration values, registering
- * callbacks for changes to specific keys, and saving the configuration to disk.
+ * callbacks for changes to specific keys, and saving the configuration.
  */
-class ConfigManager {
+class ConfigManager
+{
 
     private:
         // Private constructor to prevent instantiation
@@ -59,7 +60,7 @@ class ConfigManager {
         void onChanged(const QString &key, std::function<void(QVariant)> cb);
 
         /**
-         * @brief Save the current configuration settings to disk.
+         * @brief Save the current configuration settings.
          */
         void save();
 };

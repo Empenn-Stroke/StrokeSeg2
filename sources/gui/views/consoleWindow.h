@@ -6,7 +6,7 @@
 #include <QWidget>
 
 /**
- * @brief The ConsoleWindow class provides a GUI window that displays log messages in real-time.
+ * @brief The ConsoleWindow class is a GUI console to displays log messages in real-time.
  *
  * This class creates a window that reads from a log file and updates the display as new log entries are added.
  * The window is designed to be read-only and uses a monospace font for better readability of log messages.

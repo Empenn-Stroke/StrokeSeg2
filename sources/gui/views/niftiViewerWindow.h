@@ -18,7 +18,7 @@
 #include <QVBoxLayout>
 
 /**
- * @brief The NiftiViewerWindow class provides a GUI dialog for viewing NIfTI volumes.
+ * @brief The NiftiViewerWindow class is a GUI dialog for viewing NIfTI volumes.
  *
  * This class creates a dialog window that allows users to load and view NIfTI volumes,
  * including optional mask volumes. It supports window dragging, slice visualization,

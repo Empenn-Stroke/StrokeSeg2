@@ -15,13 +15,14 @@
 #include <QFile>
 
 /**
- * @brief The GuideWindow class provides a GUI window that displays guidance or instructions to the user.
+ * @brief The GuideWindow class is a GUI window that displays guidance or instructions to the user.
  *
  * This class creates a window with a title bar and content area that can be used to display
  * instructional text or guides. The window supports dragging and includes a title bar for
  * user interaction.
  */
-class GuideWindow : public QWidget {
+class GuideWindow : public QWidget
+{
     Q_OBJECT
 
 public:

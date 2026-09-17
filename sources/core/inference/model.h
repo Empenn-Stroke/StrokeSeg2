@@ -11,10 +11,10 @@ class ModelPrivate;
  * @brief A class representing an ONNX model and its associated ONNX Runtime session.
  *
  * This class provides functionality to load, validate, and run inference using an ONNX model.
- * It ensures unique ownership of ONNX Runtime resources and provides methods for accessing
- * model metadata and performing inference.
+ * It ensures unique ownership of ONNX Runtime resources and provides methods for accessing model metadata.
  */
-class Model {
+class Model
+{
   public:
     /**
      * @brief Default constructor for the Model class.

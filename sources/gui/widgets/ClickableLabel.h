@@ -13,7 +13,8 @@
  * with the coordinates of the click. This can be useful for creating interactive
  * GUI elements where clicking on a label needs to trigger specific actions.
  */
-class ClickableLabel : public QLabel {
+class ClickableLabel : public QLabel
+{
     Q_OBJECT
 
 public:

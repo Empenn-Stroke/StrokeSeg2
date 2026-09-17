@@ -11,11 +11,11 @@
 
 static QString developers = R"DEV(
 Alessandro Di Matteo (Department of Information Engineering, Computer Science and Mathematics, University of L'Aquila)  
-Youwan Mahé (Neuroimaging : Methods and Applications, Siemens Healthineers)  
+Youwan Mahé (Empenn, Siemens Healthineers)  
 Stéphanie Leplaideur (Physical Medicine and Rehabilitation, Clinical Investigation Center, Rennes University Hospital)  
 Florent Leray (Inria / IRISA – Beaulieu University Campus)  
-Elise Bannier (Neuroimaging : Methods and Applications, Radiology Department, Rennes University Hospital)  
-Francesca Galassi (Neuroimaging : Methods and Applications)  
+Elise Bannier (Empenn, Radiology Department, Rennes University Hospital)  
+Francesca Galassi (Empenn)  
 Yann Kerverdo (Inria – Beaulieu University Campus)
 Axel Plessis (Inria – Beaulieu University Campus)  
 Mathilde Liffran (Graphics & Logos)  

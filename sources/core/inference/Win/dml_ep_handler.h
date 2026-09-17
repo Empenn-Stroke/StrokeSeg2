@@ -18,8 +18,7 @@ class DMLEpHandler
      * @brief Register available DML execution providers.
      *
      * @param env The ONNX Runtime environment in which to register the providers.
-     * @param userWantsToDownload A boolean flag indicating whether the user wants to
-     *                            download the providers if they are not already available.
+     * @param userWantsToDownload A boolean flag indicating whether the user wants to download the providers if they are not already available.
      */
     static void registerAvailableProviders(Ort::Env &env, bool userWantsToDownload = true);
 
@@ -27,7 +26,8 @@ class DMLEpHandler
     /**
      * @brief A structure to hold the context of the provider registration process.
      */
-    struct Context {
+    struct Context 
+    {
         bool needsDownload;            /// Indicates if a download is needed.
         bool userWantsToDownload;      /// Indicates if the user wants to download the providers.
         Ort::Env *env;                  /// Pointer to the ONNX Runtime environment.

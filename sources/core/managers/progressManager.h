@@ -9,7 +9,7 @@
 /**
  * @brief A class for managing progress updates and interruptions.
  *
- * This class provides a singleton instance for managing progress updates, emitting signals
+ * This class is a singleton instance for managing progress updates, emitting signals
  * to indicate progress, status changes, and interruptions. It also handles animating a dot
  * indicator for ongoing operations.
  */
@@ -59,8 +59,7 @@ class ProgressManager : public QObject
      * @param internalPercentage The internal percentage progress as an integer.
      * @param status The optional status message for the step.
      */
-    void report(double stepStart, double stepWeight, int internalPercentage,
-                const QString *status = nullptr);
+    void report(double stepStart, double stepWeight, int internalPercentage, const QString *status = nullptr);
 
     /**
      * @brief Request an interruption of the ongoing process.

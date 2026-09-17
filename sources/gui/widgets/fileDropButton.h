@@ -10,7 +10,7 @@
 #include <QToolButton>
 
 /**
- * @brief The FileDropButton class provides a QToolButton with drag-and-drop file support.
+ * @brief The FileDropButton class is an extension of QToolButton with drag-and-drop file support.
  *
  * This class extends QToolButton to allow users to drop files onto the button.
  * When a file is dropped, it emits a signal with the file path. If an unsupported

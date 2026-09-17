@@ -18,7 +18,8 @@
  * The spacing vector defines the physical voxel size in millimeters
  * along each spatial axis (x, y, z).
  */
-struct NiftiVolume {
+struct NiftiVolume
+{
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     using Tensor4f = Eigen::Tensor<float, 4, Eigen::ColMajor>;
@@ -74,8 +75,7 @@ struct NiftiVolume {
      * @param refPath The path to the reference NIFTI file.
      * @return True if the save operation was successful, false otherwise.
      */
-    static bool saveNiftiWithReference(const QString &path, const NiftiVolume &vol,
-                                const QString &refPath);
+    static bool saveNiftiWithReference(const QString &path, const NiftiVolume &vol, const QString &refPath);
 
     /**
      * @brief Converts the NiftiVolume data to a vector.

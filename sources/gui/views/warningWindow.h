@@ -18,13 +18,14 @@
 #include <QSettings>
 
 /**
- * @brief The WarningWindow class provides a GUI dialog for displaying warning messages.
+ * @brief This class is a dialog window.
  *
  * This class creates a dialog window that shows warning messages and an option to
  * not show the warning again in the future. The window supports window dragging and
  * includes a title bar for user interaction.
  */
-class WarningWindow : public QDialog {
+class WarningWindow : public QDialog
+{
     Q_OBJECT
 
   public:

@@ -8,10 +8,11 @@
 #include <QWidget>
 
 /**
- * @brief The ThresholdSliderWidget class combines a QSlider and a QLineEdit to allow users
- * to select a threshold value between 0.0 and 1.0. The widget emits a signal when the value changes.
+ * @brief The ThresholdSliderWidget is a widget to control threshold value between 0.0 and 1.0
+ * @details To do this ThresholdSliderWidget combines a QSlider and a QLineEdit to allow users to select a value.
  */
-class ThresholdSliderWidget : public QWidget {
+class ThresholdSliderWidget : public QWidget
+{
     Q_OBJECT
 
   public:

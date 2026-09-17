@@ -15,7 +15,7 @@
 #include <QTextEdit>
 
 /**
- * @brief A class representing the about window for the application.
+ * @brief This class is a window class for the application about dialog.
  *
  * This class provides a window that displays information about the application,
  * including its developers, version, license, and publications. It also allows

@@ -29,7 +29,7 @@
 #include <views/consoleWindow.h>
 
 /**
- * @brief The MainWindow class represents the main window of the application.
+ * @brief This class is the MainWindow class represents the main window of the application.
  *
  * This class provides the primary user interface for the application, including
  * a parameters form, input file buttons, a stacked widget for different views,

@@ -89,14 +89,6 @@ signals:
      */
     void error(const QString &message);
 
-private: 
-    AnimaWrapper* m_wrapper;
-    QString m_atlasImage;
-    QString m_iccImage;
-    QStringList m_pyramidOption;
-
-    bool m_cancelRequested = false;
-
 private:
     /**
      * @brief Run a command using the AnimaWrapper.
@@ -104,4 +96,12 @@ private:
      * @param command The command to be run as a QStringList.
      */
     void runCommand(const QStringList &command);
+
+private: 
+    AnimaWrapper* m_wrapper;
+    QString m_atlasImage;
+    QString m_iccImage;
+    QStringList m_pyramidOption;
+
+    bool m_cancelRequested = false;
 };

@@ -19,7 +19,8 @@
  * It is designed to be used in a Qt application environment and provides a clean interface
  * for running Anima commands and handling their results.
  */
-class AnimaWrapper : public QObject {
+class AnimaWrapper : public QObject
+{
     Q_OBJECT
   public:
     /**
