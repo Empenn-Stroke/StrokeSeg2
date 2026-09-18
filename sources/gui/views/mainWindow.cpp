@@ -36,7 +36,7 @@ MainWindow::MainWindow(const PipelineParams &opts, QWidget *parent) : QMainWindo
 {
 
     setWindowTitle("StrokeSeg2");
-    setWindowIcon(QIcon(":/gui/resources/StrokeSeg2.ico"));
+    setWindowIcon(QIcon(":/gui/resources/StrokeSegPWR.ico"));
     resize(1280, 720);
 
     setWindowFlags(Qt::FramelessWindowHint);

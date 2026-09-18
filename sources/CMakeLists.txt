@@ -219,10 +219,12 @@ if(WIN32)
         COMMAND "${QT_BIN_DIR}/windeployqt.exe"
                 --no-translations
                 --no-system-d3d-compiler
+				--compiler-runtime
                 "$<TARGET_FILE:${PROJECT_NAME}>"
         VERBATIM
         COMMENT "Deployment of Qt (Windows)"
-    )
+    )	
+
 elseif(APPLE)
     # macdeployqt integrates Qt, adding RPATHs and including the necessary frameworks
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD

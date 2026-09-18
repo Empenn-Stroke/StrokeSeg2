@@ -99,7 +99,7 @@ NiftiVolume Inference::run(std::shared_ptr<Model> model, NiftiVolume &image,
     outputTensors.push_back(std::move(output_tensor));
 
     int patch_cpt = 0;
-    int total_patches = steps[0].size() * steps[1].size() * steps[2].size();
+    int total_patches = static_cast<int>(steps[0].size() * steps[1].size() * steps[2].size());
 
     for (int x : steps[0])
     {
