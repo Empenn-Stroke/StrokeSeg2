@@ -49,7 +49,7 @@ namespace Paths {
      * @brief Get the atlas directory path.
      * @return QDir object representing the atlas directory.
      */
-    inline QDir atlasDir() { return QDir(programData()).filePath(appName + "/Atlas/"); 
+    inline QDir atlasDir() { return QDir(programData()).filePath(appName + "/Atlas/"); }
 
     /**
      * @brief Get the configuration path.
