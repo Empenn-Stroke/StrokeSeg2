@@ -20,7 +20,7 @@
 		<file>gui/resources/infinite-spinner.gif</file>
 		<file>gui/resources/logos_one_line.png</file>
 		<file>gui/resources/logos_two_lines.png</file>
-		<file>gui/resources/StrokeSeg2.ico</file>
+		<file alias="gui/resources/StrokeSegPWR.ico">../resources/StrokeSegPWR.ico</file>
 		<file>gui/resources/StrokeSeg2.png</file>
 		<file>gui/resources/StrokeSeg2_HD.png</file>
 	</qresource>

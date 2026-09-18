@@ -36,7 +36,16 @@
 # directory, assigning them to their respective components (BIN, ATLAS, MODELS)
 # for fine-grained control during installation.
 if (WIN32)
+    set(CMAKE_INSTALL_UCRT_LIBRARIES TRUE)
+    set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION StrokeSeg2)
+    include(InstallRequiredSystemLibraries)
+
     install(DIRECTORY ${CMAKE_BINARY_DIR}/ExtProjs/build/StrokeSeg2/Release/ DESTINATION StrokeSeg2 COMPONENT BIN)
+    if(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS)
+        install(PROGRAMS ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS}
+                DESTINATION StrokeSeg2/anima
+                COMPONENT BIN)
+    endif()
     install(DIRECTORY ${CMAKE_BINARY_DIR}/bin/AppData/Atlas DESTINATION  . COMPONENT ATLAS)
     install(DIRECTORY ${CMAKE_BINARY_DIR}/bin/AppData/Models DESTINATION . COMPONENT MODELS)
 elseif(APPLE)
@@ -64,7 +73,7 @@ elseif(APPLE)
 
     # 4. Bundle icon
     install(FILES "${PROJECT_SOURCE_DIR}/resources/StrokeSegPWR.icns" DESTINATION strokeseg2-app.app/Contents/Resources)
-    install(FILES "${PROJECT_SOURCE_DIR}/resources/StrokeSeg2.icns" DESTINATION strokeseg2-app.app/Contents/Resources)
+    install(FILES "${PROJECT_SOURCE_DIR}/resources/StrokeSegPWR.icns" DESTINATION strokeseg2-app.app/Contents/Resources)
 else()
     install(DIRECTORY ${CMAKE_BINARY_DIR}/bin/Program/StrokeSeg2/ 
         DESTINATION StrokeSeg2

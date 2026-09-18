@@ -32,21 +32,20 @@ struct PipelineParams
     bool mni;
     bool betOnly;
 
-
-
     /**
      * @brief Validates the pipeline parameters to ensure that required fields are set and files exist.
+     * @param requiredInputs A QStringList of required input keys.
      * @param errorMessage A reference to a QString that will hold the error message if validation fails.
      * @return True if the parameters are valid, false otherwise.
      */
-    bool isValid(const QStringList &requiredInputs, QString &error) const {
+    bool isValid(const QStringList &requiredInputs, QString &errorMessage) const {
         for (const QString &input : requiredInputs) {
             QString key = input.toUpper();
             if (!inputPaths.contains(key) || inputPaths[key].isEmpty()) {
-                error = QString("Missing required input: %1").arg(key);
+                errorMessage = QString("Missing required input: %1").arg(key);
                 return false;
             }
         }
-        return true && !outputDir.isEmpty();
+        return !outputDir.isEmpty();
     }
 };
